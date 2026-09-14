@@ -8,6 +8,8 @@ import {
   busyFromCourses,
   commonFree,
   partialFree,
+  attending,
+  availabilityBands,
 } from "../lib/overlap";
 import {
   fetchTermSections,
@@ -235,4 +237,123 @@ assert.deepEqual(partialFree({ ...opts, minAttendees: 4 }), [], "minAttendees ab
 
 console.log(`partial windows (>=2 people, Mon fixture): ${some.length}`);
 console.log(`gaps between classes: ${free.filter((w) => w.betweenClasses).length}`);
+
+// --- attendance deviations --------------------------------------------------
+// Skipping drops a class out of busy time; online keeps it busy but stops it
+// anchoring a campus. Both are what the availability views read.
+
+const mid = block(600, 690, "mid"); // 10:00-11:30, the gap Ada and Bo share above
+assert.deepEqual(
+  attending([
+    block(540, 600, "A"),
+    { ...mid, status: "skipping" },
+    block(690, 750, "B"),
+  ]).map((b) => b.label),
+  ["A", "B"],
+  "attending() drops skipped classes and keeps the rest"
+);
+
+const beforeSkip = commonFree({
+  members: [
+    { name: "Ada", busy: [block(540, 600, "A"), mid, block(690, 750, "B")] },
+    { name: "Bo", busy: [block(540, 600, "C"), mid, block(690, 750, "D")] },
+  ],
+  dayStart, dayEnd: toMinutes("13:00"), minMinutes: 30, days: ["Mo"],
+});
+assert.equal(
+  beforeSkip.filter((w) => w.start === 600 && w.end === 690).length,
+  0,
+  "a shared middle class blocks the 10:00-11:30 window"
+);
+
+const afterSkip = commonFree({
+  members: [
+    {
+      name: "Ada",
+      busy: [block(540, 600, "A"), { ...mid, status: "skipping" }, block(690, 750, "B")],
+    },
+    {
+      name: "Bo",
+      busy: [block(540, 600, "C"), { ...mid, status: "skipping" }, block(690, 750, "D")],
+    },
+  ],
+  dayStart, dayEnd: toMinutes("13:00"), minMinutes: 30, days: ["Mo"],
+});
+const opened = afterSkip.find((w) => w.start === 600 && w.end === 690);
+assert.ok(opened, "skipping the middle class opens the hour for everyone");
+assert.equal(opened.betweenClasses, true, "the opened hour is still a gap between classes");
+
+// Online: still busy, but a Burnaby pin on a remote lecture must not make a
+// free window look cross-campus when the other person is at Surrey. Same
+// schedule with status "going" *does* split — that's the control.
+const burnabyMorning = block(540, 600, "LEC");
+const burnabyAfternoon = block(690, 750, "SEM");
+const surreyMorning = {
+  day: "Mo" as const,
+  start: 540,
+  end: 600,
+  campus: "Surrey",
+  label: "TUT",
+  course: "TUT",
+  detail: "",
+};
+const surreyAfternoon = {
+  day: "Mo" as const,
+  start: 690,
+  end: 750,
+  campus: "Surrey",
+  label: "LAB",
+  course: "LAB",
+  detail: "",
+};
+const splitOpts = {
+  dayStart,
+  dayEnd: toMinutes("13:00"),
+  minMinutes: 30,
+  days: ["Mo" as const],
+};
+const inPersonSplit = commonFree({
+  members: [
+    { name: "Ada", busy: [burnabyMorning, burnabyAfternoon] },
+    { name: "Bo", busy: [surreyMorning, surreyAfternoon] },
+  ],
+  ...splitOpts,
+});
+const splitNoon = inPersonSplit.find((w) => w.start === 600 && w.end === 690);
+assert.ok(splitNoon, "Ada (Burnaby) and Bo (Surrey) still share a free hour");
+assert.equal(splitNoon.sharedCampus, false, "two campuses report as a split when both are going");
+
+const remoteWindows = commonFree({
+  members: [
+    {
+      name: "Ada",
+      busy: [
+        { ...burnabyMorning, status: "remote" },
+        { ...burnabyAfternoon, status: "remote" },
+      ],
+    },
+    { name: "Bo", busy: [surreyMorning, surreyAfternoon] },
+  ],
+  ...splitOpts,
+});
+const noon = remoteWindows.find((w) => w.start === 600 && w.end === 690);
+assert.ok(noon, "the hour between Ada's online lectures is still free with Bo");
+assert.equal(noon.sharedCampus, true, "a remote lecture does not invent a campus split");
+assert.deepEqual(noon.campuses, ["Surrey"], "only the in-person class anchors a campus");
+
+const heat = availabilityBands({
+  members: [
+    {
+      name: "Ada",
+      busy: [block(540, 600, "A"), { ...mid, status: "skipping" }, block(690, 750, "B")],
+    },
+    { name: "Bo", busy: [block(540, 600, "C"), mid, block(690, 750, "D")] },
+  ],
+  dayStart, dayEnd: toMinutes("13:00"), days: ["Mo"],
+});
+const heatGap = heat.find((b) => b.day === "Mo" && b.start === 600 && b.end === 690);
+assert.ok(heatGap, "availabilityBands cuts a band on the skipped hour");
+assert.deepEqual(heatGap.freeIndices, [0], "only Ada is free — she skipped; Bo is still in class");
+assert.deepEqual(heatGap.busyIndices, [1], "Bo remains busy through the hour");
+
 console.log("ALL ENGINE CHECKS PASSED");
