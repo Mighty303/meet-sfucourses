@@ -22,7 +22,12 @@ export const COLUMN_HEIGHT = "h-[600px] sm:h-[660px] lg:h-[780px] xl:h-[880px]";
  * enough on its own, because a legend that grows by a line moves everything
  * below the grid when you toggle.
  */
-export const LEGEND_HEIGHT = "h-11";
+/**
+ * Tall enough for the heatmap's four-key second row (in class / online /
+ * skipping / nobody on campus) to wrap on a narrow phone without clipping —
+ * matching COLUMN_HEIGHT alone isn't enough if one legend grows a line.
+ */
+export const LEGEND_HEIGHT = "h-14";
 
 /*
  * Below `sm`, five columns side by side is five unreadable slivers, so the days

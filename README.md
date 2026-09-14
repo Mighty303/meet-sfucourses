@@ -35,10 +35,13 @@ be. Any class on any date can be marked **skipping** or **online** — from the
 block itself, or for a whole day from the day's heading:
 
 - **Skipping** drops that class out of step 1, so the hour stops being busy and
-  a real free window opens for the group. The block stays on the grid, hollowed
-  out and dashed, because seeing *why* a window opened is the point.
+  a real free window opens for the group. The block stays on the detailed grid,
+  hollowed out and dashed — and on the availability heatmap as a dashed outline
+  over the greener band — because seeing *why* a window opened is the point.
 - **Online** keeps the hour busy but stops it anchoring you to a campus in
   step 5, so a window between two online lectures can't be called cross-campus.
+  The heatmap uses a blue hatch (and a blue outline) so an all-online hour
+  doesn't read as the same "in a room" state as an on-campus lecture.
 
 Statuses are stored against the user and a date — not against a group — so
 marking Thursday's lecture skipped shows in every group you're in at once. Only
