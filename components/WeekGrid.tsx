@@ -1,8 +1,10 @@
 "use client";
 
-import { HoverCard, useHoverCard } from "@/components/HoverCard";
+import { CROSS_MS, HoverCard, useHoverCard, type HoverCardData } from "@/components/HoverCard";
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
+import { DayHeading } from "@/components/DayHeading";
+import type { AttendanceStatus } from "@/lib/attendance-status";
 import type { BusyBlock, FreeWindow } from "@/lib/overlap";
 import { formatTime, WEEKDAYS, type DayKey } from "@/lib/sfu";
 
@@ -77,6 +79,26 @@ export interface Member {
   color: string;
 }
 
+/**
+ * Everything the grids need to let one person say whether they're going.
+ *
+ * Bundled rather than passed as five loose props because they're useless
+ * apart: absent means read-only, which is exactly what a signed-out visitor or
+ * a non-member sees, and there is no half of this worth having on its own.
+ */
+export interface AttendanceControl {
+  /** The viewer's own member row. Only their blocks carry the control. */
+  memberId: number;
+  /** Their colour, for the accent on a whole-day card. */
+  color: string;
+  /** Their whole-day statuses this week, keyed by weekday. */
+  dayStatus: Partial<Record<DayKey, { status: AttendanceStatus; note: string | null }>>;
+  /** "Monday, Sep 14" — the page owns the dates, so it owns the wording. */
+  dayLabel: (day: DayKey) => string;
+  setBlock: (block: BusyBlock, status: AttendanceStatus, note: string | null) => void;
+  setDay: (day: DayKey, status: AttendanceStatus, note: string | null) => void;
+}
+
 interface Entry {
   /** Everyone sitting in this exact section at this exact hour. */
   members: Member[];
@@ -116,7 +138,11 @@ function mergeSameSection(entries: { member: Member; block: BusyBlock }[]): Entr
       merged.push({ members: [member], block });
       continue;
     }
-    const key = `${block.classNumber}|${block.start}|${block.end}`;
+    // The status is part of the key, not just the section: two people in one
+    // lecture are only "already together" if both of them are going. Without
+    // this, one person skipping would be swallowed by the block of everyone
+    // who isn't, and the grid would show them in a room they aren't in.
+    const key = `${block.classNumber}|${block.start}|${block.end}|${block.status ?? "going"}`;
     const existing = byKey.get(key);
     if (existing) {
       existing.members.push(member);
@@ -205,6 +231,12 @@ interface Props {
   /** Whose it would be — the preview borrows their colour. */
   previewColor?: string;
   /**
+   * Lets the viewer say whether they're actually going. Absent for anyone who
+   * isn't in the group — and for everyone else's blocks, because a status is a
+   * claim about yourself.
+   */
+  attendance?: AttendanceControl;
+  /**
    * Height of the day columns. Defaults to the shared COLUMN_HEIGHT, which is
    * what keeps this and the heatmap the same size behind their toggle — only
    * pass something else where the two are swapped against each other outside
@@ -224,12 +256,13 @@ export function WeekGrid({
   courseColors,
   preview = [],
   previewColor = "#737373",
+  attendance,
   columnHeight = COLUMN_HEIGHT,
 }: Props) {
   // Tracked in state rather than a CSS-only tooltip: the day columns clip their
   // overflow, so an in-flow tooltip would be cut off at the column edge. A
   // fixed-position card follows the cursor and escapes the clipping entirely.
-  const [hover, setHover] = useHoverCard();
+  const hover = useHoverCard();
   const now = useNowMarker(weekStart, dayStart, dayEnd);
   const { trackRef, todayIndex } = useTodayColumn(weekStart);
 
@@ -286,7 +319,8 @@ export function WeekGrid({
           ))}
         </div>
         <span className="text-neutral-400 dark:text-neutral-500">
-          Coloured blocks are classes · hover one for the section and campus
+          Coloured blocks are classes · dashed = skipping, dot = online
+          {attendance ? " · hover yours to change" : " · hover one for details"}
         </span>
       </div>
 
@@ -314,18 +348,12 @@ export function WeekGrid({
             const isToday = i === todayIndex;
             return (
               <div key={day} className={DAY_CELL}>
-                <div
-                  className={`mb-1 text-center font-medium ${
-                    isToday
-                      ? "text-neutral-900 dark:text-neutral-100"
-                      : "text-neutral-600 dark:text-neutral-300"
-                  }`}
-                >
-                  {LABELS[day]}
-                  {/* On a phone only one day is on screen, so the header is the
-                      only thing saying which. */}
-                  {isToday && <span className="ml-1 text-red-500">•</span>}
-                </div>
+                <DayHeading
+                  day={day}
+                  isToday={isToday}
+                  attendance={attendance}
+                  hover={hover}
+                />
                 <div
                   className={`relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 ${columnHeight}`}
                 >
@@ -362,7 +390,7 @@ export function WeekGrid({
                           right: GAP_X / 2,
                         }}
                         onMouseEnter={(e) =>
-                          setHover({
+                          hover.show({
                             title: w.betweenClasses ? "Gap between classes" : solo ? "Your free time" : "Everyone free",
                             subtitle: LABELS[day],
                             lines: [
@@ -387,10 +415,8 @@ export function WeekGrid({
                             y: e.clientY,
                           })
                         }
-                        onMouseMove={(e) =>
-                          setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))
-                        }
-                        onMouseLeave={() => setHover(null)}
+                        onMouseMove={(e) => hover.move(e.clientX, e.clientY)}
+                        onMouseLeave={() => hover.hide()}
                       >
                         {minutes >= 60 && (
                           <>
@@ -432,38 +458,95 @@ export function WeekGrid({
                     const width = unit * span;
                     const shared = who.length > 1;
                     const fill = courseColors?.[b.course] ?? who[0].color;
+                    // Skipping hollows the block out: dashed outline, no fill,
+                    // neutral text — which is what border-dashed already means
+                    // everywhere else on this page. Filling it and dimming it
+                    // instead left white text on a pastel wash, unreadable at
+                    // the size these get.
+                    const skipped = b.status === "skipping";
+                    // Merged blocks are one section several people share, so
+                    // "mine" only needs the viewer among them — the status the
+                    // card writes is theirs alone either way.
+                    const mine =
+                      attendance !== undefined &&
+                      b.classNumber !== undefined &&
+                      who.some((m) => m.id === attendance.memberId);
+                    const body = skipped ? "text-neutral-500" : "text-white/95";
+                    const faint = skipped
+                      ? "text-neutral-400 dark:text-neutral-500"
+                      : "text-white/80";
+
+                    // The card says what the class is; on your own block it
+                    // also carries the answer to whether you're going, which is
+                    // the next thing you were going to want anyway.
+                    const blockCard = (x: number, y: number): HoverCardData => ({
+                      title: b.course,
+                      subtitle: b.detail || undefined,
+                      lines: [
+                        ...(solo ? [] : [who.map((m) => m.displayName).join(", ")]),
+                        `${formatTime(b.start)} – ${formatTime(b.end)} · ${formatDuration(minutes)}`,
+                        // Attending from home makes the scheduled campus a
+                        // place they won't be, so it says the truth instead.
+                        b.status === "remote" ? "Online" : b.campus ?? "No campus listed",
+                        // On your own block the lit button says the status and
+                        // the note is sitting in the box below, so neither is
+                        // worth a line here — the card would be saying
+                        // everything twice.
+                        ...(mine || b.status !== "skipping" ? [] : ["Not going"]),
+                        // Only on an unmerged block: a merged one is several
+                        // people who happen to share a status, and one of their
+                        // notes isn't the others'.
+                        ...(b.note && !shared && !mine ? [b.note] : []),
+                        ...(shared && b.status !== "skipping" ? ["Same section"] : []),
+                      ],
+                      accent: fill,
+                      x,
+                      y,
+                      status:
+                        mine && attendance
+                          ? {
+                              current: b.status ?? "going",
+                              note: b.note ?? null,
+                              onPick: (status, note) => attendance.setBlock(b, status, note),
+                            }
+                          : undefined,
+                    });
+
                     return (
                       <div
                         key={`${who[0].id}-${bi}`}
-                        className={`absolute flex flex-col overflow-hidden rounded-md leading-tight text-white ${
+                        // Focusable, not a button: it opens on hover, and the
+                        // keyboard needs some way to reach a control the mouse
+                        // gets for free. Tab lands here, the card opens, and
+                        // the next Tab is already inside it.
+                        tabIndex={mine ? 0 : undefined}
+                        className={`absolute flex flex-col overflow-hidden rounded-md leading-tight ${
                           tight ? "px-1 py-0.5" : "px-1.5 py-1"
-                        } ${shared ? "bg-neutral-700 pl-2.5 dark:bg-neutral-600" : ""}`}
+                        } ${shared ? "pl-2.5" : ""} ${
+                          skipped
+                            ? "border-2 border-dashed"
+                            : `text-white ${shared ? "bg-neutral-700 dark:bg-neutral-600" : ""}`
+                        } ${mine ? "hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current" : ""}`}
                         style={{
                           top: `calc(${pct(b.start)}% + ${GAP_Y / 2}px)`,
                           height: `calc(${heightPct(minutes)}% - ${GAP_Y}px)`,
                           left: `calc(${column * unit}% + ${GAP_X / 2}px)`,
                           width: `calc(${width}% - ${GAP_X}px)`,
-                          backgroundColor: shared ? undefined : fill,
+                          backgroundColor: skipped || shared ? undefined : fill,
+                          borderColor: skipped ? fill : undefined,
                         }}
-                        onMouseEnter={(e) =>
-                          setHover({
-                            title: b.course,
-                            subtitle: b.detail || undefined,
-                            lines: [
-                              ...(solo ? [] : [who.map((m) => m.displayName).join(", ")]),
-                              `${formatTime(b.start)} – ${formatTime(b.end)} · ${formatDuration(minutes)}`,
-                              b.campus ?? "No campus listed",
-                              ...(shared ? ["Same section — you're already together"] : []),
-                            ],
-                            accent: fill,
-                            x: e.clientX,
-                            y: e.clientY,
-                          })
+                        onFocus={
+                          mine
+                            ? (e) => {
+                                const r = e.currentTarget.getBoundingClientRect();
+                                hover.show(blockCard(r.left, r.top));
+                              }
+                            : undefined
                         }
-                        onMouseMove={(e) =>
-                          setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))
-                        }
-                        onMouseLeave={() => setHover(null)}
+                        onBlur={mine ? () => hover.hide(CROSS_MS) : undefined}
+                        onMouseEnter={(e) => hover.show(blockCard(e.clientX, e.clientY))}
+                        onMouseMove={(e) => hover.move(e.clientX, e.clientY)}
+                        onMouseLeave={() => hover.hide(mine ? CROSS_MS : 0)}
                       >
                         {/* A shared block has no single owner, so the colours
                             move to a stripe down the edge and the fill goes
@@ -475,7 +558,17 @@ export function WeekGrid({
                             ))}
                           </span>
                         )}
-                        <span className={`truncate font-semibold ${tight ? "text-[10px]" : "text-[11px]"}`}>
+                        {/* A class attended from home still occupies its hour,
+                            so the block keeps its fill; the dot is the only
+                            thing separating it from being there in person. */}
+                        {b.status === "remote" && (
+                          <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-white ring-1 ring-black/20" />
+                        )}
+                        <span
+                          className={`truncate font-semibold ${tight ? "text-[10px]" : "text-[11px]"} ${
+                            skipped ? "text-neutral-500 line-through" : ""
+                          }`}
+                        >
                           {b.course}
                         </span>
                         {/* Whose block it is matters more than the section
@@ -486,12 +579,12 @@ export function WeekGrid({
                             says which course it is — so the section moves up
                             into the line the name was using. */}
                         {!solo && minutes >= 50 && (
-                          <span className={`truncate font-medium text-white/95 ${tight ? "text-[9px]" : "text-[10px]"}`}>
+                          <span className={`truncate font-medium ${body} ${tight ? "text-[9px]" : "text-[10px]"}`}>
                             {nameList(who.map((m) => m.displayName), shared ? 2 : 1)}
                           </span>
                         )}
                         {b.detail && minutes >= (solo ? 50 : 80) && (
-                          <span className={`truncate text-white/80 ${tight ? "text-[9px]" : "text-[10px]"}`}>
+                          <span className={`truncate ${faint} ${tight ? "text-[9px]" : "text-[10px]"}`}>
                             {b.detail}
                           </span>
                         )}
@@ -540,7 +633,14 @@ export function WeekGrid({
         </div>
       </div>
 
-      {hover && <HoverCard card={hover} />}
+      {hover.card && (
+        <HoverCard
+          card={hover.card}
+          cardRef={hover.cardRef}
+          onEnter={hover.stopClosing}
+          onLeave={() => hover.hide(CROSS_MS)}
+        />
+      )}
     </div>
   );
 }

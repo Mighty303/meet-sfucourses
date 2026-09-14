@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ATTENDANCE_STATUSES,
+  STATUS_EFFECT,
+  type AttendanceStatus,
+} from "@/lib/attendance-status";
 
 /**
  * A row on the card. A plain string is a sentence and reads as one; the
@@ -11,6 +16,19 @@ import { useEffect, useState } from "react";
  */
 export type HoverLine = string | { label: string; value: string };
 
+/**
+ * The status control, when the thing under the cursor is the viewer's own.
+ *
+ * Its presence is what makes a card interactive: a card with buttons stops
+ * following the cursor, accepts the pointer, and lingers when you leave the
+ * thing that opened it. A card without one behaves exactly as it always has.
+ */
+export interface HoverStatus {
+  current: AttendanceStatus;
+  note: string | null;
+  onPick: (status: AttendanceStatus, note: string | null) => void;
+}
+
 export interface HoverCardData {
   title: string;
   subtitle?: string;
@@ -19,10 +37,14 @@ export interface HoverCardData {
   /** Cursor position, in viewport coordinates. */
   x: number;
   y: number;
+  status?: HoverStatus;
 }
 
+/** Long enough to cross the gap between a block and its card without hurrying. */
+export const CROSS_MS = 220;
+
 /**
- * The open card, and the two ways it closes that a mouse doesn't need.
+ * The open card, and the several ways it closes that a mouse doesn't need.
  *
  * A tap fires the emulated mouseenter that opens the card, but a finger never
  * leaves, so `onMouseLeave` never comes and the card would sit there over a
@@ -34,22 +56,129 @@ export interface HoverCardData {
  * is `fixed`, so swiping the day track sideways would leave it hanging over a
  * different day entirely. Captured, because the scroll that moves under it is
  * the track's, not the page's.
+ *
+ * The exception to all of it is the card's own contents. Once a card carries
+ * status buttons, the pointerdown that presses one lands *inside* the card, and
+ * dismissing on it would eat the press — so anything within the card is not a
+ * dismissal, and leaving the block it describes only starts a timer that moving
+ * onto the card cancels.
  */
 export function useHoverCard() {
   const [card, setCard] = useState<HoverCardData | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopClosing = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+
+  const show = useCallback((next: HoverCardData) => {
+    stopClosing();
+    setCard(next);
+  }, [stopClosing]);
+
+  const move = useCallback((x: number, y: number) => {
+    // Pinned once it has buttons. A card you have to reach can't be one that
+    // slides further away with every pixel you move toward it.
+    setCard((cur) => (cur && !cur.status ? { ...cur, x, y } : cur));
+  }, []);
+
+  const hide = useCallback((delay = 0) => {
+    stopClosing();
+    if (delay === 0) {
+      setCard(null);
+      return;
+    }
+    timer.current = setTimeout(() => {
+      // Mid-note: the pointer wandering off isn't a decision to throw away what
+      // they were in the middle of writing. A press outside still dismisses.
+      if (cardRef.current?.contains(document.activeElement)) return;
+      setCard(null);
+    }, delay);
+  }, [stopClosing]);
 
   useEffect(() => {
     if (!card) return;
-    const dismiss = () => setCard(null);
+    const dismiss = (e: Event) => {
+      if (cardRef.current?.contains(e.target as Node)) return;
+      stopClosing();
+      setCard(null);
+    };
     window.addEventListener("pointerdown", dismiss);
     window.addEventListener("scroll", dismiss, true);
     return () => {
       window.removeEventListener("pointerdown", dismiss);
       window.removeEventListener("scroll", dismiss, true);
     };
-  }, [card]);
+  }, [card, stopClosing]);
 
-  return [card, setCard] as const;
+  useEffect(() => stopClosing, [stopClosing]);
+
+  return { card, cardRef, show, move, hide, stopClosing };
+}
+
+/**
+ * What each status says to the rest of the group, in their words rather than
+ * the column's. "Skipping" is the one that changes the grid, so it says so —
+ * nobody marks a class skipped for the group's benefit unless they can see that
+ * it does something.
+ */
+const BLURB: Record<AttendanceStatus, string> = {
+  going: "On campus as timetabled",
+  skipping: "Frees this hour for the group",
+  remote: "Busy, but not on campus",
+};
+
+const TONE: Record<AttendanceStatus, string> = {
+  going: "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  skipping: "border-neutral-500 bg-neutral-500/10 text-neutral-700 dark:text-neutral-200",
+  remote: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+};
+
+/**
+ * Three buttons and a note, under whatever the card was already saying. Kept in
+ * the card rather than in a panel of its own because the two answer the same
+ * question one after the other: what is this class, and am I going to it.
+ */
+function StatusRow({ status }: { status: HoverStatus }) {
+  const [note, setNote] = useState(status.note ?? "");
+
+  return (
+    <div className="mt-2.5 border-t border-neutral-200 pt-2.5 dark:border-neutral-700">
+      <div className="flex gap-1.5">
+        {ATTENDANCE_STATUSES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            title={BLURB[s]}
+            onClick={() => status.onPick(s, note.trim().slice(0, 80) || null)}
+            className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
+              s === status.current
+                ? TONE[s]
+                : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            }`}
+          >
+            {STATUS_EFFECT[s].label}
+          </button>
+        ))}
+      </div>
+      {/* The selected one explains itself, so the three buttons don't each need
+          a line of their own and the card stays the size of a tooltip. */}
+      <p className="mt-1.5 text-[11px] leading-snug text-neutral-500">
+        {BLURB[status.current]}
+      </p>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={80}
+        placeholder="Add a note (optional)"
+        // Saved with whichever status is pressed next, not on a button of its
+        // own — a note with no status is nothing.
+        className="mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+      />
+    </div>
+  );
 }
 
 /**
@@ -57,16 +186,40 @@ export function useHoverCard() {
  * overflow, so an in-flow tooltip would be cut off at the column edge. Shared
  * by both week views so a block and a heatmap cell read identically.
  */
-export function HoverCard({ card }: { card: HoverCardData }) {
+export function HoverCard({
+  card,
+  cardRef,
+  onEnter,
+  onLeave,
+}: {
+  card: HoverCardData;
+  cardRef?: React.RefObject<HTMLDivElement | null>;
+  onEnter?: () => void;
+  onLeave?: () => void;
+}) {
+  const live = card.status !== undefined;
   return (
     <div
-      // Offset from the cursor, and pulled left near the right edge so it
-      // stays on screen.
-      className="pointer-events-none fixed z-50 w-max max-w-[280px] rounded-lg border border-neutral-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95"
+      ref={cardRef}
+      // Offset from the cursor, and pulled back near the right and bottom edges
+      // so it stays on screen. A card with buttons is taller, and one that runs
+      // off the bottom is one whose buttons can't be pressed.
+      // Wider and roomier once it has controls in it: three buttons and a text
+      // field at tooltip size are a thing you aim at, not a thing you read.
+      // A plain card is still only ever read, so it keeps its old dimensions.
+      className={`fixed z-50 w-max rounded-lg border border-neutral-200 bg-white/95 shadow-lg backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95 ${
+        live
+          ? "min-w-[280px] max-w-[340px] px-4 py-3"
+          : "pointer-events-none max-w-[280px] px-3 py-2"
+      }`}
       style={{
         left: Math.min(card.x + 14, (typeof window !== "undefined" ? window.innerWidth : 1200) - 300),
-        top: card.y + 14,
+        top: live
+          ? Math.min(card.y + 14, (typeof window !== "undefined" ? window.innerHeight : 800) - 270)
+          : card.y + 14,
       }}
+      onMouseEnter={live ? onEnter : undefined}
+      onMouseLeave={live ? onLeave : undefined}
     >
       <div className="flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: card.accent }} />
@@ -86,6 +239,11 @@ export function HoverCard({ card }: { card: HoverCardData }) {
             <span className="font-medium text-neutral-900 dark:text-neutral-100">{line.value}</span>
           </div>
         )
+      )}
+      {card.status && (
+        // Remounted per target, so the note box never carries one class's note
+        // across to the next.
+        <StatusRow key={`${card.title}|${card.subtitle ?? ""}`} status={card.status} />
       )}
     </div>
   );

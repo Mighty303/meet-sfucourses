@@ -28,6 +28,23 @@ API at read time, so an upstream schedule change is picked up without a migratio
 Members who haven't added a schedule yet are excluded from the intersection,
 otherwise they'd read as "free always" and silently widen everyone's overlap.
 
+### Who's actually going
+
+The timetable says where you're enrolled, which is not the same as where you'll
+be. Any class on any date can be marked **skipping** or **online** — from the
+block itself, or for a whole day from the day's heading:
+
+- **Skipping** drops that class out of step 1, so the hour stops being busy and
+  a real free window opens for the group. The block stays on the grid, hollowed
+  out and dashed, because seeing *why* a window opened is the point.
+- **Online** keeps the hour busy but stops it anchoring you to a campus in
+  step 5, so a window between two online lectures can't be called cross-campus.
+
+Statuses are stored against the user and a date — not against a group — so
+marking Thursday's lecture skipped shows in every group you're in at once. Only
+deviations are stored: no row means you're going, so an ordinary week writes
+nothing, and a status expires on its own once the date has passed.
+
 ## Setup
 
 ```bash
@@ -54,8 +71,8 @@ environments without them appearing on screen:
 ./scripts/set-google-oauth.sh
 ```
 
-Sign-in is required to join a group or edit a schedule; anyone with the invite
-link can still view one. A member row is owned by the user who created it, so
+Sign-in is required to join a group, edit a schedule, or set an attendance
+status; anyone with the invite link can still view one. A member row is owned by the user who created it, so
 only they can change their schedule or name.
 
 Members added before sign-in existed have no owner. They stay editable by

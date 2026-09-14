@@ -1,4 +1,5 @@
 import { getDb } from "./db";
+import { listAttendance, resolveStatus, type AttendanceRow } from "./attendance";
 import { sectionIndexForClassNumbers, termBoundsFor } from "./sections";
 import { getUser } from "./users";
 import { type DayKey } from "./sfu";
@@ -73,6 +74,13 @@ export interface GroupState {
   /** The Monday actually used, after clamping into the term. */
   week: string;
   termBounds: TermBounds | null;
+  /**
+   * Everyone's attendance deviations for the displayed week, raw. The blocks
+   * already carry their own resolved status; this is here for the whole-day
+   * controls, which have to know a day is marked even when there's no block
+   * that day to read it off.
+   */
+  attendance: AttendanceRow[];
 }
 
 /**
@@ -363,6 +371,11 @@ export async function getGroupState(
   const week = clampWeekToTerm(opts.week, bounds);
   const dates = weekDates(week);
 
+  // One query for the group, keyed on users rather than member rows: the same
+  // person in two groups has one Thursday, and this is where that shows.
+  const userIds = [...new Set(members.map((m) => m.userId).filter((id): id is number => id !== null))];
+  const attendance = await listAttendance(userIds, dates.Mo, dates.Su);
+
   const busyByMember: Record<number, BusyBlock[]> = {};
   const unresolved: Record<number, string[]> = {};
   const unscheduled: Record<number, UnscheduledSection[]> = {};
@@ -380,7 +393,16 @@ export async function getGroupState(
         course: b.label,
         detail: "",
       }));
-    busyByMember[member.id] = [...courseBlocks, ...custom];
+    // Stamped onto the block rather than filtered out here: the grid still
+    // draws a skipped class, faded, because seeing why a window opened is the
+    // whole reason the window is interesting. `attending()` does the removing,
+    // at the point availability is computed.
+    const owned = member.userId;
+    busyByMember[member.id] = [...courseBlocks, ...custom].map((block) =>
+      owned === null
+        ? block
+        : { ...block, ...resolveStatus(attendance, owned, dates[block.day], block.classNumber ?? null) }
+    );
     unresolved[member.id] = member.classNumbers.filter((cn) => !index.has(cn));
     unscheduled[member.id] = unscheduledFromCourses(index, member.classNumbers);
   }
@@ -414,6 +436,7 @@ export async function getGroupState(
     unscheduled,
     week: dates.Mo,
     termBounds: bounds,
+    attendance,
   };
 }
 

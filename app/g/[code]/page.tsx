@@ -10,12 +10,14 @@ import { CalendarTools } from "@/components/CalendarTools";
 import { CoursePicker } from "@/components/CoursePicker";
 import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
-import { WeekGrid } from "@/components/WeekGrid";
+import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
+import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
+import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
-import { blocksFromSection, commonFree } from "@/lib/overlap";
+import { blocksFromSection, commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
-import { fromTermCode } from "@/lib/sfu";
-import type { SectionHit } from "@/lib/sfu";
+import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
+import type { DayKey, SectionHit } from "@/lib/sfu";
 
 interface Member {
   id: number;
@@ -53,6 +55,8 @@ interface GroupState {
   unscheduled: Record<number, UnscheduledSection[]>;
   week: string;
   termBounds: { start: string; end: string; typicalStart: string } | null;
+  /** Everyone's attendance deviations for this week — see lib/attendance.ts. */
+  attendance: AttendanceRow[];
 }
 
 /** Monday of the week containing `d`, as YYYY-MM-DD. */
@@ -79,6 +83,19 @@ function addDays(iso: string, days: number): string {
 
 function shortDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * "Thursday, Sep 18" — named in full, because a status is about one specific
+ * day and getting the wrong one wrong is silent: you'd mark next week's lecture
+ * and wonder why nobody noticed.
+ */
+function writeDate(iso: string): string {
+  return parseISODate(iso).toLocaleDateString(undefined, {
+    weekday: "long",
     month: "short",
     day: "numeric",
   });
@@ -237,6 +254,29 @@ function GroupSchedule({ code }: { code: string }) {
     load();
   }
 
+  /**
+   * Save whichever status was pressed. Written against the user and the date,
+   * not against this group — the same Thursday is the same Thursday in every
+   * group you're in, so the answer travels with you.
+   */
+  async function saveStatus(
+    date: string,
+    classNumber: string | null,
+    status: AttendanceStatus,
+    note: string | null
+  ) {
+    setSaving(true);
+    const res = await fetch("/api/attendance", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date, classNumber, status, note }),
+    });
+    setSaving(false);
+    if (!res.ok) { setError((await res.json()).error ?? "could not save that"); return; }
+    setError(null);
+    load();
+  }
+
   async function saveGroupName(e: React.FormEvent) {
     e.preventDefault();
     if (draftName === null || !draftName.trim()) return;
@@ -362,6 +402,30 @@ function GroupSchedule({ code }: { code: string }) {
     [preview]
   );
 
+  /**
+   * The five dates the grid is currently showing. A status is about a date, not
+   * about "Thursday" in the abstract — skipping one week's lecture says nothing
+   * about the next — so every read and write here goes through this.
+   */
+  const dates = useMemo(
+    () => (state ? weekDates(new Date(`${state.week}T12:00:00`)) : null),
+    [state]
+  );
+
+  /** Your own whole-day statuses this week, for the day headings. */
+  const myUserId = me?.userId ?? null;
+  const myDayStatus = useMemo(() => {
+    const out: Partial<Record<DayKey, { status: AttendanceStatus; note: string | null }>> = {};
+    if (!state || !dates || myUserId === null) return out;
+    for (const day of WEEKDAYS) {
+      const row = state.attendance.find(
+        (r) => r.userId === myUserId && r.classNumber === null && r.onDate === dates[day]
+      );
+      if (row) out[day] = { status: row.status, note: row.note };
+    }
+    return out;
+  }, [state, dates, myUserId]);
+
   if (view === "mine" && authStatus === "loading") {
     return <GroupPageSkeleton solo />;
   }
@@ -392,6 +456,10 @@ function GroupSchedule({ code }: { code: string }) {
 
   const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/g/${code}` : "";
   const thisMonday = mondayOf(new Date());
+  // "Who's around today" is the question the member list gets opened for, so it
+  // only answers it when today is actually the week on screen.
+  const today = toISODate(new Date());
+  const todayShown = dates !== null && WEEKDAYS.some((d) => dates[d] === today);
 
   // Pair each member with their untimetabled sections, dropping anyone who has
   // none — and anyone ticked off, since nothing else on the page counts them.
@@ -410,6 +478,24 @@ function GroupSchedule({ code }: { code: string }) {
   function canPage(direction: -1 | 1): boolean {
     return week !== null && weekInTerm(addDays(week, direction * 7));
   }
+
+  /**
+   * Handed to the grids, which hang the three buttons off the hover card of
+   * anything of yours. Absent when you're not in this group, which is what
+   * makes everyone else's week read-only.
+   */
+  const attendance: AttendanceControl | undefined =
+    me && dates
+      ? {
+          memberId: me.id,
+          color: me.color,
+          dayStatus: myDayStatus,
+          dayLabel: (day) => writeDate(dates[day]),
+          setBlock: (block, status, note) =>
+            saveStatus(dates[block.day], block.classNumber ?? null, status, note),
+          setDay: (day, status, note) => saveStatus(dates[day], null, status, note),
+        }
+      : undefined;
 
   return (
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8">
@@ -773,6 +859,25 @@ function GroupSchedule({ code }: { code: string }) {
                       Admin
                     </span>
                   )}
+                  {/* Their word on the whole of today. Nothing shows for the
+                      ordinary case, so a badge here always means a deviation —
+                      which is the only reason to look. */}
+                  {todayShown && m.userId !== null && (() => {
+                    const { status, note } = resolveStatus(state.attendance, m.userId, today, null);
+                    if (status === "going") return null;
+                    return (
+                      <span
+                        title={note ?? `${STATUS_EFFECT[status].label} today`}
+                        className={`shrink-0 rounded border px-1 text-[10px] uppercase tracking-wide ${
+                          status === "remote"
+                            ? "border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400"
+                            : "border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-600"
+                        }`}
+                      >
+                        {status === "remote" ? "Online" : "Not in"}
+                      </span>
+                    );
+                  })()}
                   <span className="ml-auto shrink-0 text-xs text-neutral-500">
                     {!hasSchedule
                       ? "no schedule yet"
@@ -908,6 +1013,7 @@ function GroupSchedule({ code }: { code: string }) {
           dayEnd={DAY_END}
           solo={view === "mine"}
           weekStart={week ?? undefined}
+          attendance={attendance}
         />
       ) : (
         <WeekGrid
@@ -923,6 +1029,7 @@ function GroupSchedule({ code }: { code: string }) {
           courseColors={view === "mine" ? myCourseColors : undefined}
           preview={previewBlocks}
           previewColor={me?.color}
+          attendance={attendance}
         />
       )}
 

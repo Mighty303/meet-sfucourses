@@ -3,6 +3,7 @@
 // All times are minutes since midnight, local to campus. A day is handled
 // independently — nothing here crosses midnight, because classes don't.
 
+import type { AttendanceStatus } from "./attendance-status";
 import {
   DAYS,
   WEEKDAYS,
@@ -31,6 +32,23 @@ export interface BusyBlock extends Interval {
    * time — two people's "Busy" is not the same event, but two people's 4906 is.
    */
   classNumber?: string;
+  /**
+   * Whether they're actually going, on this block's own date. Absent means
+   * going, which is what every block was before attendance existed and what a
+   * sketched preview block still is.
+   */
+  status?: AttendanceStatus;
+  /** Their word on why, shown against the block. Only ever set with a status. */
+  note?: string | null;
+}
+
+/**
+ * The blocks that still occupy their hour. A class someone has marked skipped
+ * is drawn on the grid — that's how you see why a window opened — but it stops
+ * counting as busy time, so every reading of availability starts here.
+ */
+export function attending(blocks: BusyBlock[]): BusyBlock[] {
+  return blocks.filter((b) => b.status !== "skipping");
 }
 
 export interface FreeWindow extends Interval {
@@ -234,6 +252,10 @@ function anchorCampus(busy: BusyBlock[], window: Interval): string | null {
   let best: { gap: number; campus: string | null } | null = null;
   for (const b of busy) {
     if (b.campus === null) continue;
+    // Attending from home doesn't put them on campus, so it can't anchor them
+    // to one — otherwise a window between two online lectures would report a
+    // campus nobody is standing on, and split the group in amber over it.
+    if (b.status === "remote") continue;
     let gap: number;
     if (b.end <= window.start) gap = window.start - b.end;
     else if (b.start >= window.end) gap = b.start - window.end + 0.5; // tie-break toward the earlier class
@@ -273,7 +295,7 @@ export function commonFree({
   const windows: FreeWindow[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => m.busy.filter((b) => b.day === day));
+    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
     const onCampus = members
       .filter((_, i) => dayBusy[i].length > 0)
       .map((m) => m.name);
@@ -356,7 +378,7 @@ export function partialFree({
   const windows: PartialWindow[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => m.busy.filter((b) => b.day === day));
+    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
 
     // Cut the day at every class edge. Nobody's status changes inside a segment,
     // so any window is a run of whole segments — which makes the search a walk
@@ -502,7 +524,7 @@ export function availabilityBands({
   const bands: AvailabilityBand[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => m.busy.filter((b) => b.day === day));
+    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
     const away = members.map((_, i) => i).filter((i) => dayBusy[i].length === 0);
     // When each member first has to be on campus, and when the day is finally
     // over for everyone. Both are class edges, so they're always cut points and

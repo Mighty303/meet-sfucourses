@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { HoverCard, useHoverCard } from "@/components/HoverCard";
+import { CROSS_MS, HoverCard, useHoverCard } from "@/components/HoverCard";
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
-import type { Member } from "@/components/WeekGrid";
+import type { AttendanceControl, Member } from "@/components/WeekGrid";
+import { DayHeading } from "@/components/DayHeading";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
 import { availabilityBands, type AvailabilityBand, type BusyBlock } from "@/lib/overlap";
 import { formatTime, WEEKDAYS, type DayKey } from "@/lib/sfu";
@@ -90,6 +91,12 @@ interface Props {
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
   weekStart?: string;
   /**
+   * Lets the viewer say whether they're going. This view draws no blocks, so
+   * the day heading is the only handle it has — per-class lives on the detailed
+   * grid, which is where you go when you want that much precision.
+   */
+  attendance?: AttendanceControl;
+  /**
    * Height of the day columns. Defaults to the shared COLUMN_HEIGHT, which is
    * what keeps this and the detailed grid the same size behind their toggle —
    * only pass something else somewhere the two aren't swapped, like the home
@@ -115,9 +122,10 @@ export function HeatGrid({
   dayEnd,
   solo = false,
   weekStart,
+  attendance,
   columnHeight = COLUMN_HEIGHT,
 }: Props) {
-  const [hover, setHover] = useHoverCard();
+  const hover = useHoverCard();
   const now = useNowMarker(weekStart, dayStart, dayEnd);
   const { trackRef, todayIndex } = useTodayColumn(weekStart);
 
@@ -241,18 +249,12 @@ export function HeatGrid({
           <div ref={trackRef} className={DAY_TRACK}>
             {WEEKDAYS.map((day, dayIndex) => (
               <div key={day} className={DAY_CELL}>
-                <div
-                  className={`mb-1 text-center font-medium ${
-                    dayIndex === todayIndex
-                      ? "text-neutral-900 dark:text-neutral-100"
-                      : "text-neutral-600 dark:text-neutral-300"
-                  }`}
-                >
-                  {LABELS[day]}
-                  {/* On a phone only one day is on screen, so the header is the
-                      only thing saying which. */}
-                  {dayIndex === todayIndex && <span className="ml-1 text-red-500">•</span>}
-                </div>
+                <DayHeading
+                  day={day}
+                  isToday={dayIndex === todayIndex}
+                  attendance={attendance}
+                  hover={hover}
+                />
                 <div
                   className={`relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 ${columnHeight}`}
                 >
@@ -337,7 +339,7 @@ export function HeatGrid({
                             backgroundImage: inClass ? IN_CLASS_HATCH : undefined,
                           }}
                           onMouseEnter={(e) =>
-                            setHover({
+                            hover.show({
                               title: solo
                                 ? free > 0
                                   ? "Gap between your classes"
@@ -409,9 +411,9 @@ export function HeatGrid({
                             })
                           }
                           onMouseMove={(e) =>
-                            setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))
+                            hover.move(e.clientX, e.clientY)
                           }
-                          onMouseLeave={() => setHover(null)}
+                          onMouseLeave={() => hover.hide()}
                         >
                           {/* The count is the point of the view, so it goes in
                               first and stays as long as there's a line for it.
@@ -465,7 +467,14 @@ export function HeatGrid({
         </div>
       </div>
 
-      {hover && <HoverCard card={hover} />}
+      {hover.card && (
+        <HoverCard
+          card={hover.card}
+          cardRef={hover.cardRef}
+          onEnter={hover.stopClosing}
+          onLeave={() => hover.hide(CROSS_MS)}
+        />
+      )}
     </div>
   );
 }
