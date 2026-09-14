@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, use, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CalendarTools } from "@/components/CalendarTools";
 import { CoursePicker } from "@/components/CoursePicker";
@@ -204,6 +204,36 @@ function GroupSchedule({ code }: { code: string }) {
   }, [signedIn]);
 
   /**
+   * Sign in and come straight back into the group, from the invite panel below.
+   * The button that sent you to /signin already said "join", so joining is the
+   * landing — not a second click on a page you thought you'd finished with.
+   */
+  const wantsJoin = searchParams.get("join") === "1";
+  // The POST reloads the group, and `me` only appears on the reload after that,
+  // so `wantsJoin` alone would fire twice. The ref is what makes it once.
+  const autoJoined = useRef(false);
+
+  /** Drop `join` once it's been acted on, so a reload doesn't re-run it. */
+  const clearJoinParam = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("join");
+    router.replace(`/g/${code}${params.size > 0 ? `?${params}` : ""}`, { scroll: false });
+  }, [code, router, searchParams]);
+
+  useEffect(() => {
+    if (!wantsJoin || !signedIn || !state || autoJoined.current) return;
+    // Already in, or there's an unclaimed name here that might be yours: both
+    // are reasons not to add a row silently — claiming past your own old name
+    // would put you on the grid twice. Those still go through the buttons.
+    if (me || unclaimed.length > 0) { clearJoinParam(); return; }
+    autoJoined.current = true;
+    join().finally(clearJoinParam);
+    // `join` is a plain function redeclared each render; the ref, not the dep
+    // list, is what keeps this to one call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsJoin, signedIn, state, me, unclaimed.length, clearJoinParam]);
+
+  /**
    * Where one pill in the switcher points. The detailed/availability choice
    * carries across; the week doesn't, because another group can be another term
    * entirely, so it re-clamps from the server.
@@ -216,6 +246,14 @@ function GroupSchedule({ code }: { code: string }) {
     // travel to your own schedule at all, which has only the one reading.
     if (pinnedGrid && nextView !== "mine") params.set("grid", pinnedGrid);
     return `/g/${nextCode}${params.size > 0 ? `?${params}` : ""}`;
+  }
+
+  /**
+   * Sign in (or sign up) and land back here with the join already asked for —
+   * `join=1` is what the effect above acts on.
+   */
+  function joinHref(path: "/signin" | "/signup"): string {
+    return `${path}?next=${encodeURIComponent(`/g/${code}?join=1`)}`;
   }
 
   function setGrid(next: "detailed" | "heat") {
@@ -632,10 +670,31 @@ function GroupSchedule({ code }: { code: string }) {
       )}
 
       {!signedIn ? (
-        <div className="rounded-lg border border-neutral-200 p-4 text-sm dark:border-neutral-800">
-          <p className="text-neutral-600 dark:text-neutral-300">
-            Sign in to add your schedule — you can view the group without it.
+        /* The invite panel: someone opened a shared link, isn't signed in, and
+           the only thing standing between them and being in the group is an
+           account. Saying that outright — and joining them the moment they're
+           back — beats a note that leaves them hunting for the button. */
+        <div className="flex flex-col gap-3 rounded-xl border border-neutral-300 bg-neutral-50 p-4 sm:p-5 dark:border-neutral-700 dark:bg-neutral-900">
+          <h2 className="font-medium">Join {state.group.name}</h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            Sign in to add your classes to this group — you&apos;ll be added
+            automatically as soon as you&apos;re back here. Reading the
+            group&apos;s week doesn&apos;t need an account.
           </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={joinHref("/signin")}
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
+            >
+              Sign in and join
+            </Link>
+            <Link
+              href={joinHref("/signup")}
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            >
+              No account yet? Create one
+            </Link>
+          </div>
         </div>
       ) : !me ? (
         <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
