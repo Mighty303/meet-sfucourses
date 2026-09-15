@@ -57,10 +57,15 @@ export function CoursesPanel({
     load(next);
   }
 
-  // A group to go back to gets said out loud. Anything else is the home page,
-  // where the next thing to do is start or join one — so the button says that
-  // rather than "Continue", which would be a button pointing at nothing.
+  // What you just did was fill in your own week, so the way out of here is that
+  // week — the group's page narrowed to your row, which is what `view=mine` is.
+  // Anything else is the home page, where the next thing to do is start or join
+  // a group, so the button says that rather than "Continue", which would be a
+  // button pointing at nothing.
   const toGroup = next.startsWith("/g/");
+  const done = !toGroup || next.includes("view=mine")
+    ? next
+    : `${next}${next.includes("?") ? "&" : "?"}view=mine`;
   const saved = courses?.length ?? 0;
 
   return (
@@ -114,10 +119,10 @@ export function CoursesPanel({
         style={{ animationDelay: "240ms" }}
       >
         <Link
-          href={next}
+          href={done}
           className="rounded-lg bg-neutral-900 px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
         >
-          {toGroup ? "Continue to the group" : "Create or join a group"}
+          {toGroup ? "See your schedule" : "Create or join a group"}
         </Link>
         {courses !== null && saved === 0 ? (
           <Link href={next} className="text-sm text-neutral-500 underline-offset-2 hover:underline">
