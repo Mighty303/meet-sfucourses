@@ -397,7 +397,14 @@ export function WeekGrid({
                     return (
                       <div
                         key={`free-${i}`}
-                        className={`absolute flex flex-col items-center justify-center gap-0.5 rounded-md px-1 text-center ${tone.box}`}
+                        /* A size container, so the labels below can ask how
+                           much room they actually have — see the hides on each
+                           of them. overflow-hidden is the floor under that: a
+                           band 40px tall is never allowed to print three lines
+                           of text over the classes either side of it, which is
+                           what a minutes-only threshold let it do on the
+                           shorter grid at /courses. */
+                        className={`absolute flex flex-col items-center justify-center gap-0.5 overflow-hidden rounded-md px-1 text-center [container-type:size] ${tone.box}`}
                         style={{
                           top: `calc(${pct(w.start)}% + ${GAP_Y / 2}px)`,
                           height: `calc(${heightPct(minutes)}% - ${GAP_Y}px)`,
@@ -435,10 +442,20 @@ export function WeekGrid({
                       >
                         {minutes >= 60 && (
                           <>
-                            <span className={`text-[10px] font-semibold tracking-wide ${tone.strong}`}>
+                            {/* The tag is two words on the narrow columns a
+                                phone or the /courses grid gives it, so it wraps
+                                before it truncates — which doubles its height
+                                and is what actually overflowed. It goes first
+                                when room runs out, because the colour has
+                                already said the same thing. */}
+                            <span
+                              className={`text-[10px] font-semibold tracking-wide [@container(max-height:2.6rem)]:hidden ${tone.strong}`}
+                            >
                               {tone.tag}
                             </span>
-                            <span className={`text-[10px] tabular-nums ${tone.soft}`}>
+                            <span
+                              className={`text-[10px] tabular-nums [@container(max-height:1.4rem)]:hidden ${tone.soft}`}
+                            >
                               {formatTime(w.start)}–{formatTime(w.end)}
                             </span>
                             {/* Who's already on campus matters more than where,
@@ -451,12 +468,16 @@ export function WeekGrid({
                                 a flat contradiction. The hover still says who,
                                 with the wording that tense needs. */}
                             {w.betweenClasses && minutes >= 90 && w.onCampus.length > 0 && (
-                              <span className={`w-full truncate text-[10px] font-medium ${tone.strong}`}>
+                              <span
+                                className={`w-full truncate text-[10px] font-medium [@container(max-height:3.8rem)]:hidden ${tone.strong}`}
+                              >
                                 {nameList(w.onCampus)}
                               </span>
                             )}
                             {w.betweenClasses && minutes >= 130 && w.campuses.length > 0 && (
-                              <span className={`text-[10px] ${tone.soft}`}>
+                              <span
+                                className={`text-[10px] [@container(max-height:5rem)]:hidden ${tone.soft}`}
+                              >
                                 {w.campuses.join(" / ")}
                               </span>
                             )}
