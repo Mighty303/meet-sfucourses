@@ -66,12 +66,20 @@ export async function GET(req: Request) {
   const cas = await validateTicket(ticket, casServiceUrl());
   if (!cas) return done("/signin?error=sfu&step=ticket");
 
+  let row;
   try {
-    const row = await upsertSfuUser(cas);
+    row = await upsertSfuUser(cas);
+  } catch (err) {
+    console.error("sfu cas upsert failed", err);
+    return done("/signin?error=sfu&step=db");
+  }
+
+  try {
     const sessionToken = await mintCasSessionToken(row);
     return done(next, sessionToken);
-  } catch {
-    return done("/signin?error=sfu&step=session");
+  } catch (err) {
+    console.error("sfu cas session mint failed", err);
+    return done("/signin?error=sfu&step=jwt");
   }
 }
 

@@ -159,13 +159,19 @@ export async function upsertSfuUser(input: {
 }): Promise<AppUser> {
   const sql = getDb();
   const username = input.username.toLowerCase();
+  // Expression unique indexes need an extra pair of parens in ON CONFLICT
+  // ((LOWER(...))), or Postgres rejects the statement with "no unique or
+  // exclusion constraint matching the ON CONFLICT specification" — which is
+  // exactly the step=session failure after CAS has already succeeded.
   const rows = await sql`
     INSERT INTO meetup.users (sfu_username, sfu_authtype, email, name)
     VALUES (${username}, ${input.authtype}, ${casEmail(username)}, ${username})
-    ON CONFLICT (LOWER(sfu_username)) WHERE sfu_username IS NOT NULL DO UPDATE
+    ON CONFLICT ((LOWER(sfu_username))) WHERE sfu_username IS NOT NULL DO UPDATE
       SET sfu_authtype = EXCLUDED.sfu_authtype,
           updated_at = NOW()
     RETURNING id, email, name, image, avatar
   `;
-  return rows[0] as AppUser;
+  const row = rows[0] as AppUser | undefined;
+  if (!row) throw new Error("upsertSfuUser returned no row");
+  return row;
 }
