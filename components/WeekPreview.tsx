@@ -28,6 +28,17 @@ const ME = { id: 0, displayName: "You", color: "#3b82f6" };
 /** Shorter than the full-page grid: this one sits beside a search box. */
 const PREVIEW_HEIGHT = "h-[380px] sm:h-[440px] lg:h-[520px]";
 
+/**
+ * The colour a section under the cursor is sketched in.
+ *
+ * Green, and the same green the free bands use, because it is the one colour on
+ * this grid that already means "this is the good outcome" — and unlike the grey
+ * it replaces, it doesn't read as a block that's been greyed out. What keeps the
+ * two apart is shape rather than hue: a preview is a dashed outline the width of
+ * a class, a free band is a solid one the width of the day.
+ */
+const PREVIEW_COLOR = "#10b981";
+
 const LABELS: Record<DayKey, string> = {
   Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun",
 };
@@ -104,6 +115,7 @@ export function WeekPreview({
               weekStart={state?.week}
               courseColors={courseColors}
               preview={preview}
+              previewColor={PREVIEW_COLOR}
               columnHeight={PREVIEW_HEIGHT}
             />
           </div>
