@@ -102,7 +102,7 @@ function NavBarContent() {
           <AuthButton profileHref={profileHref} profileActive={pathname === "/profile"} />
         </div>
 
-        {/* Only signed in. Signed out the bar holds two buttons and the mark,
+        {/* Only signed in. Signed out the bar holds the mark and one link,
             which fit any phone — folding them behind a hamburger would put a
             tap between someone and the one thing the page is asking them to
             do. While the session is still resolving there is nothing to fold

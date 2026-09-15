@@ -34,30 +34,23 @@ export function AuthButton({ stacked = false, profileHref = "/profile", profileA
     return <div className="h-9 w-9 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-800" />;
   }
 
-  // Signed out these are signposts rather than the act itself — both providers
-  // live on /signin and /signup, and a corner button could only ever offer one
-  // of them. Two links rather than one because "Sign in" alone reads as a door
-  // for people who already have a key, and the app is new enough that almost
-  // nobody does.
+  // One link, not two. This used to be Sign in beside Sign up, on the
+  // reasoning that "Sign in" alone reads as a door for people who already have
+  // a key and almost nobody had one — but the fix for that was never a second
+  // button, it was not needing a key to get in. Every page can now be read,
+  // and a whole week typed, without an account; /signin offers "No account
+  // yet? Create one" to the people who want one anyway.
   //
   // Small enough to sit in the bar at any width, which is why the navigation
   // has no hamburger until you're signed in.
   if (!session?.user) {
     return (
-      <>
-        <Link
-          href="/signin"
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/signup"
-          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
-        >
-          Sign up
-        </Link>
-      </>
+      <Link
+        href="/signin"
+        className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      >
+        Sign in
+      </Link>
     );
   }
 

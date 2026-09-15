@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { GroupForms } from "@/components/GroupForms";
+import { GroupActions } from "@/components/GroupActions";
 import { fromTermCode } from "@/lib/sfu";
 
 interface Membership {
@@ -147,7 +147,7 @@ export function GroupsHome() {
         )}
       </section>
 
-      <GroupForms startDelay={120} />
+      <GroupActions startDelay={120} />
     </main>
   );
 }

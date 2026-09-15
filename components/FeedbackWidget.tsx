@@ -2,24 +2,24 @@
 
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Modal } from "@/components/Modal";
 import { MESSAGE_MAX } from "@/lib/feedback-limits";
 
 /**
  * The "tell me what's wrong" button, parked in the bottom-right corner of every
  * page. Messages land in the admin portal.
  *
- * A real <dialog> rather than a div with a high z-index: the browser then owns
- * the focus trap, the Escape key, the inert background and the top layer, all
- * of which this would otherwise have to reimplement — and the top layer is the
- * part that matters, because the group page is a grid of absolutely positioned
- * blocks that a hand-rolled overlay has to out-stack one by one.
+ * The dialog itself is components/Modal.tsx — see there for why it's a real
+ * <dialog>. The green is this widget's own: it is the one control on the site
+ * that isn't about a schedule, and looking like the rest of the furniture is
+ * how a feedback button goes unpressed.
  */
 export function FeedbackWidget() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const dialogRef = useRef<HTMLDialogElement>(null);
 
+  const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
@@ -33,7 +33,7 @@ export function FeedbackWidget() {
   // dialog for the person to dismiss.
   useEffect(() => {
     if (state !== "sent") return;
-    const timer = setTimeout(() => dialogRef.current?.close(), 1600);
+    const timer = setTimeout(() => setOpen(false), 1600);
     return () => clearTimeout(timer);
   }, [state]);
 
@@ -42,6 +42,7 @@ export function FeedbackWidget() {
   const signedInAs = session?.user?.email ?? null;
 
   function reset() {
+    setOpen(false);
     setMessage("");
     setEmail("");
     setState("idle");
@@ -77,7 +78,7 @@ export function FeedbackWidget() {
     <>
       <button
         type="button"
-        onClick={() => dialogRef.current?.showModal()}
+        onClick={() => setOpen(true)}
         aria-label="Send feedback"
         title="Send feedback"
         // Above the page but below the dialog, which sits in the top layer and
@@ -88,33 +89,7 @@ export function FeedbackWidget() {
         <ChatIcon />
       </button>
 
-      <dialog
-        ref={dialogRef}
-        onClose={reset}
-        // Tailwind's preflight zeroes every margin, which takes the centring a
-        // modal dialog would otherwise do for itself, so it goes back by hand.
-        onClick={(e) => {
-          // The dialog element fills the viewport; its box is the backdrop as
-          // far as clicks are concerned, so a hit on it and not on the card
-          // inside means the person clicked outside to dismiss.
-          if (e.target === dialogRef.current) dialogRef.current?.close();
-        }}
-        className="m-auto w-[min(92vw,26rem)] rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100"
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-          <h2 className="text-lg font-semibold tracking-tight text-[#24a98b]">
-            Send feedback
-          </h2>
-          <button
-            type="button"
-            onClick={() => dialogRef.current?.close()}
-            aria-label="Close"
-            className="rounded-lg p-1 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
-          >
-            <CloseIcon />
-          </button>
-        </div>
-
+      <Modal open={open} onClose={reset} title="Send feedback" titleClassName="text-[#24a98b]">
         {state === "sent" ? (
           <p className="px-5 py-10 text-center text-sm text-neutral-600 dark:text-neutral-300">
             Thanks, that landed.
@@ -172,7 +147,7 @@ export function FeedbackWidget() {
             {error && <p className="text-sm text-red-600">{error}</p>}
           </form>
         )}
-      </dialog>
+      </Modal>
     </>
   );
 }
@@ -182,14 +157,6 @@ function ChatIcon() {
     <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M17 12.5a2 2 0 01-2 2H7l-4 3v-12a2 2 0 012-2h10a2 2 0 012 2z" />
       <path d="M10 6v3.5M10 12h.01" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden>
-      <path d="M5 5l10 10M15 5L5 15" />
     </svg>
   );
 }
