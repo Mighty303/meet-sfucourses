@@ -296,18 +296,30 @@ function GroupSchedule({ code }: { code: string }) {
    * Save whichever status was pressed. Written against the user and the date,
    * not against this group — the same Thursday is the same Thursday in every
    * group you're in, so the answer travels with you.
+   *
+   * `repeat` is the Google Calendar move: write the same answer on this
+   * weekday through the end of term, so "I'm skipping this lecture for the
+   * rest of the semester" is one press instead of twelve.
    */
   async function saveStatus(
     date: string,
     classNumber: string | null,
     status: AttendanceStatus,
-    note: string | null
+    note: string | null,
+    opts?: { repeat?: boolean }
   ) {
     setSaving(true);
     const res = await fetch("/api/attendance", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, classNumber, status, note }),
+      body: JSON.stringify({
+        date,
+        classNumber,
+        status,
+        note,
+        repeat: opts?.repeat === true,
+        until: opts?.repeat ? state?.termBounds?.end ?? undefined : undefined,
+      }),
     });
     setSaving(false);
     if (!res.ok) { setError((await res.json()).error ?? "could not save that"); return; }
@@ -529,9 +541,10 @@ function GroupSchedule({ code }: { code: string }) {
           color: me.color,
           dayStatus: myDayStatus,
           dayLabel: (day) => writeDate(dates[day]),
-          setBlock: (block, status, note) =>
-            saveStatus(dates[block.day], block.classNumber ?? null, status, note),
-          setDay: (day, status, note) => saveStatus(dates[day], null, status, note),
+          setBlock: (block, status, note, opts) =>
+            saveStatus(dates[block.day], block.classNumber ?? null, status, note, opts),
+          setDay: (day, status, note, opts) =>
+            saveStatus(dates[day], null, status, note, opts),
         }
       : undefined;
 

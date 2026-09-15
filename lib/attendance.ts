@@ -107,3 +107,41 @@ export async function hasDayStatus(userId: number, onDate: string): Promise<bool
   `;
   return rows.length > 0;
 }
+
+function addDaysIso(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Write the same deviation on this date and every same weekday through `until`
+ * (inclusive) — the Google Calendar "this and following events" move, for a
+ * weekly class. Caps at 20 weeks so a bad until can't flood the table.
+ */
+export async function setAttendanceSeries(
+  userId: number,
+  fromDate: string,
+  untilDate: string,
+  classNumber: string | null,
+  status: AttendanceStatus,
+  note: string | null
+): Promise<number> {
+  if (untilDate < fromDate) return 0;
+  let wrote = 0;
+  let date = fromDate;
+  for (let i = 0; i < 20 && date <= untilDate; i++) {
+    const redundant =
+      status === "going" &&
+      note === null &&
+      (classNumber === null || !(await hasDayStatus(userId, date)));
+    if (redundant) {
+      await clearAttendance(userId, date, classNumber);
+    } else {
+      await setAttendance(userId, date, classNumber, status, note);
+    }
+    wrote += 1;
+    date = addDaysIso(date, 7);
+  }
+  return wrote;
+}

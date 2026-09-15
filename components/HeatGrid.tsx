@@ -128,6 +128,29 @@ interface StatusMark {
   block: BusyBlock;
 }
 
+/**
+ * The viewer's class that overlaps this band, if any — including a skipped one,
+ * which is usually why the green window opened. Prefer a skip when both a skip
+ * and another class share the hour (rare), because that's the status the card
+ * needs to be able to undo.
+ */
+function ownBlockDuring(
+  band: AvailabilityBand,
+  memberId: number | undefined,
+  busyByMember: Record<number, BusyBlock[]>
+): BusyBlock | null {
+  if (memberId === undefined) return null;
+  const hits = (busyByMember[memberId] ?? []).filter(
+    (b) =>
+      b.day === band.day &&
+      b.start < band.end &&
+      b.end > band.start &&
+      b.classNumber !== undefined
+  );
+  if (hits.length === 0) return null;
+  return hits.find((b) => b.status === "skipping") ?? hits[0];
+}
+
 /** 80 -> "1h 20m", 50 -> "50m" */
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -146,10 +169,11 @@ interface Props {
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
   weekStart?: string;
   /**
-   * Lets the viewer say whether they're going. This view draws no labelled
-   * blocks, so the day heading is the only *control* it has — per-class lives
-   * on the detailed grid. Skipped and online classes still leave dashed / blue
-   * outlines on the bands they affect, so a greener hour shows why it opened.
+   * Lets the viewer say whether they're going. Day headings cover whole days;
+   * bands that overlap one of their classes also carry the three buttons, so
+   * Availability isn't a view you have to leave to mark a single lecture.
+   * Skipped and online classes still leave dashed / blue outlines on the bands
+   * they affect, so a greener hour shows why it opened.
    */
   attendance?: AttendanceControl;
   /**
@@ -435,6 +459,10 @@ export function HeatGrid({
                         : allOnline
                           ? ONLINE_HATCH
                           : undefined;
+                      // Your class in this band — including one you skipped,
+                      // which is usually why the green opened. That's what the
+                      // status buttons on the card write against.
+                      const own = ownBlockDuring(band, attendance?.memberId, busyByMember);
                       return (
                         <div
                           key={band.start}
@@ -453,7 +481,12 @@ export function HeatGrid({
                           }}
                           onMouseEnter={(e) =>
                             hover.show({
-                              title: solo
+                              // When the card carries your status buttons, lead
+                              // with the course — same question the detailed
+                              // grid asks: what is this class, am I going.
+                              title: own
+                                ? own.course
+                                : solo
                                 ? free > 0
                                   ? "Gap between your classes"
                                   : inClass || allOnline
@@ -470,7 +503,9 @@ export function HeatGrid({
                                   : allOnline && titleCourses && titleCourses.all.length > 0
                                     ? nameList(titleCourses.all, 2)
                                     : `${free} of ${total} on campus and free`,
-                              subtitle: LABELS[day],
+                              subtitle: own
+                                ? `${LABELS[day]}${own.detail ? ` · ${own.detail}` : ""}`
+                                : LABELS[day],
                               lines: [
                                 `${formatTime(band.start)} – ${formatTime(band.end)} · ${formatDuration(minutes)}`,
                                 ...(solo
@@ -559,19 +594,31 @@ export function HeatGrid({
                               // ramp's colour, and this band isn't on it. Blue
                               // when the whole hour is online for the same
                               // reason the hatch is.
-                              accent: allOnline
+                              accent: own
+                                ? attendance!.color
+                                : allOnline
                                 ? "#3b82f6"
                                 : inClass
                                   ? "#a3a3a3"
                                   : `rgb(${FILL.join(",")})`,
                               x: e.clientX,
                               y: e.clientY,
+                              status:
+                                own && attendance
+                                  ? {
+                                      current: own.status ?? "going",
+                                      note: own.note ?? null,
+                                      allowRepeat: true,
+                                      onPick: (status, note, opts) =>
+                                        attendance.setBlock(own, status, note, opts),
+                                    }
+                                  : undefined,
                             })
                           }
                           onMouseMove={(e) =>
                             hover.move(e.clientX, e.clientY)
                           }
-                          onMouseLeave={() => hover.hide()}
+                          onMouseLeave={() => hover.hide(own ? CROSS_MS : 0)}
                         >
                           {/* The count is the point of the view, so it goes in
                               first and stays as long as there's a line for it.

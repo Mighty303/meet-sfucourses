@@ -5,6 +5,7 @@ import {
   hasDayStatus,
   isAttendanceStatus,
   setAttendance,
+  setAttendanceSeries,
 } from "@/lib/attendance";
 
 /**
@@ -65,6 +66,35 @@ export async function PUT(req: Request) {
     body.status === "going" &&
     note === null &&
     (classNumber === null || !(await hasDayStatus(session.appUserId, date)));
+
+  // Google Calendar's "this and following events": same weekday through `until`
+  // (the term end the client already knows). Absent `until` with repeat is a
+  // mistake worth refusing rather than silently writing one row.
+  const repeat = body.repeat === true;
+  if (repeat) {
+    const until = readDate(body.until);
+    if (!until) {
+      return NextResponse.json({ error: "until is required to repeat" }, { status: 400 });
+    }
+    if (until < date) {
+      return NextResponse.json({ error: "until must be on or after date" }, { status: 400 });
+    }
+    const count = await setAttendanceSeries(
+      session.appUserId,
+      date,
+      until,
+      classNumber,
+      body.status,
+      note
+    );
+    return NextResponse.json({
+      date,
+      classNumber,
+      status: body.status,
+      note,
+      repeated: count,
+    });
+  }
 
   if (redundant) {
     await clearAttendance(session.appUserId, date, classNumber);

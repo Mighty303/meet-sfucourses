@@ -16,9 +16,9 @@ const LABELS: Record<DayKey, string> = {
  * Thursday" is one hover here instead of four over the blocks below, and every
  * class that day inherits it unless it has an answer of its own.
  *
- * Shared by both week views, and it's the only status control the heatmap has:
- * that view draws no blocks, so the heading is the only thing on it that
- * belongs to one day.
+ * Shared by both week views. On the heatmap it's also the whole-day handle —
+ * per-class status lives on the bands themselves when one of yours is in the
+ * way (or when a skip of yours opened the window).
  */
 export function DayHeading({
   day,
@@ -74,7 +74,8 @@ export function DayHeading({
     status: {
       current: mine?.status ?? "going",
       note: mine?.note ?? null,
-      onPick: (status, note) => attendance.setDay(day, status, note),
+      onPick: (status, note, opts) => attendance.setDay(day, status, note, opts),
+      allowRepeat: true,
     },
   });
 
