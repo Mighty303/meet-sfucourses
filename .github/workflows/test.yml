@@ -26,10 +26,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # The lockfile is written by npm 11 on a developer's machine. Node 22
-      # ships npm 10, which builds a wider optional-dependency tree and then
-      # refuses the lockfile as out of sync — so match the version that wrote it.
-      - run: npm i -g npm@11
       - run: npm ci
       - run: npm test
       - run: npx tsc --noEmit
@@ -52,10 +48,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # The lockfile is written by npm 11 on a developer's machine. Node 22
-      # ships npm 10, which builds a wider optional-dependency tree and then
-      # refuses the lockfile as out of sync — so match the version that wrote it.
-      - run: npm i -g npm@11
       - run: npm ci
       - run: npm run test:db
         env:

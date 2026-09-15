@@ -148,6 +148,19 @@ committed slice of a real term dump rather than invented data, so the awkward
 shapes SFU actually publishes — sections with no campus, sections with no
 meeting days at all — stay covered without a network call.
 
+### A note on `package-lock.json`
+
+Regenerate it on Linux, not on a Mac:
+
+```
+docker run --rm -v "$PWD":/w -w /w node:22-bookworm npm install --package-lock-only
+```
+
+`sharp` and `@tailwindcss/oxide` ship wasm builds whose own dependencies npm
+prunes from the lockfile when it resolves on macOS. The result installs fine
+there and then fails `npm ci` on every Linux runner with two `@emnapi` packages
+"missing from lock file". A lockfile written on Linux covers both.
+
 `npm run test:db` creates its own Neon branch, migrates it, and deletes it
 afterwards; it never touches the `DATABASE_URL` in `.env.local`, and it skips
 with a message rather than failing when `NEON_API_KEY` is unset. Without a key
