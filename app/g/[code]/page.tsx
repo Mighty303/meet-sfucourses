@@ -122,7 +122,13 @@ function GroupSchedule({ code }: { code: string }) {
     // changing the duration (or ticking someone off) is instant, not a round-trip.
     const res = await fetch(`/api/groups/${code}${week ? `?week=${week}` : ""}`);
     if (!res.ok) {
-      setError(res.status === 404 ? "No group with that code." : "Could not load this group.");
+      setError(
+        res.status === 404
+          ? "No group with that code."
+          : res.status === 502
+            ? "SFU hasn't published this term's timetable yet, so there's nothing to draw."
+            : "Could not load this group."
+      );
       return;
     }
     setError(null);
