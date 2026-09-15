@@ -21,6 +21,7 @@ export function SignInPanel({
   next = "/",
   initialMode = "signin",
   toggleHref,
+  sfu = false,
 }: {
   next?: string;
   /**
@@ -35,6 +36,11 @@ export function SignInPanel({
    * is embedded, where it flips in place instead.
    */
   toggleHref?: string;
+  /**
+   * Whether the SFU door is open — decided on the server, because CAS only
+   * works from an origin SFU has registered as a service.
+   */
+  sfu?: boolean;
 }) {
   const [mode, setMode] = useState<"signin" | "register">(initialMode);
   const [email, setEmail] = useState("");
@@ -80,6 +86,25 @@ export function SignInPanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {sfu && (
+        /* First, because it is the one most people here already have, and the
+           only one that proves the person is at SFU. A link rather than a
+           signIn() call: the round trip starts with our own redirect out to
+           cas.sfu.ca, not with next-auth. */
+        <div className="flex flex-col gap-1.5">
+          <a
+            href={`/api/auth/sfu/start?next=${encodeURIComponent(next)}`}
+            className="flex items-center justify-center gap-2.5 rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90"
+          >
+            <SfuMark />
+            Continue with your SFU ID
+          </a>
+          <p className="text-center text-xs text-neutral-500">
+            Your password is typed at cas.sfu.ca and never reaches this site.
+          </p>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => signIn("google", { callbackUrl: next })}
@@ -165,6 +190,20 @@ export function SignInPanel({
 }
 
 const TOGGLE_CLASS = "text-blue-600 underline-offset-2 hover:underline dark:text-blue-400";
+
+/** SFU's own red, and a mark that isn't anyone's logo — this is not an SFU site. */
+function SfuMark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 function GoogleMark() {
   return (
