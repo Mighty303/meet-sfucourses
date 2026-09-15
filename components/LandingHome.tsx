@@ -5,8 +5,8 @@ import { DemoAvailability } from "@/components/DemoAvailability";
 import { GroupForms } from "@/components/GroupForms";
 
 /**
- * What "/" is for someone who hasn't signed in: what the thing is, a worked
- * example of it, and the two ways in.
+ * What "/" is for someone who hasn't signed in: what the thing is, the two
+ * ways in, and a worked example of it.
  *
  * The pitch and the demo live here rather than on the home page proper because
  * they answer a question you only ask once. Someone already in three groups is
@@ -30,21 +30,18 @@ export function LandingHome() {
         </p>
       </div>
 
-      {/* The pitch above, as something you can actually look at. Invented
-          people on invented courses — see DemoAvailability. */}
-      <section className="fade-up flex flex-col gap-5" style={{ animationDelay: "120ms" }}>
-        <h2 className="text-center text-sm font-medium">What it looks like</h2>
-        <DemoAvailability />
-      </section>
+      {/* The pitch for an account, not the form for one: three fields and a
+          provider choice in front of someone still deciding whether they want
+          any of this is too much to ask, so the decision is the button and
+          /signup is where the typing happens.
 
-      {/* The pitch for an account, not the form for one. A sign-up form sitting
-          in the middle of the page put three fields and a provider choice in
-          front of someone still deciding whether they wanted any of this; the
-          decision is the button, and /signup is where the typing happens. */}
+          Above the demo, because someone who already knows what this is
+          shouldn't have to scroll a screenshot of it to find the way in — and
+          the two ways in are the only thing on this page that does anything. */}
       <section
         id="get-started"
         className="fade-up mx-auto w-full max-w-lg scroll-mt-6 rounded-xl border border-neutral-200 p-6 dark:border-neutral-800"
-        style={{ animationDelay: "240ms" }}
+        style={{ animationDelay: "120ms" }}
       >
         <h2 className="text-lg font-semibold tracking-tight">Get started</h2>
         <p className="mt-1 mb-5 text-sm text-neutral-600 dark:text-neutral-400">
@@ -65,6 +62,14 @@ export function LandingHome() {
             Sign in
           </Link>
         </div>
+      </section>
+
+      {/* The pitch above, as something you can actually look at, for whoever
+          isn't sold by the buttons. Invented people on invented courses — see
+          DemoAvailability. */}
+      <section className="fade-up flex flex-col gap-5" style={{ animationDelay: "240ms" }}>
+        <h2 className="text-center text-sm font-medium">What it looks like</h2>
+        <DemoAvailability />
       </section>
 
       {/* Below the account section, because creating a group signed out leaves
