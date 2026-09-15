@@ -283,9 +283,8 @@ const opened = afterSkip.find((w) => w.start === 600 && w.end === 690);
 assert.ok(opened, "skipping the middle class opens the hour for everyone");
 assert.equal(opened.betweenClasses, true, "the opened hour is still a gap between classes");
 
-// Online: still busy, but a Burnaby pin on a remote lecture must not make a
-// free window look cross-campus when the other person is at Surrey. Same
-// schedule with status "going" *does* split — that's the control.
+// Online-only day: Ada isn't coming to campus, so she drops out of the meetup
+// count entirely — her Zoom hours must not block Bo, and she isn't "on campus".
 const burnabyMorning = block(540, 600, "LEC");
 const burnabyAfternoon = block(690, 750, "SEM");
 const surreyMorning = {
@@ -337,9 +336,10 @@ const remoteWindows = commonFree({
   ...splitOpts,
 });
 const noon = remoteWindows.find((w) => w.start === 600 && w.end === 690);
-assert.ok(noon, "the hour between Ada's online lectures is still free with Bo");
-assert.equal(noon.sharedCampus, true, "a remote lecture does not invent a campus split");
+assert.ok(noon, "Ada's online-only day does not block Bo's free hour");
+assert.equal(noon.sharedCampus, true, "a remote-only schedule invents no campus split");
 assert.deepEqual(noon.campuses, ["Surrey"], "only the in-person class anchors a campus");
+assert.deepEqual(noon.onCampus, ["Bo"], "Ada is not listed as on campus");
 
 const heat = availabilityBands({
   members: [
@@ -355,5 +355,41 @@ const heatGap = heat.find((b) => b.day === "Mo" && b.start === 600 && b.end === 
 assert.ok(heatGap, "availabilityBands cuts a band on the skipped hour");
 assert.deepEqual(heatGap.freeIndices, [0], "only Ada is free — she skipped; Bo is still in class");
 assert.deepEqual(heatGap.busyIndices, [1], "Bo remains busy through the hour");
+
+const heatRemoteOnly = availabilityBands({
+  members: [
+    { name: "Ada", busy: [{ ...block(540, 600, "ZOOM"), status: "remote" }] },
+    { name: "Bo", busy: [block(540, 600, "C"), block(690, 750, "D")] },
+  ],
+  dayStart, dayEnd: toMinutes("13:00"), days: ["Mo"],
+});
+const zoomHour = heatRemoteOnly.find((b) => b.day === "Mo" && b.start === 540 && b.end === 600);
+assert.ok(zoomHour, "the Zoom hour still cuts a band");
+assert.ok(zoomHour.awayIndices.includes(0), "Ada's online-only day puts her away");
+assert.ok(!zoomHour.busyIndices.includes(0), "she is not counted busy on campus during Zoom");
+assert.ok(!zoomHour.freeIndices.includes(0), "she is not counted free on campus either");
+
+// Mixed day: an online lecture between two campus classes still occupies the
+// hour. Adjacent busy segments merge, so look for a band that covers the Zoom
+// rather than one that starts and ends on its edges.
+const heatMixed = availabilityBands({
+  members: [
+    {
+      name: "Ada",
+      busy: [
+        block(540, 600, "A"),
+        { ...mid, status: "remote" },
+        block(690, 750, "B"),
+      ],
+    },
+  ],
+  dayStart, dayEnd: toMinutes("13:00"), days: ["Mo"],
+});
+const mixedZoom = heatMixed.find(
+  (b) => b.day === "Mo" && b.start <= 600 && b.end >= 690
+);
+assert.ok(mixedZoom, "mixed-day Zoom is covered by a busy band");
+assert.deepEqual(mixedZoom.busyIndices, [0], "Zoom between campus classes keeps Ada busy");
+assert.deepEqual(mixedZoom.awayIndices, [], "a mixed day is still a campus day");
 
 console.log("ALL ENGINE CHECKS PASSED");

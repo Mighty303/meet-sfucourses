@@ -384,7 +384,21 @@ export function HeatGrid({
                       const minutes = band.end - band.start;
                       const free = band.freeIndices.length;
                       const freeNames = band.freeIndices.map((i) => withSchedules[i].displayName);
-                      const awayNames = band.awayIndices.map((i) => withSchedules[i].displayName);
+                      // Away can mean no classes, or online-only — same for the
+                      // shading (they're off campus), but the card should say
+                      // which, or a Zoom day reads as a blank timetable.
+                      const awayOnline: string[] = [];
+                      const awayNone: string[] = [];
+                      for (const i of band.awayIndices) {
+                        const name = withSchedules[i].displayName;
+                        // awayIndices already means no campus classes today;
+                        // a remote block on this day means online-only.
+                        const onlineOnly = (busyByMember[memberIds[i]] ?? []).some(
+                          (b) => b.day === band.day && b.status === "remote"
+                        );
+                        if (onlineOnly) awayOnline.push(name);
+                        else awayNone.push(name);
+                      }
                       const outsideNames = band.outsideIndices.map((i) => withSchedules[i].displayName);
                       const deviations = attendanceDuring(band, withSchedules, busyByMember);
                       // On-campus class vs attended-from-home: both keep the
@@ -495,9 +509,11 @@ export function HeatGrid({
                                       : allOnline
                                         ? "Online"
                                         : "You have class"
-                                    : awayNames.length > 0
-                                      ? "No class today"
-                                      : "Off campus"
+                                    : awayOnline.length > 0
+                                      ? "Online only today"
+                                      : awayNone.length > 0
+                                        ? "No class today"
+                                        : "Off campus"
                                 : inClass && titleCourses && titleCourses.all.length > 0
                                   ? nameList(titleCourses.all, 2)
                                   : allOnline && titleCourses && titleCourses.all.length > 0
@@ -510,11 +526,13 @@ export function HeatGrid({
                                 `${formatTime(band.start)} – ${formatTime(band.end)} · ${formatDuration(minutes)}`,
                                 ...(solo
                                   ? [
-                                      ...(awayNames.length > 0
-                                        ? ["No class — you'd come to campus specially"]
-                                        : outsideNames.length > 0
-                                          ? ["Before your first class, or after your last"]
-                                          : []),
+                                      ...(awayOnline.length > 0
+                                        ? ["Online only — not on campus today"]
+                                        : awayNone.length > 0
+                                          ? ["No class — you'd come to campus specially"]
+                                          : outsideNames.length > 0
+                                            ? ["Before your first class, or after your last"]
+                                            : []),
                                       // Solo still needs the reason a gap opened:
                                       // your own skipped class is the only one
                                       // that could have done it.
@@ -578,8 +596,11 @@ export function HeatGrid({
                                       ...(outsideNames.length > 0
                                         ? [{ label: "Off campus", value: outsideNames.join(", ") }]
                                         : []),
-                                      ...(awayNames.length > 0
-                                        ? [{ label: "No class", value: awayNames.join(", ") }]
+                                      ...(awayOnline.length > 0
+                                        ? [{ label: "Online only", value: awayOnline.join(", ") }]
+                                        : []),
+                                      ...(awayNone.length > 0
+                                        ? [{ label: "No class", value: awayNone.join(", ") }]
                                         : []),
                                     ]),
                                 // Only the split. One campus is the ordinary

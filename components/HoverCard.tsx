@@ -140,7 +140,7 @@ export function useHoverCard() {
 const BLURB: Record<AttendanceStatus, string> = {
   going: "On campus as timetabled",
   skipping: "Frees this hour for the group",
-  remote: "Busy, but not on campus",
+  remote: "Not on campus — drops out of availability if it's your only class today",
 };
 
 const TONE: Record<AttendanceStatus, string> = {

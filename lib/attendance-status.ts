@@ -37,6 +37,8 @@ export const STATUS_EFFECT: Record<
 > = {
   going: { busy: true, onCampus: true, label: "Going" },
   skipping: { busy: false, onCampus: false, label: "Skipping" },
+  // Busy only bites on a mixed day (Zoom between campus classes). A day of
+  // only online classes is treated as off campus — see busyForMeetup.
   remote: { busy: true, onCampus: false, label: "Online" },
 };
 
