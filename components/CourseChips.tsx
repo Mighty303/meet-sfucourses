@@ -35,6 +35,11 @@ interface Props {
   onRemove?: (classNumber: string) => void;
   /** The section currently being written, so its × can't be pressed twice. */
   busy?: string | null;
+  /**
+   * Sized for the member column, which is 224px wide — chips at body size wrap
+   * one per line there and turn a five-course schedule into five rows.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -46,7 +51,7 @@ interface Props {
  * The resolution round trip lives here so neither caller has to know that a
  * saved schedule is stored as bare numbers.
  */
-export function CourseChips({ term, classNumbers, courseColors, onRemove, busy }: Props) {
+export function CourseChips({ term, classNumbers, courseColors, onRemove, busy, compact = false }: Props) {
   const [saved, setSaved] = useState<CourseHit[]>([]);
   const key = classNumbers.join(",");
 
@@ -62,11 +67,15 @@ export function CourseChips({ term, classNumbers, courseColors, onRemove, busy }
 
   if (key === "") return null;
   if (saved.length === 0) {
-    return <p className="text-sm text-neutral-500">Loading your sections…</p>;
+    return (
+      <p className={`text-neutral-500 ${compact ? "text-xs" : "text-sm"}`}>
+        Loading your sections…
+      </p>
+    );
   }
 
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul className={`flex flex-wrap ${compact ? "gap-1.5" : "gap-2"}`}>
       {saved.map((c) =>
         c.sections.map((s) => (
           <li key={s.classNumber}>
@@ -77,14 +86,18 @@ export function CourseChips({ term, classNumbers, courseColors, onRemove, busy }
                 × removes, and only where there is one. */}
             <span
               title={`${courseCode(c)} ${s.section} — ${meetingLabel(s)}`}
-              className={`flex items-center gap-2 rounded-lg border border-neutral-300 py-1.5 text-sm dark:border-neutral-700 ${
-                onRemove ? "pl-2.5 pr-1.5" : "px-2.5"
+              className={`flex items-center rounded-lg border border-neutral-300 dark:border-neutral-700 ${
+                compact ? "gap-1.5 py-1 text-xs" : "gap-2 py-1.5 text-sm"
+              } ${
+                onRemove
+                  ? compact ? "pl-2 pr-1" : "pl-2.5 pr-1.5"
+                  : compact ? "px-2" : "px-2.5"
               }`}
             >
               {courseColors?.[courseCode(c)] && (
                 <span
                   aria-hidden
-                  className="h-3 w-3 shrink-0 rounded-sm"
+                  className={`shrink-0 rounded-sm ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`}
                   style={{ backgroundColor: courseColors[courseCode(c)] }}
                 />
               )}
