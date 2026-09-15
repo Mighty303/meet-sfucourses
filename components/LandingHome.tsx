@@ -29,7 +29,16 @@ export function LandingHome() {
           the two halves of the home page have different numbers of blocks and
           a positional rule would have to be rewritten per half. */}
       <div className="fade-up mx-auto w-full max-w-lg">
-        <h1 className="text-3xl font-semibold tracking-tight">meet.sfucourses.com</h1>
+        {/* The mark's two colours, run across the name it belongs to. Green
+            holds through "meet." and the turn to yellow takes the rest, so the
+            dot lands where the colour changes.
+
+            `w-fit` because a clipped background is the size of its box, not
+            its type — left as a block it would stretch the ramp across the
+            column and show only the green end. */}
+        <h1 className="w-fit bg-gradient-to-r from-[#0f8a6d] from-30% to-[#b8860b] bg-clip-text text-4xl font-semibold tracking-tight text-transparent dark:from-[#24a98b] dark:to-[#ffdf00]">
+          meet.sfucourses.com
+        </h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">
           Everyone drops their SFU schedule in. The grid shows when you&apos;re all free
           on campus at the same time.
