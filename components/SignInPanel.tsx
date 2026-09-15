@@ -2,7 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password-rules";
 
 /**
@@ -22,6 +22,7 @@ export function SignInPanel({
   initialMode = "signin",
   toggleHref,
   sfu = false,
+  google,
 }: {
   next?: string;
   /**
@@ -41,6 +42,12 @@ export function SignInPanel({
    * works from an origin SFU has registered as a service.
    */
   sfu?: boolean;
+  /**
+   * Whether Google is configured (both AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET).
+   * Auth screens pass this from the server; embedded callers may omit it and
+   * the panel asks /api/auth/providers once.
+   */
+  google?: boolean;
 }) {
   const [mode, setMode] = useState<"signin" | "register">(initialMode);
   const [email, setEmail] = useState("");
@@ -48,6 +55,26 @@ export function SignInPanel({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // null = still asking /api/auth/providers (embedded panels only).
+  const [fetchedGoogle, setFetchedGoogle] = useState<boolean | null>(null);
+  const googleAvailable = google !== undefined ? google : (fetchedGoogle ?? false);
+
+  // Embedded panels (e.g. AccountGate) don't get a server-side google flag.
+  useEffect(() => {
+    if (google !== undefined) return;
+    let cancelled = false;
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((providers: Record<string, unknown>) => {
+        if (!cancelled) setFetchedGoogle(Boolean(providers.google));
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedGoogle(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [google]);
 
   const register = mode === "register";
 
@@ -105,14 +132,16 @@ export function SignInPanel({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => signIn("google", { callbackUrl: next })}
-        className="flex items-center justify-center gap-2.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-      >
-        <GoogleMark />
-        Continue with Google
-      </button>
+      {googleAvailable && (
+        <button
+          type="button"
+          onClick={() => signIn("google", { callbackUrl: next })}
+          className="flex items-center justify-center gap-2.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        >
+          <GoogleMark />
+          Continue with Google
+        </button>
+      )}
 
       <div className="flex items-center gap-3 text-xs text-neutral-500">
         <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SignInPanel } from "@/components/SignInPanel";
 import { casEnabled } from "@/lib/cas";
+import { googleEnabled } from "@/lib/google-auth";
 
 /**
  * The sign-in and sign-up pages, which are the same page with two headings and
@@ -28,7 +29,7 @@ export function AuthScreen({
    * link across carries the real destination rather than the detour.
    */
   toggleNext?: string;
-  /** Something that went wrong before this page — today, only the SFU round trip. */
+  /** Something that went wrong before this page — SFU round trip or Auth.js. */
   error?: string | null;
 }) {
   const register = mode === "register";
@@ -62,8 +63,9 @@ export function AuthScreen({
         initialMode={mode}
         next={next}
         // Read here rather than in the panel: the panel is a client component,
-        // and whether CAS is configured is a server fact.
+        // and whether CAS / Google are configured is a server fact.
         sfu={casEnabled()}
+        google={googleEnabled()}
         toggleHref={register ? `/signin${query}` : `/signup${query}`}
       />
 

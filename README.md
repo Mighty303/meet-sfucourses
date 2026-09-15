@@ -77,6 +77,18 @@ environments without them appearing on screen:
 ./scripts/set-google-oauth.sh
 ```
 
+Both `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` must be set on the Vercel
+**Production** environment (and Preview if you test there). A client id alone
+is enough for Auth.js to send people to Google; the callback then fails with
+`error=Configuration` when the secret is missing or wrong. Also required:
+
+- `AUTH_SECRET` — session / cookie encryption
+- `AUTH_URL=https://meet.sfucourses.com` — no trailing slash
+
+After changing env vars, redeploy Production. Confirm with
+`GET /api/auth/config-diag` (booleans and hostnames only — no secret values):
+`googleReady` should be `true`.
+
 ### SFU sign-in
 
 The third door, and the only one that proves the person is at SFU. SFU
