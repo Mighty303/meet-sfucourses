@@ -47,10 +47,25 @@ export function casEnabled(): boolean {
  * caller writes — deriving it from the Host would let someone claim a ticket
  * was minted for a service that isn't this one. AUTH_URL is already the value
  * next-auth trusts for the same reason.
+ *
+ * Never fall back to VERCEL_URL on the production deployment: that hostname is
+ * per-deploy (meetup-xxxx.vercel.app), while the browser's cookies were set on
+ * the custom domain. CAS would send the ticket to a host that never saw the
+ * state cookie, and sign-in fails with error=sfu every time.
  */
 export function casOrigin(): string {
   const configured = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
   if (configured) return configured.replace(/\/+$/, "");
+
+  // Stable production hostname Vercel injects (e.g. meet.sfucourses.com).
+  const productionHost = process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(
+    /^https?:\/\//,
+    ""
+  );
+  if (process.env.VERCEL_ENV === "production" && productionHost) {
+    return `https://${productionHost}`;
+  }
+
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }

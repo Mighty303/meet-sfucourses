@@ -102,10 +102,12 @@ SFU_CAS_ENABLED=1 SFU_CAS_BASE=http://localhost:8099/cas npm run dev
 
 `SFU_CAS_BASE` is ignored in production unless it is https, because whoever
 answers `/serviceValidate` decides who you are signed in as. The service URL is
-built from `AUTH_URL`, never from a request header, for the same reason — and
-it carries no query string, so the string CAS binds the ticket to can't drift
-between the redirect out and the validation. Where the visitor was headed rides
-in a short-lived `sfu-cas-next` cookie instead.
+built from `AUTH_URL` (set this to `https://meet.sfucourses.com` in Vercel —
+without it, production would hand CAS a per-deploy `*.vercel.app` host and the
+round trip would lose its state cookie), never from a request header, for the
+same reason — and it carries no query string, so the string CAS binds the
+ticket to can't drift between the redirect out and the validation. Where the
+visitor was headed rides in a short-lived `sfu-cas-next` cookie instead.
 
 A CAS account is its own `meetup.users` row, keyed on the computing ID and
 never merged with a Google or password row that happens to share the address —
