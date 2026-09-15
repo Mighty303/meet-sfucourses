@@ -62,6 +62,27 @@ function freeStyle(w: FreeWindow, solo: boolean) {
       };
 }
 
+/**
+ * How much room each label inside a free band needs, as a container query.
+ *
+ * The threshold used to be in minutes, which can't know how tall a minute is:
+ * the same 60-minute gap is 56px on a full-page grid and 37px on the short one
+ * beside the search box at /courses, where "BETWEEN CLASSES" wrapped to two
+ * lines and the label printed over the classes either side of it. The band is a
+ * size container instead, and each label hides itself once its own room runs
+ * out — the decision made in the units that overflow.
+ *
+ * The tag goes first, because the colour and the legend have already said what
+ * the band is. The time survives longest, being the part you can't get any
+ * other way without hovering.
+ */
+const HIDE_BELOW = {
+  tag: "[@container(max-height:2.6rem)]:hidden",
+  time: "[@container(max-height:1.4rem)]:hidden",
+  names: "[@container(max-height:3.8rem)]:hidden",
+  campus: "[@container(max-height:5rem)]:hidden",
+};
+
 /** "Ann, Bo, Cy" — and "+2" past three, so the block stays one line. */
 function nameList(names: string[], max = 3): string {
   if (names.length <= max) return names.join(", ");
@@ -397,7 +418,10 @@ export function WeekGrid({
                     return (
                       <div
                         key={`free-${i}`}
-                        className={`absolute flex flex-col items-center justify-center gap-0.5 rounded-md px-1 text-center ${tone.box}`}
+                        /* A size container for the labels below, and
+                           overflow-hidden as the floor under them — HIDE_BELOW
+                           has the reasoning. */
+                        className={`absolute flex flex-col items-center justify-center gap-0.5 overflow-hidden rounded-md px-1 text-center [container-type:size] ${tone.box}`}
                         style={{
                           top: `calc(${pct(w.start)}% + ${GAP_Y / 2}px)`,
                           height: `calc(${heightPct(minutes)}% - ${GAP_Y}px)`,
@@ -435,10 +459,17 @@ export function WeekGrid({
                       >
                         {minutes >= 60 && (
                           <>
-                            <span className={`text-[10px] font-semibold tracking-wide ${tone.strong}`}>
+                            {/* Two words on a narrow column, so it wraps
+                                rather than truncating — which is the height
+                                that overflowed. */}
+                            <span
+                              className={`text-[10px] font-semibold tracking-wide ${HIDE_BELOW.tag} ${tone.strong}`}
+                            >
                               {tone.tag}
                             </span>
-                            <span className={`text-[10px] tabular-nums ${tone.soft}`}>
+                            <span
+                              className={`text-[10px] tabular-nums ${HIDE_BELOW.time} ${tone.soft}`}
+                            >
                               {formatTime(w.start)}–{formatTime(w.end)}
                             </span>
                             {/* Who's already on campus matters more than where,
@@ -451,12 +482,16 @@ export function WeekGrid({
                                 a flat contradiction. The hover still says who,
                                 with the wording that tense needs. */}
                             {w.betweenClasses && minutes >= 90 && w.onCampus.length > 0 && (
-                              <span className={`w-full truncate text-[10px] font-medium ${tone.strong}`}>
+                              <span
+                                className={`w-full truncate text-[10px] font-medium ${HIDE_BELOW.names} ${tone.strong}`}
+                              >
                                 {nameList(w.onCampus)}
                               </span>
                             )}
                             {w.betweenClasses && minutes >= 130 && w.campuses.length > 0 && (
-                              <span className={`text-[10px] ${tone.soft}`}>
+                              <span
+                                className={`text-[10px] ${HIDE_BELOW.campus} ${tone.soft}`}
+                              >
                                 {w.campuses.join(" / ")}
                               </span>
                             )}
