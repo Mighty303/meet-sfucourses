@@ -1,8 +1,10 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Modal } from "@/components/Modal";
+import { readGuestCourses, rememberGuestMember } from "@/lib/guest-schedule";
 import { currentTermCode, fromTermCode, termOptions } from "@/lib/sfu";
 
 /**
@@ -61,10 +63,18 @@ export function GroupActions({ startDelay = 0 }: { startDelay?: number }) {
 
 function CreateGroupForm() {
   const router = useRouter();
+  const { status } = useSession();
   const [name, setName] = useState("");
+  const [who, setWho] = useState("");
   const [term, setTerm] = useState(currentTermCode());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Signed in, the member row is named from the account and the schedule is
+  // already on it. Signed out there is no account to read either from, so the
+  // form asks — one field, and the only one on this page that buys a place on
+  // the grid rather than a group to be absent from.
+  const guest = status === "unauthenticated";
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +83,14 @@ function CreateGroupForm() {
     const res = await fetch("/api/groups", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, term }),
+      body: JSON.stringify(
+        guest
+          // Read at submit, not at mount: the term dropdown decides which
+          // list travels, and a fall schedule has no business in a spring
+          // group.
+          ? { name, term, displayName: who, classNumbers: readGuestCourses(term) }
+          : { name, term }
+      ),
     });
     if (!res.ok) {
       setError((await res.json().catch(() => ({}))).error ?? "could not create group");
@@ -81,6 +98,9 @@ function CreateGroupForm() {
       return;
     }
     const group = await res.json();
+    if (group.member) {
+      rememberGuestMember(group.code, { memberId: group.member.id, name: who.trim() });
+    }
     router.push(`/g/${group.code}`);
   }
 
@@ -99,6 +119,24 @@ function CreateGroupForm() {
         />
       </label>
 
+      {guest && (
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Your name
+          <input
+            value={who}
+            onChange={(e) => setWho(e.target.value)}
+            placeholder="what your friends call you"
+            required
+            maxLength={60}
+            className="rounded-lg border border-neutral-300 px-3 py-2 font-normal dark:border-neutral-700 dark:bg-neutral-900"
+          />
+          <span className="text-xs font-normal text-neutral-500">
+            Puts you on the grid with the courses you added above. It lives in
+            this group until you sign in and claim it.
+          </span>
+        </label>
+      )}
+
       {/* Still a dropdown, but one nobody has to look at: it opens on the term
           that is running, which is the answer almost every time. */}
       <label className="flex flex-col gap-1.5 text-sm font-medium">
@@ -116,7 +154,7 @@ function CreateGroupForm() {
 
       <button
         type="submit"
-        disabled={busy || !name.trim()}
+        disabled={busy || !name.trim() || (guest && !who.trim())}
         className="rounded-lg bg-neutral-900 px-3 py-2 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
       >
         {busy ? "Creating…" : "Create group"}

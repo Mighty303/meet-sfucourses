@@ -19,6 +19,17 @@
 const KEY = "meetup.guest.courses";
 
 /**
+ * Which member row this browser owns in a group it started signed out.
+ *
+ * The row itself is nobody's until someone claims it, so the group page has no
+ * way to tell the person who created it from any other visitor — and would
+ * otherwise offer both of them "add my schedule", one of whom is already on
+ * the grid. This is the only thing that knows, and it knows it locally, which
+ * is the right amount of authority for a claim nobody has proven yet.
+ */
+const MEMBER_KEY = "meetup.guest.member";
+
+/**
  * Sections per term. A guest week is a demonstration, not a transcript, and
  * nobody is in twelve sections — this is only here so a wedged retry loop
  * can't fill the origin's storage quota.
@@ -88,5 +99,40 @@ export function clearGuestCourses(): void {
     window.localStorage.removeItem(KEY);
   } catch {
     // Nothing was stored in the first place.
+  }
+}
+
+export interface GuestMember {
+  memberId: number;
+  name: string;
+}
+
+/** Keyed by group code, so one browser can start more than one group. */
+export function readGuestMember(code: string): GuestMember | null {
+  try {
+    const raw = window.localStorage.getItem(MEMBER_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const hit = (parsed as Record<string, unknown>)[code];
+    if (typeof hit !== "object" || hit === null) return null;
+    const { memberId, name } = hit as Record<string, unknown>;
+    if (typeof memberId !== "number" || typeof name !== "string") return null;
+    return { memberId, name };
+  } catch {
+    return null;
+  }
+}
+
+export function rememberGuestMember(code: string, member: GuestMember): void {
+  try {
+    const raw = window.localStorage.getItem(MEMBER_KEY);
+    const all: unknown = raw ? JSON.parse(raw) : {};
+    const next = typeof all === "object" && all !== null ? (all as Record<string, unknown>) : {};
+    next[code] = member;
+    window.localStorage.setItem(MEMBER_KEY, JSON.stringify(next));
+  } catch {
+    // Same as the courses above: without storage the row still exists, the
+    // page just can't tell it belongs to this browser.
   }
 }

@@ -13,6 +13,7 @@ import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
+import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
 import { commonFree, weekDates } from "@/lib/overlap";
@@ -122,6 +123,9 @@ function GroupSchedule({ code }: { code: string }) {
   // your own week without an account to have one on.
   const [gateAsked, setGateAsked] = useState(false);
   const [mineHandled, setMineHandled] = useState(false);
+  // The row this browser started the group with, if it did. Undefined until
+  // localStorage has been read, which can't happen during render.
+  const [guestMember, setGuestMember] = useState<GuestMember | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     // No minMinutes here: the page derives its own windows from busyByMember, so
@@ -179,12 +183,22 @@ function GroupSchedule({ code }: { code: string }) {
   const me = signedIn ? state?.members.find((m) => m.userId === session?.appUserId) ?? null : null;
   // Rows with no owner: claimable by whoever signs in and says that's them.
   const unclaimed = state?.members.filter((m) => m.userId === null) ?? [];
+  // The row this browser started the group with, still unclaimed. Matched
+  // against the live roster rather than trusted from storage: the id there is
+  // a note to self, and the row may have been claimed or deleted since.
+  const mine =
+    !signedIn && guestMember
+      ? unclaimed.find((m) => m.id === guestMember.memberId) ?? null
+      : null;
   // The group's admin: whoever created it. The server checks this again on the
   // delete itself — this only decides whether the button is worth showing.
   const isAdmin =
     signedIn &&
     state?.group.ownerUserId != null &&
     state.group.ownerUserId === session?.appUserId;
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setGuestMember(readGuestMember(code)); }, [code]);
 
   // Your other groups, so switching between them doesn't mean a trip via Home.
   // Independent of the group fetch: it's keyed on you, not on the code, so it
@@ -767,14 +781,36 @@ function GroupSchedule({ code }: { code: string }) {
            gets on with drawing it and puts the ask on the press that needs
            one. */
         <p className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
-          You&apos;re reading this as a guest.
-          <button
-            type="button"
-            onClick={() => setGateAsked(true)}
-            className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
-          >
-            Add my schedule →
-          </button>
+          {/* Two guests, two different sentences. Whoever started this group
+              signed out is already on the grid and has nothing to add — what
+              they have is a row only this browser knows is theirs. */}
+          {mine ? (
+            <>
+              <span>
+                You&apos;re on this grid as{" "}
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">{mine.displayName}</span>,
+                saved in this browser only.
+              </span>
+              <button
+                type="button"
+                onClick={() => setGateAsked(true)}
+                className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+              >
+                Sign in to keep it →
+              </button>
+            </>
+          ) : (
+            <>
+              You&apos;re reading this as a guest.
+              <button
+                type="button"
+                onClick={() => setGateAsked(true)}
+                className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+              >
+                Add my schedule →
+              </button>
+            </>
+          )}
         </p>
       ) : !me ? (
         <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">

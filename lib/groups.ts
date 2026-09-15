@@ -129,10 +129,17 @@ export async function defaultMemberName(userId: number): Promise<string> {
   return (user?.name ?? user?.email ?? "Member").slice(0, 60);
 }
 
+/**
+ * `userId` is null for a row nobody owns yet — someone who started a group
+ * without an account. That row is a real member with a real schedule (in
+ * meetup.member_courses rather than meetup.user_courses, which is what
+ * member_courses_effective resolves), and claimMember is how it later becomes
+ * theirs. It takes no admin and no avatar, because both need a user.
+ */
 export async function addMember(
   groupId: number,
   displayName: string,
-  userId: number
+  userId: number | null
 ): Promise<Member> {
   const sql = getDb();
   const existing = await sql`
@@ -144,15 +151,20 @@ export async function addMember(
     VALUES (${groupId}, ${displayName}, ${color}, ${userId})
     RETURNING id, display_name, color, user_id
   `;
-  // A group created signed out has no admin yet; the first person through the
-  // door takes it. WHERE owner_user_id IS NULL makes that a one-time grab even
-  // if two people join at once.
-  await sql`
-    UPDATE meetup.groups SET owner_user_id = ${userId}
-    WHERE id = ${groupId} AND owner_user_id IS NULL
-  `;
+  if (userId !== null) {
+    // A group created signed out has no admin yet; the first person through the
+    // door takes it. WHERE owner_user_id IS NULL makes that a one-time grab even
+    // if two people join at once.
+    await sql`
+      UPDATE meetup.groups SET owner_user_id = ${userId}
+      WHERE id = ${groupId} AND owner_user_id IS NULL
+    `;
+  }
 
-  const user = await sql`SELECT image FROM meetup.users WHERE id = ${userId}`;
+  const user =
+    userId === null
+      ? []
+      : await sql`SELECT image FROM meetup.users WHERE id = ${userId}`;
   // Not empty any more: if they've already saved a schedule for this term in
   // another group, joining shows it here immediately. That's the whole point.
   return {
