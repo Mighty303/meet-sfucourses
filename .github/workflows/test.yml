@@ -28,14 +28,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npx tsc --noEmit
       - run: npm run lint
+      # Before tsc, not after: next build generates the route types in
+      # .next/types that tsconfig includes, and app/layout.tsx uses one of them.
       - run: npm run build
         env:
           # The build only needs these to exist, not to be valid: nothing is
           # prerendered against a real database.
           DATABASE_URL: postgresql://user:pass@localhost/db
           AUTH_SECRET: build-only-not-a-real-secret
+      - run: npx tsc --noEmit
 
   database:
     name: database (Neon branch)
