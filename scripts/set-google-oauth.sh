@@ -30,6 +30,11 @@ echo "Wrote AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET to .env.local"
 
 if command -v vercel >/dev/null 2>&1; then
   AUTH_SECRET_VALUE=$(grep -E '^AUTH_SECRET=' .env.local | cut -d= -f2- | tr -d '"')
+  if [ -z "$AUTH_SECRET_VALUE" ]; then
+    echo "AUTH_SECRET is missing from .env.local — refusing to push empty secrets to Vercel." >&2
+    echo "Set AUTH_SECRET locally first (or add Google vars only in the Vercel dashboard)." >&2
+    exit 1
+  fi
   for ENV in production preview development; do
     for KEY in AUTH_GOOGLE_ID AUTH_GOOGLE_SECRET AUTH_SECRET; do
       vercel env rm "$KEY" "$ENV" --yes >/dev/null 2>&1 || true
@@ -42,5 +47,6 @@ if command -v vercel >/dev/null 2>&1; then
   echo
   echo "Now redeploy:  vercel --prod --yes"
 else
-  echo "vercel CLI not found; set the three vars in the dashboard yourself."
+  echo "vercel CLI not found; set AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, and AUTH_SECRET"
+  echo "in the Vercel dashboard (Production), then redeploy."
 fi

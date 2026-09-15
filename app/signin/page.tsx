@@ -19,6 +19,17 @@ const SFU_ERRORS: Record<string, string> = {
 const SFU_ERROR_DEFAULT =
   "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once. Start again below.";
 
+/** Auth.js folds most OAuth/server failures into this one client-safe label. */
+const AUTHJS_ERRORS: Record<string, string> = {
+  Configuration:
+    "Sign-in is misconfigured on the server. Google needs both AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET on Vercel (Production), plus AUTH_SECRET and AUTH_URL=https://meet.sfucourses.com. Check /api/auth/config-diag (booleans only), then redeploy.",
+  AccessDenied: "That sign-in was denied. Try another method below.",
+  Verification: "That sign-in link is no longer valid. Start again below.",
+  OAuthCallbackError:
+    "Google sign-in didn't complete. Try again; if it keeps happening, confirm the OAuth client secret and redirect URI on Google Cloud.",
+  Default: "Sign-in didn't complete. Try again below.",
+};
+
 /**
  * `?next=` is where to land afterwards — set by whatever sent you here, so a
  * group invite you opened signed out gets you back to that group.
@@ -33,13 +44,17 @@ export default async function SignIn({
   // Already signed in: this page has nothing to offer, and leaving it reachable
   // means a stale tab can sign you into a second account by accident.
   if (session?.appUserId) redirect(to);
-  // Only the SFU round trip sends anyone back here with an error; next-auth's
-  // own failures are handled inside the panel. `step` narrows which half failed.
-  let sfuError =
-    error === "sfu" ? (step && SFU_ERRORS[step]) || SFU_ERROR_DEFAULT : null;
-  // Safe classification only (e.g. missing_column) — never SQL or secrets.
-  if (sfuError && step === "db" && dbError && /^[a-z0-9_]{1,40}$/i.test(dbError)) {
-    sfuError = `${sfuError} (${dbError})`;
+
+  let banner: string | null = null;
+  if (error === "sfu") {
+    banner = (step && SFU_ERRORS[step]) || SFU_ERROR_DEFAULT;
+    // Safe classification only (e.g. missing_column) — never SQL or secrets.
+    if (step === "db" && dbError && /^[a-z0-9_]{1,40}$/i.test(dbError)) {
+      banner = `${banner} (${dbError})`;
+    }
+  } else if (error) {
+    banner = AUTHJS_ERRORS[error] ?? AUTHJS_ERRORS.Default;
   }
-  return <AuthScreen mode="signin" next={to} error={sfuError} />;
+
+  return <AuthScreen mode="signin" next={to} error={banner} />;
 }

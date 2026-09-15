@@ -3,13 +3,32 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { isAdminEmail } from "@/lib/admin";
 import { casEnabled, casServiceUrl, validateTicket } from "@/lib/cas";
+import { googleEnabled } from "@/lib/google-auth";
 import { touchLastSeen } from "@/lib/last-seen";
 import { verifyPassword } from "@/lib/password";
 import { getPasswordUserByEmail, getUser, upsertSfuUser, upsertUser } from "@/lib/users";
 
+/**
+ * Register Google only when both env vars are present. Auth.js will start the
+ * OAuth redirect with just a client id; the token exchange needs the secret,
+ * and a missing one becomes the opaque `error=Configuration` page.
+ */
+const google = googleEnabled()
+  ? Google({
+      clientId: process.env.AUTH_GOOGLE_ID!,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+    })
+  : null;
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Send Auth.js failures to our sign-in page instead of the stock
+  // /api/auth/error HTML, so Configuration / AccessDenied get a real message.
+  pages: {
+    error: "/signin",
+    signIn: "/signin",
+  },
   providers: [
-    Google,
+    ...(google ? [google] : []),
     /**
      * The other door: an address and a password kept here, for people who would
      * rather not hand a third party the list of groups they're in. Accounts are
