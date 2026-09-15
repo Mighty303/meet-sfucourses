@@ -1,0 +1,26 @@
+# Watches the sfucourses API for schema drift.
+#
+# Deliberately not part of the pull-request checks: it depends on somebody
+# else's server, so a failure here means "SFU changed something", never "this
+# diff is wrong". Running it daily means we hear about a renamed field on our
+# own schedule rather than from a user whose timetable stopped loading.
+
+name: smoke
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 06:00 Pacific
+  workflow_dispatch:
+
+jobs:
+  sfucourses:
+    name: live sfucourses API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:smoke
