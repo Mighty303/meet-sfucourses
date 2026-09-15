@@ -326,7 +326,7 @@ export function HeatGrid({
             </span>
             <span
               className="flex items-center gap-1"
-              title="Before their first class, or after the day's last — they'd be making the trip specially"
+              title="Before their first class, or after the day's last, so they'd be making the trip specially"
             >
               <span className="h-3.5 w-6 rounded-sm border border-neutral-300 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900" />
               nobody on campus
@@ -495,9 +495,9 @@ export function HeatGrid({
                                 ...(solo
                                   ? [
                                       ...(awayOnline.length > 0
-                                        ? ["Online only — not on campus today"]
+                                        ? ["Online only, so not on campus today"]
                                         : awayNone.length > 0
-                                          ? ["No class — you'd come to campus specially"]
+                                          ? ["No class, so you'd come to campus specially"]
                                           : outsideNames.length > 0
                                             ? ["Before your first class, or after your last"]
                                             : []),

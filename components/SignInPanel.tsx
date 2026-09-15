@@ -129,7 +129,7 @@ export function SignInPanel({
         {register && (
           <p className="text-xs text-neutral-500">
             At least {MIN_PASSWORD_LENGTH} characters. There&apos;s no password
-            reset yet — nothing here sends email — so save it somewhere.
+            reset yet (nothing here sends email), so save it somewhere.
           </p>
         )}
         <button

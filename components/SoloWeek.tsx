@@ -187,8 +187,8 @@ export function SoloWeek({ startTerm, terms }: { startTerm: string; terms: strin
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Your schedule</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {fromTermCode(term)}. Only your own classes — join a group to see when
-            you and other people are free at the same time.
+            {fromTermCode(term)}. Only your own classes. Join a group to see
+            when you and other people are free at the same time.
           </p>
         </div>
         <div className="flex items-center gap-2">

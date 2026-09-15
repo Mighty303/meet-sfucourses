@@ -41,7 +41,7 @@ export function AuthScreen({
         <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
           {register
             ? "You need one to add your own schedule. Either door works, and the password one never talks to Google."
-            : "Welcome back — whichever way you signed up."}
+            : "Welcome back, whichever way you signed up."}
         </p>
       </div>
 

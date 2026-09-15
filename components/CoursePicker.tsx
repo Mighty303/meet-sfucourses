@@ -151,7 +151,7 @@ export function CoursePicker({ term, target, classNumbers, loading = false, cour
           <h3 className="text-sm font-semibold tracking-tight">Your courses</h3>
           {classNumbers.length === 0 && (
             <p className="text-sm text-neutral-500">
-              {loading ? "Loading your sections…" : "Nothing saved yet — add your sections below."}
+              {loading ? "Loading your sections…" : "Nothing saved yet. Add your sections below."}
             </p>
           )}
           <CourseChips

@@ -435,7 +435,7 @@ export function WeekGrid({
                             lines: [
                               `${formatTime(w.start)} – ${formatTime(w.end)} · ${formatDuration(minutes)}`,
                               w.onCampus.length === 0
-                                ? solo ? "You have no class this day" : "Nobody has class this day — someone has to travel"
+                                ? solo ? "You have no class this day" : "Nobody has class this day, so someone has to travel"
                                 // Present tense only when they're actually there:
                                 // outside the gaps this window is before the first
                                 // class or after the last, and campus has emptied.

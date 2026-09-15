@@ -85,7 +85,7 @@ export function CourseChips({ term, classNumbers, courseColors, onRemove, busy, 
                 undo-less delete on the most obvious thing to click. Only the
                 × removes, and only where there is one. */}
             <span
-              title={`${courseCode(c)} ${s.section} — ${meetingLabel(s)}`}
+              title={`${courseCode(c)} ${s.section}: ${meetingLabel(s)}`}
               className={`flex items-center rounded-lg border border-neutral-300 dark:border-neutral-700 ${
                 compact ? "gap-1.5 py-1 text-xs" : "gap-2 py-1.5 text-sm"
               } ${
