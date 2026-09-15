@@ -176,8 +176,8 @@ function AccountMenu({
           </div>
 
           <div className="border-t border-neutral-200 pt-1 dark:border-neutral-800">
-            <MenuLink href={profileHref} active={profileActive}>Profile</MenuLink>
-            {adminHref && <MenuLink href={adminHref} active={false}>Admin</MenuLink>}
+            <MenuLink href={profileHref} active={profileActive} icon={<PersonIcon />}>Profile</MenuLink>
+            {adminHref && <MenuLink href={adminHref} active={false} icon={<ShieldIcon />}>Admin</MenuLink>}
           </div>
 
           {/* Sign out isn't destructive, so it stays neutral until hover, and
@@ -186,8 +186,9 @@ function AccountMenu({
             <button
               role="menuitem"
               onClick={() => signOut()}
-              className="w-full rounded-lg px-3 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-red-600 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-red-400"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-red-600 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-red-400"
             >
+              <LeaveIcon />
               Sign out
             </button>
           </div>
@@ -197,20 +198,84 @@ function AccountMenu({
   );
 }
 
-function MenuLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function MenuLink({
+  href,
+  active,
+  icon,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  /** Decorative. The row's own text is what names the destination. */
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <Link
       href={href}
       role="menuitem"
       aria-current={active ? "page" : undefined}
-      className={`block rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
         active
           ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
           : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
       }`}
     >
+      {icon}
       {children}
     </Link>
+  );
+}
+
+/**
+ * The row marks, in the same hand as the nav's hamburger: 20-unit box, 1.75
+ * stroke, no fill. They take their colour from the row, so Sign out's turns
+ * red on hover along with its label.
+ */
+function RowIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function PersonIcon() {
+  return (
+    <RowIcon>
+      <circle cx="10" cy="7" r="3" />
+      <path d="M4.5 16.5c1.1-2.4 3-3.6 5.5-3.6s4.4 1.2 5.5 3.6" />
+    </RowIcon>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <RowIcon>
+      <path d="M10 3l5.5 2v4.3c0 3.2-2.2 5.7-5.5 6.7-3.3-1-5.5-3.5-5.5-6.7V5z" />
+    </RowIcon>
+  );
+}
+
+/* The arrow leaves through the gap in the box, which is the door. */
+function LeaveIcon() {
+  return (
+    <RowIcon>
+      <path d="M8 4.5H5.5A1.5 1.5 0 0 0 4 6v8a1.5 1.5 0 0 0 1.5 1.5H8" />
+      <path d="M12.5 13L15.5 10 12.5 7" />
+      <path d="M15.5 10H8" />
+    </RowIcon>
   );
 }
 
