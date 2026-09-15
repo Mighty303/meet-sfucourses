@@ -4,7 +4,7 @@ import { CoursesPanel } from "@/components/CoursesPanel";
 import { findGroup } from "@/lib/groups";
 import { safeNext } from "@/lib/safe-next";
 import { currentTermCode, isTermCode } from "@/lib/sfu";
-import { listUserCourses } from "@/lib/user-courses";
+import { getSoloState, listUserCourseTerms, listUserCourses } from "@/lib/user-courses";
 
 /**
  * Which sections you're in — the one question that used to be asked on the
@@ -47,8 +47,36 @@ export default async function Courses({
   }
   // Read here rather than fetched by the panel: it's the whole content of the
   // page, and a search box above an empty list that fills in a moment later
-  // reads as "nothing saved" for exactly long enough to be believed.
-  const classNumbers = await listUserCourses(session.appUserId, startTerm);
+  // reads as "nothing saved" for exactly long enough to be believed. The week
+  // comes with it for the same reason — it is the same answer drawn, and a grid
+  // that arrives one round trip after the list it belongs to flashes empty on
+  // every visit by someone who already has a schedule.
+  //
+  // Null when the term isn't published: getSoloState reaches the upstream
+  // timetable and throws when there isn't one, which is an upstream gap rather
+  // than a fault in the request. The panel says so and the page still renders,
+  // because you can't add sections to a term SFU hasn't posted anyway.
+  const schedule = await getSoloState(session.appUserId, startTerm, {
+    week: new Date(),
+    dayStart: 8 * 60,
+    dayEnd: 22 * 60,
+    minMinutes: 60,
+  }).catch(() => null);
 
-  return <CoursesPanel startTerm={startTerm} startCourses={classNumbers} next={to} />;
+  const classNumbers = schedule?.classNumbers ?? (await listUserCourses(session.appUserId, startTerm));
+
+  // What the term pills count. A term you have sections in is worth showing
+  // even when it has scrolled off the end of what the picker offers — that's
+  // the only way back to last spring's list once the year turns.
+  const savedTerms = await listUserCourseTerms(session.appUserId);
+
+  return (
+    <CoursesPanel
+      startTerm={startTerm}
+      startCourses={classNumbers}
+      startSchedule={schedule}
+      savedTerms={savedTerms.map((t) => ({ term: t.term, count: t.classNumbers.length }))}
+      next={to}
+    />
+  );
 }
