@@ -14,6 +14,14 @@ const CACHE_TTL_HOURS = 24;
 
 const HISTORY_DAYS = 30;
 
+/**
+ * How many feedback messages the portal carries. Enough that nothing recent is
+ * missed between visits, small enough that a flood can't make the page the
+ * heaviest thing in the app — the table has no other reader, so a cap here is
+ * the whole retention policy.
+ */
+export const FEEDBACK_LIMIT = 100;
+
 export interface Totals {
   groups: number;
   users: number;
@@ -106,6 +114,21 @@ export interface CourseRow {
   members: number;
 }
 
+export interface FeedbackRow {
+  id: number;
+  /** What they typed, verbatim — React escapes it on the way out. */
+  message: string;
+  /** The address they typed, if any. Absent doesn't mean anonymous: see `name`. */
+  email: string | null;
+  /** Their account name, when the message came from a signed-in session. */
+  name: string | null;
+  /** The account's own address, which is the one we can actually reply to. */
+  accountEmail: string | null;
+  /** Page it was sent from, already checked to be a path of ours. */
+  path: string | null;
+  createdAt: string;
+}
+
 export interface AdminMetrics {
   generatedAt: string;
   totals: Totals;
@@ -115,6 +138,7 @@ export interface AdminMetrics {
   daily: DayRow[];
   cache: CacheRow[];
   topCourses: CourseRow[];
+  feedback: FeedbackRow[];
 }
 
 /** Postgres hands int8 back as a string; every numeric field goes through this. */
@@ -130,7 +154,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   const sql = getDb();
 
   // Independent reads, so one round trip's latency instead of eight.
-  const [totalsRows, storageRows, tableRows, schemaRows, groupRows, userRows, dailyRows, cacheRows, courseRows] =
+  const [totalsRows, storageRows, tableRows, schemaRows, groupRows, userRows, dailyRows, cacheRows, courseRows, feedbackRows] =
     await Promise.all([
       sql`
         SELECT
@@ -260,6 +284,18 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
         ORDER BY 3 DESC, 2
         LIMIT 12
       `,
+
+      // LEFT JOIN, not JOIN: most of the point of the box is that it works
+      // signed out, so the rows with no account behind them are the ones this
+      // must not drop.
+      sql`
+        SELECT f.id, f.message, f.email, f.path, f.created_at,
+               u.name, u.email AS account_email
+        FROM meetup.feedback f
+        LEFT JOIN meetup.users u ON u.id = f.user_id
+        ORDER BY f.created_at DESC
+        LIMIT ${FEEDBACK_LIMIT}
+      `,
     ]);
 
   const t = totalsRows[0];
@@ -343,6 +379,16 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
       courses: n(r.courses),
       fetchedAt: iso(r.fetched_at),
       fresh: !!r.fresh,
+    })),
+
+    feedback: feedbackRows.map((r) => ({
+      id: r.id as number,
+      message: r.message as string,
+      email: (r.email as string | null) ?? null,
+      name: (r.name as string | null) ?? null,
+      accountEmail: (r.account_email as string | null) ?? null,
+      path: (r.path as string | null) ?? null,
+      createdAt: iso(r.created_at),
     })),
 
     topCourses: await labelCourses(
