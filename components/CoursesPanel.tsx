@@ -90,7 +90,14 @@ export function CoursesPanel({
       </div>
 
       <div className="fade-up" style={{ animationDelay: "120ms" }}>
+        {/* Keyed on the term, which remounts it on a switch.
+            Its search results are tagged by query alone and the chips cache
+            their resolved sections, so without this the previous term's list
+            stays on screen and clickable while the new term's is in flight —
+            and pressing Add on one of those rows would file a fall section
+            under spring. */}
         <CoursePicker
+          key={term}
           term={term}
           target={{ via: "me" }}
           classNumbers={courses ?? []}

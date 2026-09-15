@@ -46,7 +46,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "sign in first" }, { status: 401 });
   }
 
-  const { term, classNumber } = await req.json().catch(() => ({}));
+  // `null` is valid JSON, so .catch() alone isn't enough — a body of "null"
+  // parses fine and then throws on destructuring, turning a malformed request
+  // into a 500 instead of the 400 below.
+  const body = (await req.json().catch(() => null)) ?? {};
+  const { term, classNumber } = body as { term?: unknown; classNumber?: unknown };
   if (!isTermCode(term)) {
     return NextResponse.json({ error: "term is required" }, { status: 400 });
   }

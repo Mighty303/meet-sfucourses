@@ -39,7 +39,14 @@ export async function GET(
   // The lookup is scoped to the numbers this member saved, so the term dump
   // stays in Postgres; that means it has to come second rather than in parallel.
   const classNumbers = await getMemberCourses(access.id);
-  const index = await sectionIndexForClassNumbers(group.term, classNumbers);
+  // Same upstream gap the group's own route guards against: a term with no
+  // published sections throws rather than resolving to none.
+  const index = await sectionIndexForClassNumbers(group.term, classNumbers).catch(
+    () => null
+  );
+  if (!index) {
+    return NextResponse.json({ error: "course data is unavailable" }, { status: 502 });
+  }
 
   const ics = timetableCalendar({
     index,

@@ -161,8 +161,15 @@ export async function getSoloState(
 
   // Skipped classes drop out inside commonFree, the same as they do for a
   // group — the gap a skipped lecture opens is as real on your own week.
+  //
+  // Gated on having a schedule, not on having blocks this week: a section can
+  // be saved and still put nothing on these five days — an async one never
+  // does, and a timetabled one doesn't outside its own date range. Those weeks
+  // are wide open rather than blank, and commonFree says so, because the
+  // complement of no busy time is the whole day. This is the same rule
+  // getGroupState applies when it decides who counts as participating.
   const free =
-    busy.length === 0
+    classNumbers.length === 0
       ? []
       : commonFree({
           members: [{ name: "you", busy }],

@@ -21,13 +21,23 @@ export async function GET(
 
   const q = new URL(req.url).searchParams;
   const week = q.get("week") ? new Date(`${q.get("week")}T12:00:00`) : new Date();
-  const state = await getGroupState(group, {
-    week: Number.isNaN(week.getTime()) ? new Date() : week,
-    dayStart: toMinutes(q.get("dayStart") ?? "08:00"),
-    dayEnd: toMinutes(q.get("dayEnd") ?? "22:00"),
-    minMinutes: Number(q.get("minMinutes") ?? 60),
-  });
-  return NextResponse.json(state);
+
+  // Resolving the week needs the term's sections, and a term SFU has not
+  // published yet makes that fetch throw — which took the whole group page
+  // down with a 500, for a group anyone can create a year ahead. It is an
+  // upstream gap rather than a bad request, and it answers the way the course
+  // lookup has always answered it.
+  try {
+    const state = await getGroupState(group, {
+      week: Number.isNaN(week.getTime()) ? new Date() : week,
+      dayStart: toMinutes(q.get("dayStart") ?? "08:00"),
+      dayEnd: toMinutes(q.get("dayEnd") ?? "22:00"),
+      minMinutes: Number(q.get("minMinutes") ?? 60),
+    });
+    return NextResponse.json(state);
+  } catch {
+    return NextResponse.json({ error: "course data is unavailable" }, { status: 502 });
+  }
 }
 
 /** Renaming is the admin's too — one name, and everyone reads it. */

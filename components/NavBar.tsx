@@ -40,11 +40,14 @@ function NavBarContent() {
       <NavLink href="/" active={pathname === "/"}>Home</NavLink>
       {signedIn && (
         /* Ahead of Schedule, because it comes first: a week grid with nothing
-           on it is what you get for skipping this. The group you're looking at
-           rides along so the page can offer that group's term and send you
-           back to it. */
+           on it is what you get for skipping this.
+
+           The group's code rides along, not its term — the nav only has the
+           path to read, and a group is not necessarily in the term it is
+           currently. /courses resolves the code and opens on that group's
+           term, which is the one whose sections you came to edit. */
         <NavLink
-          href={currentCode ? `/courses?next=${encodeURIComponent(`/g/${currentCode}`)}` : "/courses"}
+          href={currentCode ? `/courses?group=${encodeURIComponent(currentCode)}` : "/courses"}
           active={pathname === "/courses"}
         >
           Courses
