@@ -47,7 +47,11 @@ export function AuthButton({ stacked = false, profileHref = "/profile", profileA
     return (
       <Link
         href="/signin"
-        className="rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        // Solid rather than the bare label it was. It is the only thing in the
+        // bar you can press, and a grey word beside a grey logo read as a
+        // caption. The border is what keeps it a button on a white page —
+        // against the dark bar the fill does that on its own.
+        className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-100 dark:border-transparent dark:hover:bg-neutral-200"
       >
         Sign in
       </Link>
