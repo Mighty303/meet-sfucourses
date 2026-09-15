@@ -7,8 +7,22 @@ import { Suspense, useEffect, useState } from "react";
 import { AuthButton } from "./AuthButton";
 import { Logo } from "./Logo";
 
+/** Shared shell classes so the Suspense fallback matches the real bar's box. */
+const navShell =
+  "sticky top-0 z-50 shrink-0 border-b border-neutral-200 bg-background pt-[env(safe-area-inset-top)] dark:border-neutral-800";
+
 export function NavBar() {
-  return <Suspense fallback={<div className="h-16 border-b border-neutral-200 dark:border-neutral-800" />}><NavBarContent /></Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <div className={navShell}>
+          <div className="mx-auto h-14 w-full max-w-[1600px] sm:px-6" />
+        </div>
+      }
+    >
+      <NavBarContent />
+    </Suspense>
+  );
 }
 
 function NavBarContent() {
@@ -82,7 +96,7 @@ function NavBarContent() {
   );
 
   return (
-    <nav className="border-b border-neutral-200 dark:border-neutral-800">
+    <nav className={navShell}>
       <div className="mx-auto flex w-full max-w-[1600px] items-center gap-x-1 p-3 sm:px-6">
         <Link
           href="/"

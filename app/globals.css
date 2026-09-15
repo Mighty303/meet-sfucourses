@@ -26,6 +26,14 @@ body {
 }
 
 /*
+ * Sticky nav is ~3.5rem plus any safe-area inset; keep in-page anchors and
+ * Next's scroll-into-view from landing under it.
+ */
+html {
+  scroll-padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+
+/*
  * Sections easing in on the home page, staggered by an inline animation-delay
  * at each call site.
  *

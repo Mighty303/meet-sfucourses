@@ -12,7 +12,7 @@ import Image from "next/image";
  */
 export function Footer() {
   return (
-    <footer className="relative mt-auto overflow-hidden bg-[#191a1a]">
+    <footer className="relative shrink-0 overflow-hidden bg-[#191a1a]">
       {/* Decorative, and it bleeds off two edges: no alt text, and it must
           never widen the page or sit above the links. */}
       <Image
