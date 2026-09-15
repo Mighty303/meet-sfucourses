@@ -161,8 +161,6 @@ interface Props {
   busyByMember: Record<number, BusyBlock[]>;
   dayStart: number;
   dayEnd: number;
-  /** One person's week: the ramp collapses to free/busy, and so does the wording. */
-  solo?: boolean;
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
   weekStart?: string;
   /**
@@ -197,7 +195,6 @@ export function HeatGrid({
   busyByMember,
   dayStart,
   dayEnd,
-  solo = false,
   weekStart,
   attendance,
   columnHeight = COLUMN_HEIGHT,
@@ -251,7 +248,7 @@ export function HeatGrid({
   const total = withSchedules.length;
   // One swatch per person up to six, then a sampled ramp — a twelve-person
   // group doesn't need twelve legend chips to read as a gradient.
-  const swatches = solo ? 2 : Math.min(total, 6) + 1;
+  const swatches = Math.min(total, 6) + 1;
 
   const span = dayEnd - dayStart;
   const pct = (mins: number) => ((mins - dayStart) / span) * 100;
@@ -280,7 +277,7 @@ export function HeatGrid({
           className={`flex flex-col items-center justify-center gap-1 text-xs ${LEGEND_HEIGHT}`}
         >
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            <span className="text-neutral-500">{solo ? "In class" : `0/${total} free`}</span>
+            <span className="text-neutral-500">{`0/${total} free`}</span>
             <span className="flex overflow-hidden rounded-sm border border-neutral-300 dark:border-neutral-700">
               {Array.from({ length: swatches }, (_, i) => (
                 <span
@@ -292,9 +289,9 @@ export function HeatGrid({
                 />
               ))}
             </span>
-            <span className="text-neutral-500">{solo ? "Free" : `${total}/${total} free`}</span>
+            <span className="text-neutral-500">{`${total}/${total} free`}</span>
             <span className="text-neutral-400 dark:text-neutral-500">
-              · hover a band {solo ? "for the time" : "to see who"}
+              · hover a band to see who
             </span>
           </div>
           {/* The two unshaded states, plus the attendance marks drawn over the
@@ -424,7 +421,7 @@ export function HeatGrid({
                       // Naming everyone under a "7/7" only repeats the count in
                       // longer form. Names earn their line when the band is
                       // split, which is when you actually need to know who.
-                      const showNames = !solo && free > 0 && free < total && minutes >= 55;
+                      const showNames = free > 0 && free < total && minutes >= 55;
                       // Near the top of the ramp the list is mostly "+4", which
                       // spends a line to say nothing: on a 7/8 the fact you want
                       // is the one person who can't make it. Only worth
@@ -474,81 +471,48 @@ export function HeatGrid({
                               // the timetable is the thing you're after.
                               title: own
                                 ? own.course
-                                : solo
-                                ? free > 0
-                                  ? "Gap between your classes"
-                                  : allOnline
-                                    ? "Online"
-                                    : inClass
-                                      ? "You have class"
-                                      : awayOnline.length > 0
-                                        ? "Online only today"
-                                        : awayNone.length > 0
-                                          ? "No class today"
-                                          : "Off campus"
                                 : `${free} of ${total} on campus and free`,
                               subtitle: own
                                 ? `${LABELS[day]}${own.detail ? ` · ${own.detail}` : ""}`
                                 : LABELS[day],
                               lines: [
                                 `${formatTime(band.start)} – ${formatTime(band.end)} · ${formatDuration(minutes)}`,
-                                ...(solo
-                                  ? [
-                                      ...(awayOnline.length > 0
-                                        ? ["Online only, so not on campus today"]
-                                        : awayNone.length > 0
-                                          ? ["No class, so you'd come to campus specially"]
-                                          : outsideNames.length > 0
-                                            ? ["Before your first class, or after your last"]
-                                            : []),
-                                      // Solo still needs the reason a gap opened:
-                                      // your own skipped class is the only one
-                                      // that could have done it.
-                                      ...(deviations.skipping.length > 0
-                                        ? [{ label: "Skipping", value: nameList(deviations.skipping, 3) }]
-                                        : []),
-                                      ...(deviations.online.length > 0 && free > 0
-                                        ? [{ label: "Online", value: nameList(deviations.online, 3) }]
-                                        : []),
-                                    ]
-                                  : [
-                                      // On a class band the title already
-                                      // says what's happening, so the "nobody
-                                      // is free" line is the same fact twice.
-                                      ...(freeNames.length > 0
-                                        ? [{ label: "Free", value: freeNames.join(", ") }]
-                                        : inClass || allOnline
-                                          ? []
-                                          : ["Nobody is on campus with a gap here"]),
-                                      // Who, not which class. A course code
-                                      // per person was a second column of text
-                                      // on a card read for one thing: whether
-                                      // the hour is open and who's in it.
-                                      ...(onCampusNames.length > 0
-                                        ? [{ label: "In class", value: onCampusNames.join(", ") }]
-                                        : []),
-                                      ...(onlineNames.length > 0
-                                        ? [{ label: "Online", value: onlineNames.join(", ") }]
-                                        : []),
-                                      // Why the free set grew: the shading
-                                      // already says someone is free; this
-                                      // says they freed the hour on purpose.
-                                      ...(deviations.skipping.length > 0
-                                        ? [{ label: "Skipping", value: nameList(deviations.skipping, 3) }]
-                                        : []),
-                                      // The two reasons someone isn't counted. Worth
-                                      // spelling out — otherwise a 2/7 next to a full
-                                      // detailed grid looks like a bug.
-                                      ...(outsideNames.length > 0
-                                        ? [{ label: "Off campus", value: outsideNames.join(", ") }]
-                                        : []),
-                                      ...(awayOnline.length > 0
-                                        ? [{ label: "Online only", value: awayOnline.join(", ") }]
-                                        : []),
-                                      ...(awayNone.length > 0
-                                        ? [{ label: "No class", value: awayNone.join(", ") }]
-                                        : []),
-                                    ]),
+                                // On a class band the title already
+                                // says what's happening, so the "nobody
+                                // is free" line is the same fact twice.
+                                ...(freeNames.length > 0
+                                  ? [{ label: "Free", value: freeNames.join(", ") }]
+                                  : inClass || allOnline
+                                    ? []
+                                    : ["Nobody is on campus with a gap here"]),
+                                // Who, not which class. A course code
+                                // per person was a second column of text
+                                // on a card read for one thing: whether
+                                // the hour is open and who's in it.
+                                ...(onCampusNames.length > 0
+                                  ? [{ label: "In class", value: onCampusNames.join(", ") }]
+                                  : []),
+                                ...(onlineNames.length > 0
+                                  ? [{ label: "Online", value: onlineNames.join(", ") }]
+                                  : []),
+                                // Why the free set grew: the shading
+                                // already says someone is free; this
+                                // says they freed the hour on purpose.
+                                ...(deviations.skipping.length > 0
+                                  ? [{ label: "Skipping", value: nameList(deviations.skipping, 3) }]
+                                  : []),
+                                // The two reasons someone isn't counted. Worth
+                                // spelling out — otherwise a 2/7 next to a full
+                                // detailed grid looks like a bug.
+                                ...(outsideNames.length > 0
+                                  ? [{ label: "Off campus", value: outsideNames.join(", ") }]
+                                  : []),
+                                ...(awayOnline.length > 0
+                                  ? [{ label: "Online only", value: awayOnline.join(", ") }]
+                                  : []),
+                                ...(awayNone.length > 0
+                                  ? [{ label: "No class", value: awayNone.join(", ") }]
+                                  : []),
                                 // Only the split. One campus is the ordinary
                                 // case and saying so is a line of noise on
                                 // every card; two means they can't actually
@@ -596,21 +560,16 @@ export function HeatGrid({
                           {minutes >= 30 &&
                             (inClass || allOnline ? (
                               /* The count on a class band is always 0/n, which
-                                 says nothing you can't see from the shading.
-                                 The course codes say what the band actually is,
-                                 and in solo mode they replace a bare "Class". */
+                                 says nothing you can't see from the shading. The
+                                 course codes say what the band actually is. */
                               <span className="w-full truncate text-[10px] font-medium text-neutral-600 dark:text-neutral-300">
                                 {titleCourses && titleCourses.all.length > 0
                                   ? nameList(titleCourses.all, 2)
-                                  : solo
-                                    ? allOnline
-                                      ? "Online"
-                                      : "Class"
-                                    : `0/${total}`}
+                                  : `0/${total}`}
                               </span>
                             ) : (
                               <span className="font-semibold text-[11px] text-emerald-950 tabular-nums dark:text-white">
-                                {solo ? (free > 0 ? "Gap" : "") : `${free}/${total}`}
+                                {`${free}/${total}`}
                               </span>
                             ))}
                           {showNames && (
