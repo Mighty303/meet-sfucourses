@@ -43,11 +43,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
     /**
-     * The SFU door. Not an OAuth provider because SFU doesn't publish one —
-     * CAS is a redirect and a one-time ticket, so /api/auth/sfu/start and
-     * /api/auth/sfu/callback do the round trip and this only redeems what they
-     * bring back. The ticket, not a password, is the credential; the password
-     * was typed into cas.sfu.ca and never came near us.
+     * The SFU door, kept registered so Auth.js lists it and so a future form
+     * path can reuse it. The live round trip does not call signIn("sfu-cas"):
+     * /api/auth/sfu/callback validates the ticket, upserts the user, and mints
+     * the session JWT on the redirect itself (see lib/cas-session.ts). The
+     * password was typed into cas.sfu.ca and never came near us.
      */
     Credentials({
       id: "sfu-cas",
