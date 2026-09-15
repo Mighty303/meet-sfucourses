@@ -731,7 +731,7 @@ function GroupSchedule({ code }: { code: string }) {
 
       {copyState === "failed" && (
         <div className="-mt-4 flex items-center gap-2">
-          <p className="text-sm text-neutral-500">Copying didn&apos;t work — take it from here:</p>
+          <p className="text-sm text-neutral-500">Copying didn&apos;t work. Take it from here:</p>
           <input
             readOnly
             autoFocus
@@ -781,7 +781,7 @@ function GroupSchedule({ code }: { code: string }) {
         <div className="flex flex-col gap-3 rounded-xl border border-neutral-300 bg-neutral-50 p-4 sm:p-5 dark:border-neutral-700 dark:bg-neutral-900">
           <h2 className="font-medium">Join {state.group.name}</h2>
           <p className="text-sm text-neutral-600 dark:text-neutral-300">
-            Sign in to add your classes to this group — you&apos;ll be added
+            Sign in to add your classes to this group. You&apos;ll be added
             automatically as soon as you&apos;re back here. Reading the
             group&apos;s week doesn&apos;t need an account.
           </p>
@@ -837,7 +837,7 @@ function GroupSchedule({ code }: { code: string }) {
               disabled={saving}
               className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
             >
-              {saving ? "Joining…" : unclaimed.length > 0 ? "None of these — add me" : "Join group"}
+              {saving ? "Joining…" : unclaimed.length > 0 ? "Add me instead" : "Join group"}
             </button>
             {error && <p className="text-sm text-amber-600">{error}</p>}
           </div>

@@ -166,7 +166,7 @@ export function timetableCalendar({
   }
 
   return buildCalendar(events, {
-    name: `${groupName} — my timetable (${fromTermCode(term)})`,
+    name: `${groupName}: my timetable (${fromTermCode(term)})`,
     stamp,
   });
 }

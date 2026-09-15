@@ -65,7 +65,7 @@ export function FeedbackWidget() {
 
     if (!res?.ok) {
       const reason = res ? (await res.json().catch(() => ({}))).error : null;
-      setError(reason ?? "could not send that — try again in a moment");
+      setError(reason ?? "could not send that, try again in a moment");
       setState("idle");
       return;
     }
@@ -117,7 +117,7 @@ export function FeedbackWidget() {
 
         {state === "sent" ? (
           <p className="px-5 py-10 text-center text-sm text-neutral-600 dark:text-neutral-300">
-            Thanks — that landed.
+            Thanks, that landed.
           </p>
         ) : (
           <form onSubmit={send} className="flex flex-col gap-4 px-5 py-5">

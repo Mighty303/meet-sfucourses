@@ -221,7 +221,7 @@ export default function HeatAttendancePreview() {
       <p className="text-sm text-neutral-500">
         You are Ada. Hover Monday 10:00–11:30 (her skipped CMPT 307) or Tuesday
         morning (online) to set Going / Skipping / Online. Check &quot;Also
-        apply to future weeks&quot; before pressing — buttons spin while
+        apply to future weeks&quot; before pressing. Buttons spin while
         saving.
       </p>
       {log.length > 0 && (

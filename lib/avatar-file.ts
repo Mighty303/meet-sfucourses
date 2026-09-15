@@ -18,7 +18,7 @@ export async function fileToAvatar(file: File): Promise<string> {
     throw new Error("that isn't an image");
   }
   if (file.size > MAX_FILE_BYTES) {
-    throw new Error("that image is too large — 12 MB is the limit");
+    throw new Error("that image is too large, the limit is 12 MB");
   }
 
   const bitmap = await loadBitmap(file);

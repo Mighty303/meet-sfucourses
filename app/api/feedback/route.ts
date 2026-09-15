@@ -90,7 +90,7 @@ export async function POST(req: Request) {
   if (userId) {
     if (await overBurstLimit(userId)) {
       return NextResponse.json(
-        { error: `that's a lot at once — try again in ${BURST_WINDOW_MINUTES} minutes` },
+        { error: `that's a lot at once, try again in ${BURST_WINDOW_MINUTES} minutes` },
         { status: 429 }
       );
     }

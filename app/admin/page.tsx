@@ -217,7 +217,7 @@ function StorageSection({ metrics: { storage } }: { metrics: AdminMetrics }) {
   return (
     <Panel
       title="Database space"
-      note="Whole Neon database, not just this app — the tutoring app shares it."
+      note="Whole Neon database, not just this app: the tutoring app shares it."
     >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <div className="flex flex-col gap-4">
@@ -394,7 +394,7 @@ function GroupsSection({ metrics: { groups } }: { metrics: AdminMetrics }) {
       title={`Groups (${groups.length})`}
       note={
         dead > 0
-          ? `${dead} can't produce an overlap yet — fewer than two members have added a schedule.`
+          ? `${dead} can't produce an overlap yet: fewer than two members have added a schedule.`
           : "Every group has at least two schedules in it."
       }
     >
@@ -524,7 +524,7 @@ function CacheSection({ metrics: { cache } }: { metrics: AdminMetrics }) {
       note="One upstream fetch per term, shared by every group. A stale row is refetched on the next page load that needs it."
     >
       {cache.length === 0 ? (
-        <p className="text-sm text-neutral-500">Nothing cached — the next group page will fill it.</p>
+        <p className="text-sm text-neutral-500">Nothing cached. The next group page will fill it.</p>
       ) : (
         <ul className="flex flex-col gap-2 text-sm">
           {cache.map((c) => (
