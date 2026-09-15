@@ -1,16 +1,32 @@
 import { NextResponse } from "next/server";
-import { signIn } from "@/auth";
-import { SFU_NEXT_COOKIE, SFU_STATE_COOKIE, casEnabled } from "@/lib/cas";
+import {
+  SFU_NEXT_COOKIE,
+  SFU_STATE_COOKIE,
+  casEnabled,
+  casOrigin,
+  casServiceUrl,
+  validateTicket,
+} from "@/lib/cas";
+import {
+  SFU_SESSION_MAX_AGE,
+  casSessionCookieName,
+  casSessionSecure,
+  mintCasSessionToken,
+} from "@/lib/cas-session";
 import { safeNext } from "@/lib/safe-next";
+import { upsertSfuUser } from "@/lib/users";
 
 /**
  * The end of the SFU round trip. CAS has checked the password and sent the
- * visitor back here with a one-time ticket; the `sfu-cas` provider in auth.ts
- * redeems it, which is the only place the ticket is believed.
+ * visitor back here with a one-time ticket.
  *
- * `redirect: false` so the failure path is ours to choose. Left to itself,
- * next-auth would send a rejected ticket to its own error page, which says
- * "CredentialsSignin" to someone who typed nothing and clicked one button.
+ * Ticket validation and the users-row write happen here, and the session JWT
+ * is set on this redirect. Going through Auth.js `signIn("sfu-cas")` used to
+ * fold every failure (missing state cookie, spent ticket, DB error, cookie
+ * write) into one `?error=sfu`, and the helper's cookie path is aimed at
+ * Server Actions rather than a Route Handler redirect. Doing the work here
+ * keeps the failure steps distinct and the Set-Cookie on the same response
+ * as the Location.
  */
 export async function GET(req: Request) {
   if (!casEnabled()) return new NextResponse("not found", { status: 404 });
@@ -21,28 +37,42 @@ export async function GET(req: Request) {
   // than trusted: a cookie is still something a browser sends.
   const next = safeNext(readCookie(req, SFU_NEXT_COOKIE));
   const state = readCookie(req, SFU_STATE_COOKIE);
+  // casOrigin(), not url.origin: on Vercel the request URL can be the
+  // per-deploy *.vercel.app host even when the browser used the custom domain.
+  const origin = casOrigin();
+  const secure = casSessionSecure();
 
-  const done = (to: string) => {
-    const res = NextResponse.redirect(new URL(to, url.origin));
+  const done = (to: string, sessionToken?: string) => {
+    const res = NextResponse.redirect(new URL(to, origin));
     res.cookies.delete(SFU_NEXT_COOKIE);
     res.cookies.delete(SFU_STATE_COOKIE);
+    if (sessionToken) {
+      res.cookies.set(casSessionCookieName(secure), sessionToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure,
+        maxAge: SFU_SESSION_MAX_AGE,
+      });
+    }
     return res;
   };
 
-  // No state cookie → this browser never started a round trip. Refuse so a
-  // pasted callback URL can't mint a session for whoever holds the ticket.
-  if (!state || !ticket) return done("/signin?error=sfu");
+  // No state cookie → this browser never started a round trip (or a bounce
+  // tracker cleared it). Refuse so a pasted callback URL can't mint a session.
+  if (!state) return done("/signin?error=sfu&step=state");
+  if (!ticket) return done("/signin?error=sfu&step=ticket");
+
+  const cas = await validateTicket(ticket, casServiceUrl());
+  if (!cas) return done("/signin?error=sfu&step=ticket");
 
   try {
-    const after = await signIn("sfu-cas", { ticket, redirect: false, redirectTo: next });
-    // A bad, expired, or already-spent ticket comes back as an error in the
-    // URL rather than a throw, because signIn runs Auth in raw mode.
-    if (typeof after === "string" && after.includes("error=")) return done("/signin?error=sfu");
+    const row = await upsertSfuUser(cas);
+    const sessionToken = await mintCasSessionToken(row);
+    return done(next, sessionToken);
   } catch {
-    return done("/signin?error=sfu");
+    return done("/signin?error=sfu&step=session");
   }
-
-  return done(next);
 }
 
 /** The cookie by hand — this runs before anything has parsed one for us. */
