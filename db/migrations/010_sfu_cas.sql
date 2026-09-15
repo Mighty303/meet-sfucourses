@@ -27,8 +27,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_meetup_users_sfu_username
   WHERE sfu_username IS NOT NULL;
 
 -- A row still has to be reachable through some door; now there are three.
--- Dropped first because migrations here re-run from the top and ADD CONSTRAINT
--- has no IF NOT EXISTS.
+--
+-- This is the file that changes the constraint, so it is the one that states
+-- it unconditionally — 007, which introduced it, stands down as soon as the
+-- column below exists, so a re-run from the top cannot undo this line.
+-- Widening is always safe to re-run: every row that satisfied the narrower
+-- version satisfies this one, and a database left without the constraint by an
+-- earlier failed run gets it back here.
 ALTER TABLE meetup.users DROP CONSTRAINT IF EXISTS users_has_credential;
 
 ALTER TABLE meetup.users ADD CONSTRAINT users_has_credential
