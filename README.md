@@ -77,6 +77,42 @@ environments without them appearing on screen:
 ./scripts/set-google-oauth.sh
 ```
 
+### SFU sign-in
+
+The third door, and the only one that proves the person is at SFU. SFU
+publishes no OIDC or public SAML for outside applications — only **CAS** — so
+the protocol lives in `lib/cas.ts` and a `sfu-cas` credentials provider in
+`auth.ts` redeems the ticket it brings back. The password is typed at
+`cas.sfu.ca` and never reaches this site; what comes back is a one-time ticket
+we validate server to server.
+
+It is off unless `SFU_CAS_ENABLED=1`. SFU does not normally register student
+apps, and that is fine: an unregistered service still gets a working login
+form, with a warning banner on `cas.sfu.ca`, and `serviceValidate` still
+releases the username — which is all this door needs. Formal registration is
+optional, not a gate.
+
+The service URL is `<origin>/api/auth/sfu/callback`. To walk the flow against a
+local stand-in instead of the real IdP:
+
+```bash
+node scripts/fake-cas.mjs    # stands in for cas.sfu.ca, on :8099
+SFU_CAS_ENABLED=1 SFU_CAS_BASE=http://localhost:8099/cas npm run dev
+```
+
+`SFU_CAS_BASE` is ignored in production unless it is https, because whoever
+answers `/serviceValidate` decides who you are signed in as. The service URL is
+built from `AUTH_URL`, never from a request header, for the same reason — and
+it carries no query string, so the string CAS binds the ticket to can't drift
+between the redirect out and the validation. Where the visitor was headed rides
+in a short-lived `sfu-cas-next` cookie instead.
+
+A CAS account is its own `meetup.users` row, keyed on the computing ID and
+never merged with a Google or password row that happens to share the address —
+see `db/migrations/007_password_auth.sql` for why two doors meeting silently is
+the wrong shape. Group rosters show a ✓ next to members who came in this way;
+only that boolean crosses the wire, never the computing ID.
+
 Sign-in is required to join a group, edit a schedule, or set an attendance
 status; anyone with the invite link can still view one. A member row is owned by the user who created it, so
 only they can change their schedule or name.

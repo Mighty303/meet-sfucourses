@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SignInPanel } from "@/components/SignInPanel";
+import { casEnabled } from "@/lib/cas";
 
 /**
  * The sign-in and sign-up pages, which are the same page with two headings and
@@ -15,6 +16,7 @@ export function AuthScreen({
   mode,
   next,
   toggleNext = next,
+  error = null,
 }: {
   mode: "signin" | "register";
   /** Already passed through safeNext by the page above. */
@@ -26,6 +28,8 @@ export function AuthScreen({
    * link across carries the real destination rather than the detour.
    */
   toggleNext?: string;
+  /** Something that went wrong before this page — today, only the SFU round trip. */
+  error?: string | null;
 }) {
   const register = mode === "register";
   // Carried across the toggle, so bouncing between the two doesn't lose where
@@ -48,9 +52,18 @@ export function AuthScreen({
         )}
       </div>
 
+      {error && (
+        <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          {error}
+        </p>
+      )}
+
       <SignInPanel
         initialMode={mode}
         next={next}
+        // Read here rather than in the panel: the panel is a client component,
+        // and whether CAS is configured is a server fact.
+        sfu={casEnabled()}
         toggleHref={register ? `/signin${query}` : `/signup${query}`}
       />
 

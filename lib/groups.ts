@@ -60,6 +60,12 @@ export interface Member {
   /** Null for members created before sign-in existed. */
   userId: number | null;
   image: string | null;
+  /**
+   * Signed in through SFU's CAS, so somebody other than them has confirmed
+   * they're at SFU. Only the fact crosses the wire, never the computing ID —
+   * an invite link full of strangers needs to know that much and no more.
+   */
+  sfuVerified: boolean;
 }
 
 export interface GroupState {
@@ -164,7 +170,10 @@ export async function addMember(
   const user =
     userId === null
       ? []
-      : await sql`SELECT image FROM meetup.users WHERE id = ${userId}`;
+      : await sql`
+          SELECT image, (sfu_username IS NOT NULL) AS sfu_verified
+          FROM meetup.users WHERE id = ${userId}
+        `;
   // Not empty any more: if they've already saved a schedule for this term in
   // another group, joining shows it here immediately. That's the whole point.
   return {
@@ -174,6 +183,7 @@ export async function addMember(
     classNumbers: await getMemberCourses(rows[0].id),
     userId: rows[0].user_id,
     image: user[0]?.image ?? null,
+    sfuVerified: user[0]?.sfu_verified === true,
   };
 }
 
@@ -350,12 +360,13 @@ export async function getGroupState(
   const rows = await sql`
     SELECT m.id, m.display_name, m.color, m.user_id,
            COALESCE(u.avatar, u.image) AS image,
+           (u.sfu_username IS NOT NULL) AS sfu_verified,
            COALESCE(ARRAY_AGG(ce.class_number) FILTER (WHERE ce.class_number IS NOT NULL), '{}') AS class_numbers
     FROM meetup.members m
     LEFT JOIN meetup.member_courses_effective ce ON ce.member_id = m.id
     LEFT JOIN meetup.users u ON u.id = m.user_id
     WHERE m.group_id = ${group.id}
-    GROUP BY m.id, m.display_name, m.color, m.user_id, u.avatar, u.image
+    GROUP BY m.id, m.display_name, m.color, m.user_id, u.avatar, u.image, u.sfu_username
     ORDER BY m.id
   `;
 
@@ -366,6 +377,7 @@ export async function getGroupState(
     classNumbers: r.class_numbers as string[],
     userId: r.user_id ?? null,
     image: r.image ?? null,
+    sfuVerified: r.sfu_verified === true,
   }));
 
   const blocks = await sql`

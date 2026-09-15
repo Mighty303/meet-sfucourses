@@ -1,3 +1,4 @@
+import { casEmail } from "./cas";
 import { getDb } from "./db";
 
 export interface AppUser {
@@ -136,4 +137,35 @@ export async function createPasswordUser(input: {
     RETURNING id, email, name, image, avatar
   `;
   return (rows[0] as AppUser) ?? null;
+}
+
+/**
+ * The SFU door. Keyed on the computing ID rather than the address, for the same
+ * reason upsertUser is keyed on Google's `sub`: the identifier CAS vouches for
+ * is the ID, and the address is a thing derived from it.
+ *
+ * A row of its own, never reconciled with a Google or password row that shares
+ * the address — 007 explains why two doors meeting silently is the wrong shape,
+ * and that argument doesn't change just because this door is the trustworthy
+ * one. Linking is something someone signed in should choose, not something a
+ * sign-in does to them.
+ *
+ * `name` starts as the computing ID so defaultMemberName() has something to put
+ * on a group roster; they can rename themselves there or on the profile page.
+ */
+export async function upsertSfuUser(input: {
+  username: string;
+  authtype: string | null;
+}): Promise<AppUser> {
+  const sql = getDb();
+  const username = input.username.toLowerCase();
+  const rows = await sql`
+    INSERT INTO meetup.users (sfu_username, sfu_authtype, email, name)
+    VALUES (${username}, ${input.authtype}, ${casEmail(username)}, ${username})
+    ON CONFLICT (LOWER(sfu_username)) WHERE sfu_username IS NOT NULL DO UPDATE
+      SET sfu_authtype = EXCLUDED.sfu_authtype,
+          updated_at = NOW()
+    RETURNING id, email, name, image, avatar
+  `;
+  return rows[0] as AppUser;
 }

@@ -2,9 +2,10 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { isAdminEmail } from "@/lib/admin";
+import { casEnabled, casServiceUrl, validateTicket } from "@/lib/cas";
 import { touchLastSeen } from "@/lib/last-seen";
 import { verifyPassword } from "@/lib/password";
-import { getPasswordUserByEmail, getUser, upsertUser } from "@/lib/users";
+import { getPasswordUserByEmail, getUser, upsertSfuUser, upsertUser } from "@/lib/users";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -41,6 +42,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    /**
+     * The SFU door. Not an OAuth provider because SFU doesn't publish one —
+     * CAS is a redirect and a one-time ticket, so /api/auth/sfu/start and
+     * /api/auth/sfu/callback do the round trip and this only redeems what they
+     * bring back. The ticket, not a password, is the credential; the password
+     * was typed into cas.sfu.ca and never came near us.
+     */
+    Credentials({
+      id: "sfu-cas",
+      name: "SFU computing ID",
+      credentials: { ticket: {} },
+      async authorize(credentials) {
+        if (!casEnabled()) return null;
+        const ticket = typeof credentials?.ticket === "string" ? credentials.ticket : "";
+        if (!ticket) return null;
+
+        // The service URL is built here from configuration, never taken from
+        // the caller. A ticket is only good for the service it was minted for,
+        // so naming that service is the one thing a caller must not get to do.
+        const cas = await validateTicket(ticket, casServiceUrl());
+        if (!cas) return null;
+
+        const row = await upsertSfuUser(cas);
+        return {
+          id: String(row.id),
+          email: row.email,
+          name: row.name,
+          image: row.avatar ?? row.image,
+        };
+      },
+    }),
   ],
   // Vercel serves this under a few hostnames (alias + per-deployment URLs).
   trustHost: true,
@@ -60,8 +92,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.appUserId = row.id;
         token.avatar = row.avatar;
         token.hasGoogle = true;
-      } else if (account?.provider === "password" && user?.id) {
-        // authorize() already did the checking; its id is our users row.
+      } else if ((account?.provider === "password" || account?.provider === "sfu-cas") && user?.id) {
+        // authorize() already did the checking; its id is our users row. Both
+        // of these are non-Google doors, which is all hasGoogle records — see
+        // the session callback for what that flag is actually for.
         token.appUserId = Number(user.id);
         token.avatar = (await getUser(Number(user.id)))?.avatar ?? null;
         token.hasGoogle = false;
