@@ -51,11 +51,6 @@ function nameList(names: string[], max = 3): string {
   return `${names.slice(0, max).join(", ")} +${names.length - max}`;
 }
 
-/** "Ann · CMPT 365" — name alone when the block has no course to point at. */
-function personCourse(name: string, course: string): string {
-  return course ? `${name} · ${course}` : name;
-}
-
 /**
  * What is in the way during a band, per busy member and as a distinct list.
  *
@@ -98,7 +93,9 @@ function coursesDuring(
  * Attendance deviations overlapping a band — the half the heatmap used to
  * swallow. Skipping is why a green window opened; online is why a hatched hour
  * isn't anchoring anyone to a campus. Both need a name on the card, because
- * this view draws no class blocks of its own.
+ * this view draws no class blocks of its own. Names only — which course they
+ * skipped is a fact about their timetable, and this view is read for who's
+ * around.
  */
 function attendanceDuring(
   band: AvailabilityBand,
@@ -110,12 +107,12 @@ function attendanceDuring(
   for (const m of members) {
     for (const b of busyByMember[m.id] ?? []) {
       if (b.day !== band.day || b.start >= band.end || b.end <= band.start) continue;
+      // The name, not the class they're missing. Which course it was is a
+      // detail of their timetable, not of whether the hour is open.
       if (b.status === "skipping") {
-        const line = personCourse(m.displayName, b.course);
-        if (!skipping.includes(line)) skipping.push(line);
+        if (!skipping.includes(m.displayName)) skipping.push(m.displayName);
       } else if (b.status === "remote") {
-        const line = personCourse(m.displayName, b.course);
-        if (!online.includes(line)) online.push(line);
+        if (!online.includes(m.displayName)) online.push(m.displayName);
       }
     }
   }
@@ -424,35 +421,6 @@ export function HeatGrid({
                         : allOnline
                           ? onlineCourses
                           : null;
-                      /**
-                       * "Martin, Angus Cheng · CMPT 365" rather than naming the
-                       * course once per person — a lecture is the common case,
-                       * and repeating it wrapped the line for no information.
-                       * Null when the title already carries the courses, when
-                       * there are too many people for the card to hold them, or
-                       * when nobody is in class at all.
-                       */
-                      const busyCourseLine = (
-                        indices: number[],
-                        names: string[],
-                        courses: { byMember: Map<number, string[]> },
-                        alreadyTitled: boolean
-                      ): string | null => {
-                        if (alreadyTitled || indices.length === 0) return null;
-                        if (indices.length > 3) return null;
-                        const sig = (i: number) => (courses.byMember.get(i) ?? []).join(", ");
-                        const first = sig(indices[0]);
-                        if (first === "") return null;
-                        return indices.every((i) => sig(i) === first)
-                          ? `${names.join(", ")} · ${first}`
-                          : indices
-                              .map((i) => {
-                                const c = sig(i);
-                                const name = withSchedules[i].displayName;
-                                return c === "" ? name : `${name} · ${c}`;
-                              })
-                              .join(", ");
-                      };
                       // Naming everyone under a "7/7" only repeats the count in
                       // longer form. Names earn their line when the band is
                       // split, which is when you actually need to know who.
@@ -495,30 +463,30 @@ export function HeatGrid({
                           }}
                           onMouseEnter={(e) =>
                             hover.show({
-                              // When the card carries your status buttons, lead
-                              // with the course — same question the detailed
+                              // Your own class leads, because the status
+                              // buttons below write against it and unnamed
+                              // buttons on a stretch of time don't say what
+                              // they'd change — the same question the detailed
                               // grid asks: what is this class, am I going.
+                              // Everyone else's band gets a state rather than a
+                              // course code. The band already prints the codes,
+                              // and the detailed grid is one toggle away when
+                              // the timetable is the thing you're after.
                               title: own
                                 ? own.course
                                 : solo
                                 ? free > 0
                                   ? "Gap between your classes"
-                                  : inClass || allOnline
-                                    ? titleCourses && titleCourses.all.length > 0
-                                      ? nameList(titleCourses.all, 2)
-                                      : allOnline
-                                        ? "Online"
-                                        : "You have class"
-                                    : awayOnline.length > 0
-                                      ? "Online only today"
-                                      : awayNone.length > 0
-                                        ? "No class today"
-                                        : "Off campus"
-                                : inClass && titleCourses && titleCourses.all.length > 0
-                                  ? nameList(titleCourses.all, 2)
-                                  : allOnline && titleCourses && titleCourses.all.length > 0
-                                    ? nameList(titleCourses.all, 2)
-                                    : `${free} of ${total} on campus and free`,
+                                  : allOnline
+                                    ? "Online"
+                                    : inClass
+                                      ? "You have class"
+                                      : awayOnline.length > 0
+                                        ? "Online only today"
+                                        : awayNone.length > 0
+                                          ? "No class today"
+                                          : "Off campus"
+                                : `${free} of ${total} on campus and free`,
                               subtitle: own
                                 ? `${LABELS[day]}${own.detail ? ` · ${own.detail}` : ""}`
                                 : LABELS[day],
@@ -552,37 +520,15 @@ export function HeatGrid({
                                         : inClass || allOnline
                                           ? []
                                           : ["Nobody is on campus with a gap here"]),
-                                      // Which class, not just who — but only
-                                      // while it stays a line. Past three
-                                      // people the card grows a paragraph and
-                                      // the names are the useful half.
+                                      // Who, not which class. A course code
+                                      // per person was a second column of text
+                                      // on a card read for one thing: whether
+                                      // the hour is open and who's in it.
                                       ...(onCampusNames.length > 0
-                                        ? [
-                                            {
-                                              label: "In class",
-                                              value:
-                                                busyCourseLine(
-                                                  onCampusBusy,
-                                                  onCampusNames,
-                                                  campusCourses,
-                                                  inClass
-                                                ) ?? onCampusNames.join(", "),
-                                            },
-                                          ]
+                                        ? [{ label: "In class", value: onCampusNames.join(", ") }]
                                         : []),
                                       ...(onlineNames.length > 0
-                                        ? [
-                                            {
-                                              label: "Online",
-                                              value:
-                                                busyCourseLine(
-                                                  onlineBusy,
-                                                  onlineNames,
-                                                  onlineCourses,
-                                                  allOnline
-                                                ) ?? onlineNames.join(", "),
-                                            },
-                                          ]
+                                        ? [{ label: "Online", value: onlineNames.join(", ") }]
                                         : []),
                                       // Why the free set grew: the shading
                                       // already says someone is free; this
