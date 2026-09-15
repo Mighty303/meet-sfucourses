@@ -4,6 +4,13 @@ import { CROSS_MS, type HoverCardData, type useHoverCard } from "@/components/Ho
 import type { AttendanceControl } from "@/components/WeekGrid";
 import type { DayKey } from "@/lib/sfu";
 
+/**
+ * The heading's own box, shared with the time gutter's blank spacer so the two
+ * columns keep the same first row. The heading is a hit target now, not a
+ * caption, so its height is set here rather than left to the text.
+ */
+export const DAY_HEADING_BOX = "mb-1 flex h-8 items-center justify-center gap-1 rounded-md font-medium";
+
 const LABELS: Record<DayKey, string> = {
   Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun",
 };
@@ -59,7 +66,7 @@ export function DayHeading({
 
   if (!attendance) {
     return (
-      <div className={`mb-1 flex items-center justify-center gap-1 font-medium ${tone}`}>
+      <div className={`${DAY_HEADING_BOX} ${tone}`}>
         {inner}
       </div>
     );
@@ -82,7 +89,10 @@ export function DayHeading({
   return (
     <button
       type="button"
-      className={`mb-1 flex w-full items-center justify-center gap-1 rounded font-medium transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 ${tone}`}
+      // A resting fill and a full-height box: the whole-day handle is worth
+      // aiming at, and a caption-sized strip of text was easy to miss between
+      // the columns.
+      className={`${DAY_HEADING_BOX} w-full cursor-pointer border border-neutral-200 bg-neutral-100/70 transition-colors hover:border-neutral-300 hover:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:border-neutral-700 dark:hover:bg-neutral-800 ${tone}`}
       onMouseEnter={(e) => hover.show(card(e.clientX, e.clientY))}
       onMouseLeave={() => hover.hide(CROSS_MS)}
       // Touch has no hover, and focus has no cursor — both need somewhere to

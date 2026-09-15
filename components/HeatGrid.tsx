@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { CROSS_MS, HoverCard, useHoverCard } from "@/components/HoverCard";
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
 import type { AttendanceControl, Member } from "@/components/WeekGrid";
-import { DayHeading } from "@/components/DayHeading";
+import { DAY_HEADING_BOX, DayHeading } from "@/components/DayHeading";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
 import { FILL, fillAlpha, IN_CLASS_HATCH, ONLINE_HATCH } from "@/lib/heat-fill";
 import { availabilityBands, type AvailabilityBand, type BusyBlock } from "@/lib/overlap";
@@ -305,7 +305,7 @@ export function HeatGrid({
               labels line up with the grid lines, and its width matches the
               detailed grid's so the two views don't shift when you toggle. */}
           <div className="w-12 shrink-0">
-            <div className="mb-1 text-center font-medium" aria-hidden>&nbsp;</div>
+            <div className={DAY_HEADING_BOX} aria-hidden />
             <div className={`relative ${columnHeight}`}>
               {hours.map((h) => (
                 <div
