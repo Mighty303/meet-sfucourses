@@ -1,10 +1,10 @@
 /**
  * A stand-in for cas.sfu.ca, for local work.
  *
- * The real one only answers for service URLs SFU has registered, which means
- * the SFU sign-in path can't be walked — or reviewed, or regression-tested —
- * until an approval lands. This serves the two endpoints lib/cas.ts talks to
- * and nothing else.
+ * The real IdP accepts unregistered services (with a warning) and is fine for
+ * a manual check, but this stands in when you want a full round trip without
+ * typing a real password. It serves the two endpoints lib/cas.ts talks to and
+ * nothing else.
  *
  *   node scripts/fake-cas.mjs
  *   SFU_CAS_ENABLED=1 SFU_CAS_BASE=http://localhost:8099/cas npm run dev

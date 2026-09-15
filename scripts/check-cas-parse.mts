@@ -16,6 +16,9 @@
 import { createServer } from "node:http";
 import { validateTicket } from "../lib/cas.ts";
 
+process.env.SFU_CAS_ENABLED = "1";
+process.env.SFU_CAS_BASE = "http://127.0.0.1:8123/cas";
+
 const cases: Record<string, string> = {
   // Exactly SFU's documented success sample — no xmlns, two elements.
   "docs sample": `<cas:serviceResponse>

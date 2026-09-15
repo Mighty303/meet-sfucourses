@@ -12,24 +12,30 @@
  */
 
 /**
- * Overridable so `scripts/fake-cas.mjs` can stand in during development, which
- * matters because the real one refuses any service URL SFU hasn't registered —
- * see .env.example. The override is fenced off in production below.
+ * Overridable so `scripts/fake-cas.mjs` can stand in during development. The
+ * real IdP accepts unregistered service URLs (with a warning banner) and still
+ * releases the username; the fake is for walking the round trip offline. The
+ * override is fenced off in production below.
+ *
+ * Read at call time (not module load) so check-cas-parse can point at a local
+ * socket after setting SFU_CAS_BASE.
  */
-const CAS_BASE = (process.env.SFU_CAS_BASE ?? "https://cas.sfu.ca/cas").replace(/\/+$/, "");
+function casBase(): string {
+  return (process.env.SFU_CAS_BASE ?? "https://cas.sfu.ca/cas").replace(/\/+$/, "");
+}
 
 /**
- * Off unless deliberately turned on. Using CAS requires SFU Information
- * Systems to register this origin as a service first, so a deployment without
- * that approval must show no SFU button and accept no ticket — not half of
- * each. Every entry point checks this.
+ * Off unless deliberately turned on. Every entry point checks this so a
+ * deployment without the flag shows no SFU button and accepts no ticket —
+ * not half of each. Registration with SFU is not required for the username
+ * attribute; see README.
  */
 export function casEnabled(): boolean {
   if (process.env.SFU_CAS_ENABLED !== "1") return false;
   // The dev override must not become a way to point ticket validation at
   // someone else's server: whoever answers /serviceValidate decides who you
   // are signed in as.
-  if (process.env.NODE_ENV === "production" && !CAS_BASE.startsWith("https://")) return false;
+  if (process.env.NODE_ENV === "production" && !casBase().startsWith("https://")) return false;
   return true;
 }
 
@@ -61,7 +67,7 @@ export function casServiceUrl(): string {
 }
 
 export function casLoginUrl(service: string): string {
-  return `${CAS_BASE}/login?service=${encodeURIComponent(service)}`;
+  return `${casBase()}/login?service=${encodeURIComponent(service)}`;
 }
 
 /**
@@ -71,8 +77,23 @@ export function casLoginUrl(service: string): string {
  */
 export const SFU_NEXT_COOKIE = "sfu-cas-next";
 
+/**
+ * Browser-bound proof that *this* browser started the CAS round trip. Without
+ * it, a callback URL carrying someone else's ticket would silently sign the
+ * victim into that account. CAS has no OAuth-style `state` parameter, so the
+ * cookie is the correlation.
+ */
+export const SFU_STATE_COOKIE = "sfu-cas-state";
+
 /** Long enough to type a password and clear a 2FA prompt; nobody's standing state. */
 export const SFU_NEXT_MAX_AGE = 10 * 60;
+
+/** Cryptographically random opaque token for SFU_STATE_COOKIE. */
+export function newCasState(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export interface CasIdentity {
   /** The computing ID, lowercased. */
@@ -96,7 +117,7 @@ const USERNAME = /^[a-z0-9_-]{1,32}$/;
 export async function validateTicket(ticket: string, service: string): Promise<CasIdentity | null> {
   if (!casEnabled()) return null;
 
-  const url = `${CAS_BASE}/serviceValidate?service=${encodeURIComponent(service)}&ticket=${encodeURIComponent(ticket)}`;
+  const url = `${casBase()}/serviceValidate?service=${encodeURIComponent(service)}&ticket=${encodeURIComponent(ticket)}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
 

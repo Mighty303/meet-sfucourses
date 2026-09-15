@@ -86,14 +86,14 @@ the protocol lives in `lib/cas.ts` and a `sfu-cas` credentials provider in
 `cas.sfu.ca` and never reaches this site; what comes back is a one-time ticket
 we validate server to server.
 
-It is off unless `SFU_CAS_ENABLED=1`, and turning it on is not enough on its
-own: **SFU Information Systems has to register the origin as a CAS service
-first**, or `cas.sfu.ca` refuses the `service` URL and nobody gets in. The
-callback to put on the [CAS service application
-form](https://www.sfu.ca/information-systems/services/cas/cas-services-application-form/)
-is `<origin>/api/auth/sfu/callback`.
+It is off unless `SFU_CAS_ENABLED=1`. SFU does not normally register student
+apps, and that is fine: an unregistered service still gets a working login
+form, with a warning banner on `cas.sfu.ca`, and `serviceValidate` still
+releases the username — which is all this door needs. Formal registration is
+optional, not a gate.
 
-To walk the flow without that approval:
+The service URL is `<origin>/api/auth/sfu/callback`. To walk the flow against a
+local stand-in instead of the real IdP:
 
 ```bash
 node scripts/fake-cas.mjs    # stands in for cas.sfu.ca, on :8099

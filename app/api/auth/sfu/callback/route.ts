@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { signIn } from "@/auth";
-import { SFU_NEXT_COOKIE, casEnabled } from "@/lib/cas";
+import { SFU_NEXT_COOKIE, SFU_STATE_COOKIE, casEnabled } from "@/lib/cas";
 import { safeNext } from "@/lib/safe-next";
 
 /**
@@ -19,15 +19,19 @@ export async function GET(req: Request) {
   const ticket = url.searchParams.get("ticket") ?? "";
   // Set by the start route before we handed them to CAS. Re-checked rather
   // than trusted: a cookie is still something a browser sends.
-  const next = safeNext(readNextCookie(req));
+  const next = safeNext(readCookie(req, SFU_NEXT_COOKIE));
+  const state = readCookie(req, SFU_STATE_COOKIE);
 
   const done = (to: string) => {
     const res = NextResponse.redirect(new URL(to, url.origin));
     res.cookies.delete(SFU_NEXT_COOKIE);
+    res.cookies.delete(SFU_STATE_COOKIE);
     return res;
   };
 
-  if (!ticket) return done("/signin?error=sfu");
+  // No state cookie → this browser never started a round trip. Refuse so a
+  // pasted callback URL can't mint a session for whoever holds the ticket.
+  if (!state || !ticket) return done("/signin?error=sfu");
 
   try {
     const after = await signIn("sfu-cas", { ticket, redirect: false, redirectTo: next });
@@ -42,10 +46,15 @@ export async function GET(req: Request) {
 }
 
 /** The cookie by hand — this runs before anything has parsed one for us. */
-function readNextCookie(req: Request): string | null {
+function readCookie(req: Request, name: string): string | null {
   for (const part of (req.headers.get("cookie") ?? "").split(";")) {
-    const [name, ...rest] = part.trim().split("=");
-    if (name === SFU_NEXT_COOKIE) return decodeURIComponent(rest.join("="));
+    const [key, ...rest] = part.trim().split("=");
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(rest.join("="));
+    } catch {
+      return null;
+    }
   }
   return null;
 }
