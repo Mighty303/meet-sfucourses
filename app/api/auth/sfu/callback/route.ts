@@ -14,7 +14,7 @@ import {
   mintCasSessionToken,
 } from "@/lib/cas-session";
 import { safeNext } from "@/lib/safe-next";
-import { upsertSfuUser } from "@/lib/users";
+import { sfuDbErrorHint, upsertSfuUser } from "@/lib/users";
 
 /**
  * The end of the SFU round trip. CAS has checked the password and sent the
@@ -70,8 +70,10 @@ export async function GET(req: Request) {
   try {
     row = await upsertSfuUser(cas);
   } catch (err) {
-    console.error("sfu cas upsert failed", err);
-    return done("/signin?error=sfu&step=db");
+    const hint = sfuDbErrorHint(err);
+    console.error("sfu cas upsert failed", { dbError: hint, err });
+    // Non-sensitive hint only (PG code class / short tag — no SQL or secrets).
+    return done(`/signin?error=sfu&step=db&dbError=${encodeURIComponent(hint)}`);
   }
 
   try {

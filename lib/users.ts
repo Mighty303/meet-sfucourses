@@ -152,6 +152,12 @@ export async function createPasswordUser(input: {
  *
  * `name` starts as the computing ID so defaultMemberName() has something to put
  * on a group roster; they can rename themselves there or on the profile page.
+ *
+ * UPDATE-then-INSERT rather than ON CONFLICT: Neon/Postgres expression unique
+ * indexes are brittle to match from ON CONFLICT (parens, predicate, planner
+ * quirks), and a missed match is exactly `step=db` after CAS succeeded. Two
+ * statements plus a unique-violation retry cover the concurrent-create race
+ * without needing the conflict target to name the index expression.
  */
 export async function upsertSfuUser(input: {
   username: string;
@@ -159,19 +165,83 @@ export async function upsertSfuUser(input: {
 }): Promise<AppUser> {
   const sql = getDb();
   const username = input.username.toLowerCase();
-  // Expression unique indexes need an extra pair of parens in ON CONFLICT
-  // ((LOWER(...))), or Postgres rejects the statement with "no unique or
-  // exclusion constraint matching the ON CONFLICT specification" — which is
-  // exactly the step=session failure after CAS has already succeeded.
-  const rows = await sql`
-    INSERT INTO meetup.users (sfu_username, sfu_authtype, email, name)
-    VALUES (${username}, ${input.authtype}, ${casEmail(username)}, ${username})
-    ON CONFLICT ((LOWER(sfu_username))) WHERE sfu_username IS NOT NULL DO UPDATE
-      SET sfu_authtype = EXCLUDED.sfu_authtype,
-          updated_at = NOW()
+  const email = casEmail(username);
+
+  const updated = await sql`
+    UPDATE meetup.users
+    SET sfu_authtype = ${input.authtype},
+        updated_at = NOW()
+    WHERE LOWER(sfu_username) = ${username}
     RETURNING id, email, name, image, avatar
   `;
-  const row = rows[0] as AppUser | undefined;
-  if (!row) throw new Error("upsertSfuUser returned no row");
-  return row;
+  if (updated[0]) return updated[0] as AppUser;
+
+  try {
+    const inserted = await sql`
+      INSERT INTO meetup.users (sfu_username, sfu_authtype, email, name)
+      VALUES (${username}, ${input.authtype}, ${email}, ${username})
+      RETURNING id, email, name, image, avatar
+    `;
+    const row = inserted[0] as AppUser | undefined;
+    if (!row) throw new Error("upsertSfuUser returned no row");
+    return row;
+  } catch (err) {
+    // Concurrent first sign-in: the other writer won the partial unique index.
+    if (!isUniqueViolation(err)) throw err;
+    const raced = await sql`
+      UPDATE meetup.users
+      SET sfu_authtype = ${input.authtype},
+          updated_at = NOW()
+      WHERE LOWER(sfu_username) = ${username}
+      RETURNING id, email, name, image, avatar
+    `;
+    const row = raced[0] as AppUser | undefined;
+    if (!row) throw err;
+    return row;
+  }
+}
+
+/** Postgres unique_violation — Neon surfaces it as `code` on NeonDbError. */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: unknown }).code === "23505"
+  );
+}
+
+/**
+ * Short, non-secret classification for logs and optional `dbError=` query hints.
+ * Never includes connection strings, SQL, or row values.
+ */
+export function sfuDbErrorHint(err: unknown): string {
+  if (typeof err !== "object" || err === null) return "unknown";
+  const e = err as {
+    code?: unknown;
+    message?: unknown;
+    constraint?: unknown;
+    column?: unknown;
+  };
+  const code = typeof e.code === "string" ? e.code : "";
+  const message = typeof e.message === "string" ? e.message.toLowerCase() : "";
+
+  if (code === "42703" || (message.includes("does not exist") && message.includes("column"))) {
+    return "missing_column";
+  }
+  if (code === "42P01" || (message.includes("does not exist") && message.includes("relation"))) {
+    return "missing_table";
+  }
+  // ON CONFLICT target that does not match any unique index (historical path).
+  if (code === "42P10" || message.includes("no unique or exclusion constraint")) {
+    return "conflict_target";
+  }
+  if (code === "23505") return "unique_violation";
+  if (code === "23514") return "check_violation";
+  if (code === "23502") return "not_null";
+  if (code) return code;
+  if (message.includes("fetch failed") || message.includes("connecting to database")) {
+    return "unreachable";
+  }
+  return "unknown";
 }
