@@ -1,23 +1,29 @@
-"use client";
-
-import Link from "next/link";
-import { DemoAvailability } from "@/components/DemoAvailability";
-import { GroupForms } from "@/components/GroupForms";
+import { GroupActions } from "@/components/GroupActions";
+import { GuestSchedule } from "@/components/GuestSchedule";
 
 /**
- * What "/" is for someone who hasn't signed in: what the thing is, the two
- * ways in, and a worked example of it.
+ * What "/" is for someone who hasn't signed in: what the thing is, and then
+ * the thing.
  *
- * The pitch and the demo live here rather than on the home page proper because
- * they answer a question you only ask once. Someone already in three groups is
- * not still wondering what the grid means, and making them scroll past an
- * explanation of it to reach their own groups is the kind of thing that makes
- * a tool feel like a brochure.
+ * It used to be four blocks stacked down the middle — a pitch, a card offering
+ * an account two ways, a demo of invented people, and two open forms for
+ * starting or joining a group. Five calls to action and two forms, none of
+ * which showed you anything about your own week, and all of it on screen at
+ * once. The account card is gone entirely: nothing here writes to the database
+ * until you ask it to, so there is nothing to sign in for yet, and the nav
+ * still has the door for people who already have a key.
+ *
+ * What replaces it is one question — which courses are you in — answered in a
+ * search box, drawn as a real week underneath. See GuestSchedule for where
+ * those sections live before there is an account to put them on.
+ *
+ * Wider than it was, because a week grid is now the centre of the page rather
+ * than a screenshot under it.
  */
 export function LandingHome() {
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col justify-center gap-8 p-6 pb-20 sm:pb-24">
-      {/* Staggered a couple of hundred milliseconds apart: the page is four
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 p-6 pb-20 sm:pb-24">
+      {/* Staggered a couple of hundred milliseconds apart: the page is a few
           blocks stacked down the middle, and arriving together makes them read
           as one wall. Inline delays rather than nth-child utilities, because
           the two halves of the home page have different numbers of blocks and
@@ -30,51 +36,15 @@ export function LandingHome() {
         </p>
       </div>
 
-      {/* The pitch for an account, not the form for one: three fields and a
-          provider choice in front of someone still deciding whether they want
-          any of this is too much to ask, so the decision is the button and
-          /signup is where the typing happens.
+      <div className="fade-up" style={{ animationDelay: "120ms" }}>
+        <GuestSchedule />
+      </div>
 
-          Above the demo, because someone who already knows what this is
-          shouldn't have to scroll a screenshot of it to find the way in — and
-          the two ways in are the only thing on this page that does anything. */}
-      <section
-        id="get-started"
-        className="fade-up mx-auto w-full max-w-lg scroll-mt-6 rounded-xl border border-neutral-200 p-6 dark:border-neutral-800"
-        style={{ animationDelay: "120ms" }}
-      >
-        <h2 className="text-lg font-semibold tracking-tight">Get started</h2>
-        <p className="mt-1 mb-5 text-sm text-neutral-600 dark:text-neutral-400">
-          You need an account to add your own schedule. Sign in with Google, or
-          with an email and password that never touches Google.
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/signup"
-            className="flex-1 rounded-lg bg-neutral-900 px-4 py-2.5 text-center font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
-          >
-            Create an account
-          </Link>
-          <Link
-            href="/signin"
-            className="flex-1 rounded-lg border border-neutral-300 px-4 py-2.5 text-center font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-          >
-            Sign in
-          </Link>
-        </div>
-      </section>
-
-      {/* The pitch above, as something you can actually look at, for whoever
-          isn't sold by the buttons. Invented people on invented courses — see
-          DemoAvailability. */}
-      <section className="fade-up flex flex-col gap-5" style={{ animationDelay: "240ms" }}>
-        <h2 className="text-center text-sm font-medium">What it looks like</h2>
-        <DemoAvailability />
-      </section>
-
-      {/* Below the account section, because creating a group signed out leaves
-          it without an admin — it works, and it is not the path to recommend. */}
-      <GroupForms startDelay={360} />
+      {/* Last, because it is the second question. Your own week is worth
+          something on its own — the group is what you do with it once you've
+          seen it, and asking before then is asking someone to invite friends
+          to a thing they haven't looked at. */}
+      <GroupActions startDelay={240} />
     </main>
   );
 }

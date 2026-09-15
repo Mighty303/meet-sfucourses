@@ -132,7 +132,14 @@ describe.skipIf(!hasKey)("online is not on campus, end to end", () => {
 
     const state = await getGroupState(group, opts);
     // The status reached the block through resolveStatus, not through the grid.
-    expect(state.busyByMember[memberIds.ada].every((b) => b.status === "remote")).toBe(true);
+    //
+    // Only the blocks on that date: a whole-day row is about one day, and the
+    // fixture's first scheduled section meets twice a week (ARCH 200 D100, Tu
+    // and Fr), so the rest of the week is still "going" — which is the point
+    // of keying attendance on a date rather than on a weekday.
+    const onDay = state.busyByMember[memberIds.ada].filter((b) => b.day === day);
+    expect(onDay.length).toBeGreaterThan(0);
+    expect(onDay.every((b) => b.status === "remote")).toBe(true);
 
     const members = ["ada", "bo"].map((k) => ({ name: k, busy: state.busyByMember[memberIds[k]] }));
     const bands = availabilityBands({ members, dayStart: opts.dayStart, dayEnd: opts.dayEnd, days: [day] });

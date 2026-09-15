@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AccountGate } from "@/components/AccountGate";
 import { Avatar } from "@/components/Avatar";
 import { CalendarTools } from "@/components/CalendarTools";
 import { CourseChips } from "@/components/CourseChips";
@@ -12,6 +13,7 @@ import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
+import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
 import { commonFree, weekDates } from "@/lib/overlap";
@@ -89,8 +91,9 @@ function GroupSchedule({ code }: { code: string }) {
   // someone joining or leaving mid-session.
   const [hidden, setHidden] = useState<Set<number>>(new Set());
   // "mine" narrows the whole page to your own row: your classes at full width
-  // and your own gaps, without everyone else's blocks to read past.
-  const view = searchParams.get("view") === "mine" ? "mine" : "everyone";
+  // and your own gaps, without everyone else's blocks to read past. Only a
+  // request until we know there is an account behind it — see `view` below.
+  const wantsMine = searchParams.get("view") === "mine";
   // Which of the two week views to draw, when the URL says. In the URL so a
   // reload — and a shared link — keeps whichever view you were reading; absent,
   // the group's own size decides (see `grid`, below the member counts).
@@ -116,6 +119,13 @@ function GroupSchedule({ code }: { code: string }) {
   const [draftName, setDraftName] = useState<string | null>(null);
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
+  // The account modal: asked for by the guest bar, or by arriving on a link to
+  // your own week without an account to have one on.
+  const [gateAsked, setGateAsked] = useState(false);
+  const [mineHandled, setMineHandled] = useState(false);
+  // The row this browser started the group with, if it did. Undefined until
+  // localStorage has been read, which can't happen during render.
+  const [guestMember, setGuestMember] = useState<GuestMember | null | undefined>(undefined);
 
   const load = useCallback(async () => {
     // No minMinutes here: the page derives its own windows from busyByMember, so
@@ -165,15 +175,30 @@ function GroupSchedule({ code }: { code: string }) {
   // Identity comes from the session — no localStorage, so your schedule follows
   // you to any device you sign in on.
   const signedIn = authStatus === "authenticated";
+  // A guest asking for their own week is asking for an account, not for a
+  // different page: the group stays on screen behind the modal, because it is
+  // the thing they can still read.
+  const view = wantsMine && signedIn ? "mine" : "everyone";
+  const gateOpen = !signedIn && (gateAsked || (wantsMine && !mineHandled));
   const me = signedIn ? state?.members.find((m) => m.userId === session?.appUserId) ?? null : null;
   // Rows with no owner: claimable by whoever signs in and says that's them.
   const unclaimed = state?.members.filter((m) => m.userId === null) ?? [];
+  // The row this browser started the group with, still unclaimed. Matched
+  // against the live roster rather than trusted from storage: the id there is
+  // a note to self, and the row may have been claimed or deleted since.
+  const mine =
+    !signedIn && guestMember
+      ? unclaimed.find((m) => m.id === guestMember.memberId) ?? null
+      : null;
   // The group's admin: whoever created it. The server checks this again on the
   // delete itself — this only decides whether the button is worth showing.
   const isAdmin =
     signedIn &&
     state?.group.ownerUserId != null &&
     state.group.ownerUserId === session?.appUserId;
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setGuestMember(readGuestMember(code)); }, [code]);
 
   // Your other groups, so switching between them doesn't mean a trip via Home.
   // Independent of the group fetch: it's keyed on you, not on the code, so it
@@ -231,14 +256,6 @@ function GroupSchedule({ code }: { code: string }) {
     // travel to your own schedule at all, which has only the one reading.
     if (pinnedGrid && nextView !== "mine") params.set("grid", pinnedGrid);
     return `/g/${nextCode}${params.size > 0 ? `?${params}` : ""}`;
-  }
-
-  /**
-   * Sign in (or sign up) and land back here with the join already asked for —
-   * `join=1` is what the effect above acts on.
-   */
-  function joinHref(path: "/signin" | "/signup"): string {
-    return `${path}?next=${encodeURIComponent(`/g/${code}?join=1`)}`;
   }
 
   function setGrid(next: "detailed" | "heat") {
@@ -456,25 +473,8 @@ function GroupSchedule({ code }: { code: string }) {
     return out;
   }, [state, dates, myUserId]);
 
-  if (view === "mine" && authStatus === "loading") {
+  if (wantsMine && authStatus === "loading") {
     return <GroupPageSkeleton solo />;
-  }
-  if (view === "mine" && !signedIn) {
-    return (
-      <main className="mx-auto flex w-full max-w-lg flex-col gap-4 p-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Schedule</h1>
-        <p className="text-sm text-neutral-500">Sign in to see your saved schedule.</p>
-        {/* `next` so signing in lands back on this group's week rather than on
-            the home page, which is the whole reason the param exists. */}
-        <Link
-          href={`/signin?next=${encodeURIComponent(`/g/${code}?view=mine`)}`}
-          className="self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
-        >
-          Sign in
-        </Link>
-        <Link href={`/g/${code}`} className="text-sm text-blue-600 hover:underline dark:text-blue-400">View group schedule</Link>
-      </main>
-    );
   }
 
   if (error && !state) {
@@ -774,32 +774,44 @@ function GroupSchedule({ code }: { code: string }) {
       )}
 
       {!signedIn ? (
-        /* The invite panel: someone opened a shared link, isn't signed in, and
-           the only thing standing between them and being in the group is an
-           account. Saying that outright — and joining them the moment they're
-           back — beats a note that leaves them hunting for the button. */
-        <div className="flex flex-col gap-3 rounded-xl border border-neutral-300 bg-neutral-50 p-4 sm:p-5 dark:border-neutral-700 dark:bg-neutral-900">
-          <h2 className="font-medium">Join {state.group.name}</h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-300">
-            Sign in to add your classes to this group. You&apos;ll be added
-            automatically as soon as you&apos;re back here. Reading the
-            group&apos;s week doesn&apos;t need an account.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={joinHref("/signin")}
-              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
-            >
-              Sign in and join
-            </Link>
-            <Link
-              href={joinHref("/signup")}
-              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-            >
-              No account yet? Create one
-            </Link>
-          </div>
-        </div>
+        /* One line, not the panel this was: a heading, a paragraph and two
+           links, above the grid, telling someone who had just followed an
+           invite that they couldn't do the thing they hadn't tried yet.
+           Reading the week is the default and needs no account, so the page
+           gets on with drawing it and puts the ask on the press that needs
+           one. */
+        <p className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+          {/* Two guests, two different sentences. Whoever started this group
+              signed out is already on the grid and has nothing to add — what
+              they have is a row only this browser knows is theirs. */}
+          {mine ? (
+            <>
+              <span>
+                You&apos;re on this grid as{" "}
+                <span className="font-medium text-neutral-700 dark:text-neutral-300">{mine.displayName}</span>,
+                saved in this browser only.
+              </span>
+              <button
+                type="button"
+                onClick={() => setGateAsked(true)}
+                className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+              >
+                Sign in to keep it →
+              </button>
+            </>
+          ) : (
+            <>
+              You&apos;re reading this as a guest.
+              <button
+                type="button"
+                onClick={() => setGateAsked(true)}
+                className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+              >
+                Add my schedule →
+              </button>
+            </>
+          )}
+        </p>
       ) : !me ? (
         <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
           {unclaimed.length > 0 ? (
@@ -1195,6 +1207,14 @@ function GroupSchedule({ code }: { code: string }) {
       </div>
       </div>
 
+      {/* Outside the flow: it is in the top layer when open and nothing at all
+          when closed. `join=1` is what the auto-join effect above acts on. */}
+      <AccountGate
+        open={gateOpen}
+        onClose={() => { setGateAsked(false); setMineHandled(true); }}
+        groupName={state.group.name}
+        next={`/g/${code}?join=1`}
+      />
     </main>
   );
 }

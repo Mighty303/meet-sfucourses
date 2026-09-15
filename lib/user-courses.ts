@@ -115,48 +115,60 @@ export interface SoloStateOptions {
   days?: readonly DayKey[];
 }
 
-export interface SoloState {
+/**
+ * A week drawn from a list of class numbers, whoever's they are.
+ *
+ * Everything getSoloState used to do inline, minus the two things that need an
+ * account: reading the saved list, and reading attendance. What's left is a
+ * pure function of the term catalogue and the numbers handed in, which is what
+ * lets /api/schedule/preview answer for someone who hasn't got an account at
+ * all — see components/GuestSchedule.tsx for who asks.
+ */
+export interface WeekSchedule {
   term: string;
   classNumbers: string[];
   busy: BusyBlock[];
-  /** Gaps between your own classes. One schedule, so nothing to intersect. */
+  /** Gaps between these classes. One schedule, so nothing to intersect. */
   free: FreeWindow[];
   /** Class numbers this term's catalogue no longer has a section for. */
   unresolved: string[];
   unscheduled: UnscheduledSection[];
   week: string;
   termBounds: TermBounds | null;
-  attendance: AttendanceRow[];
 }
 
-/**
- * One person's week, with no group around it.
- *
- * getGroupState answers the same question for everyone in a group at once, and
- * used to be the only way to draw a timetable at all — which meant your own
- * schedule was invisible until you joined something, even after /courses let
- * you save one. This is that function with the roster taken out: the same
- * section index, the same term clamp, the same attendance resolution, and
- * commonFree over a single schedule, where it degenerates to the gaps between
- * your own classes.
- *
- * Custom busy blocks (meetup.member_blocks) are left out, because those hang
- * off a member row and a person without a group hasn't got one.
- */
-export async function getSoloState(
-  userId: number,
+export async function scheduleFor(
   term: string,
-  opts: SoloStateOptions
-): Promise<SoloState> {
-  const classNumbers = await listUserCourses(userId, term);
+  classNumbers: string[],
+  opts: SoloStateOptions & {
+    /**
+     * Already computed by the caller, when it needed the week dates before
+     * this ran — getSoloState does, to know which days to read attendance for.
+     * Undefined means "work it out"; null is a real answer meaning the term
+     * has no published bounds.
+     */
+    bounds?: TermBounds | null;
+    /**
+     * Whose deviations to fold into the blocks. Absent for a guest, who has
+     * none: every class then resolves to "going", which is the default anyway.
+     */
+    attendance?: { rows: AttendanceRow[]; userId: number };
+  }
+): Promise<WeekSchedule> {
   const index = await sectionIndexForClassNumbers(term, classNumbers);
-  const bounds = await termBoundsFor(term);
+  const bounds = opts.bounds !== undefined ? opts.bounds : await termBoundsFor(term);
   const dates = weekDates(clampWeekToTerm(opts.week, bounds));
 
-  const attendance = await listAttendance([userId], dates.Mo, dates.Su);
   const busy = busyFromCourses(index, classNumbers, dates).map((block) => ({
     ...block,
-    ...resolveStatus(attendance, userId, dates[block.day], block.classNumber ?? null),
+    ...(opts.attendance
+      ? resolveStatus(
+          opts.attendance.rows,
+          opts.attendance.userId,
+          dates[block.day],
+          block.classNumber ?? null
+        )
+      : { status: "going" as const, note: null }),
   }));
 
   // Skipped classes drop out inside commonFree, the same as they do for a
@@ -188,6 +200,49 @@ export async function getSoloState(
     unscheduled: unscheduledFromCourses(index, classNumbers),
     week: dates.Mo,
     termBounds: bounds,
-    attendance,
   };
+}
+
+export interface SoloState extends WeekSchedule {
+  attendance: AttendanceRow[];
+}
+
+/**
+ * One person's week, with no group around it.
+ *
+ * getGroupState answers the same question for everyone in a group at once, and
+ * used to be the only way to draw a timetable at all — which meant your own
+ * schedule was invisible until you joined something, even after /courses let
+ * you save one. This is that function with the roster taken out: the same
+ * section index, the same term clamp, the same attendance resolution, and
+ * commonFree over a single schedule, where it degenerates to the gaps between
+ * your own classes.
+ *
+ * The drawing itself is scheduleFor, which a guest shares. What is left here
+ * is the two halves of it that need an account: which sections are yours, and
+ * which of them you have said you aren't going to.
+ *
+ * Custom busy blocks (meetup.member_blocks) are left out, because those hang
+ * off a member row and a person without a group hasn't got one.
+ */
+export async function getSoloState(
+  userId: number,
+  term: string,
+  opts: SoloStateOptions
+): Promise<SoloState> {
+  const [classNumbers, bounds] = await Promise.all([
+    listUserCourses(userId, term),
+    termBoundsFor(term),
+  ]);
+  // The dates have to be settled before attendance can be read, which is why
+  // the bounds are worked out here and handed down rather than inside.
+  const dates = weekDates(clampWeekToTerm(opts.week, bounds));
+  const rows = await listAttendance([userId], dates.Mo, dates.Su);
+
+  const schedule = await scheduleFor(term, classNumbers, {
+    ...opts,
+    bounds,
+    attendance: { rows, userId },
+  });
+  return { ...schedule, attendance: rows };
 }

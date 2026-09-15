@@ -1,3 +1,10 @@
+import {
+  GUEST_MAX,
+  addGuestCourse,
+  readGuestCourses,
+  removeGuestCourse,
+} from "./guest-schedule";
+
 /**
  * Where an add or remove is written.
  *
@@ -6,19 +13,23 @@
  * file the section under. "me" is that same write with no group to travel
  * through, which is what lets the picker exist before you're in one.
  *
- * Both are kept because an ownerless member row still has courses of its own,
- * and those have no user to hang off.
+ * "member" is kept because an ownerless member row still has courses of its
+ * own, and those have no user to hang off. "guest" is the same write with no
+ * *account* to travel through — the landing page's picker, whose sections live
+ * in localStorage until signing up moves them. This type is the whole of what
+ * CoursePicker knows about any of it.
  */
 export type CourseTarget =
   | { via: "member"; groupCode: string; memberId: number }
-  | { via: "me" };
+  | { via: "me" }
+  | { via: "guest" };
 
 /**
  * The two endpoints answer with the same shape, so only the URL differs — the
  * group-scoped one carries the term implicitly in the member row, and the
  * user-scoped one has to be told which term it is editing.
  */
-function endpointFor(target: CourseTarget): string {
+function endpointFor(target: Exclude<CourseTarget, { via: "guest" }>): string {
   return target.via === "me"
     ? "/api/me/courses"
     : `/api/groups/${target.groupCode}/members/${target.memberId}/courses`;
@@ -37,6 +48,14 @@ export async function addCourse(
   term: string,
   classNumber: string
 ): Promise<string | null> {
+  if (target.via === "guest") {
+    if (readGuestCourses(term).length >= GUEST_MAX) {
+      return `that's ${GUEST_MAX} sections — sign in to save a longer schedule`;
+    }
+    addGuestCourse(term, classNumber);
+    return null;
+  }
+
   const res = await fetch(endpointFor(target), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -52,6 +71,11 @@ export async function removeCourse(
   term: string,
   classNumber: string
 ): Promise<string | null> {
+  if (target.via === "guest") {
+    removeGuestCourse(term, classNumber);
+    return null;
+  }
+
   const params = new URLSearchParams({ classNumber });
   if (target.via === "me") params.set("term", term);
   const res = await fetch(`${endpointFor(target)}?${params}`, { method: "DELETE" });

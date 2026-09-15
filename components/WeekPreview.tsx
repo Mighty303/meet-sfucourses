@@ -65,6 +65,7 @@ export function WeekPreview({
   courseColors,
   conflicts,
   preview = [],
+  drawWhenEmpty = false,
 }: {
   term: string;
   /** Null until the first answer lands, and while a term switch is in flight. */
@@ -76,13 +77,22 @@ export function WeekPreview({
   conflicts: Conflict[];
   /** A section under the cursor in the search results, sketched over the week. */
   preview?: BusyBlock[];
+  /**
+   * Draw the five empty columns rather than the note, when nothing is saved.
+   *
+   * The landing page wants the grid: it is the first thing a visitor sees, and
+   * an empty week that fills in as they type says what this is far better than
+   * a sentence promising it will. On /courses the note is still right — the
+   * grid there has a search box beside it already explaining the job.
+   */
+  drawWhenEmpty?: boolean;
 }) {
   const nothingSaved = state !== null && state.classNumbers.length === 0;
   // The empty state is the wrong thing to show while a section is being
   // considered — the first add is exactly when seeing where it lands is worth
   // most, and a placeholder that said "add a section and it appears here" would
   // be covering the answer to that.
-  const empty = nothingSaved && preview.length === 0;
+  const empty = nothingSaved && preview.length === 0 && !drawWhenEmpty;
 
   return (
     <section className="flex flex-col gap-3">
