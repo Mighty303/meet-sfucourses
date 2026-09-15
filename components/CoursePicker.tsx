@@ -2,22 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CourseChips, courseCode, meetingLabel } from "@/components/CourseChips";
+import { addCourse, removeCourse, type CourseTarget } from "@/lib/course-writes";
 import type { CourseHit, SectionHit } from "@/lib/sfu";
 
-/**
- * Where an add or remove is written.
- *
- * A member row was only ever a route to the user's schedule for the term — the
- * group-scoped endpoint joins members to groups purely to learn which term to
- * file the section under. "me" is that same write with no group to travel
- * through, which is what lets this picker exist before you're in one.
- *
- * Both are kept because an ownerless member row still has courses of its own,
- * and those have no user to hang off.
- */
-export type CourseTarget =
-  | { via: "member"; groupCode: string; memberId: number }
-  | { via: "me" };
+export type { CourseTarget };
 
 interface Props {
   /** The term this schedule is for, e.g. "2026-fall" — searches are scoped to it. */
@@ -33,6 +21,16 @@ interface Props {
   loading?: boolean;
   /** Passed through to the chips — see CourseChips for what the swatch means. */
   courseColors?: Record<string, string>;
+  /**
+   * Whether the saved list is drawn above the search box.
+   *
+   * /courses shows what's saved as course cards next to a week grid, where the
+   * colours and the clashes are — so the chip row there would be the same list
+   * twice under two different headings, both called "Your courses". Everywhere
+   * else the picker is the only thing on screen that knows what's saved, and
+   * has to say so itself.
+   */
+  showSaved?: boolean;
   /** Called after every add or remove so the page can refresh the grid. */
   onChange: () => void;
   /**
@@ -53,7 +51,7 @@ function Spinner() {
   );
 }
 
-export function CoursePicker({ term, target, classNumbers, loading = false, courseColors, onChange, onPreview }: Props) {
+export function CoursePicker({ term, target, classNumbers, loading = false, courseColors, showSaved = true, onChange, onPreview }: Props) {
   const [query, setQuery] = useState("");
   // Tagged with the query they answer, so a result set never outlives its box.
   const [hits, setHits] = useState<{ q: string; courses: CourseHit[] }>({ q: "", courses: [] });
@@ -81,46 +79,20 @@ export function CoursePicker({ term, target, classNumbers, loading = false, cour
     return () => { live = false; clearTimeout(timer); };
   }, [term, q, searchable]);
 
-  /**
-   * The two endpoints answer with the same shape, so only the URL differs —
-   * the group-scoped one carries the term implicitly in the member row, and
-   * the user-scoped one has to be told which term it is editing.
-   */
-  const endpoint =
-    target.via === "me"
-      ? `/api/me/courses`
-      : `/api/groups/${target.groupCode}/members/${target.memberId}/courses`;
-
   async function add(classNumber: string) {
     setBusy(classNumber);
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        target.via === "me" ? { term, classNumber } : { classNumber }
-      ),
-    });
+    const failure = await addCourse(target, term, classNumber);
     setBusy(null);
-    if (!res.ok) {
-      setError((await res.json().catch(() => ({}))).error ?? "could not add that section");
-      return;
-    }
-    setError(null);
-    onChange();
+    setError(failure);
+    if (!failure) onChange();
   }
 
   async function remove(classNumber: string) {
     setBusy(classNumber);
-    const params = new URLSearchParams({ classNumber });
-    if (target.via === "me") params.set("term", term);
-    const res = await fetch(`${endpoint}?${params}`, { method: "DELETE" });
+    const failure = await removeCourse(target, term, classNumber);
     setBusy(null);
-    if (!res.ok) {
-      setError((await res.json().catch(() => ({}))).error ?? "could not remove that section");
-      return;
-    }
-    setError(null);
-    onChange();
+    setError(failure);
+    if (!failure) onChange();
   }
 
   const searching = hits.q !== q;
@@ -174,21 +146,23 @@ export function CoursePicker({ term, target, classNumbers, loading = false, cour
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-semibold tracking-tight">Your courses</h3>
-        {classNumbers.length === 0 && (
-          <p className="text-sm text-neutral-500">
-            {loading ? "Loading your sections…" : "Nothing saved yet — add your sections below."}
-          </p>
-        )}
-        <CourseChips
-          term={term}
-          classNumbers={classNumbers}
-          courseColors={courseColors}
-          onRemove={remove}
-          busy={busy}
-        />
-      </div>
+      {showSaved && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold tracking-tight">Your courses</h3>
+          {classNumbers.length === 0 && (
+            <p className="text-sm text-neutral-500">
+              {loading ? "Loading your sections…" : "Nothing saved yet — add your sections below."}
+            </p>
+          )}
+          <CourseChips
+            term={term}
+            classNumbers={classNumbers}
+            courseColors={courseColors}
+            onRemove={remove}
+            busy={busy}
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold tracking-tight">Search SFU courses</h3>
