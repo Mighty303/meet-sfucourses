@@ -4,6 +4,7 @@ import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "./Avatar";
+import { LeaveIcon, PersonIcon, ShieldIcon } from "./RowIcons";
 
 interface Props {
   /**
@@ -61,15 +62,15 @@ export function AuthButton({ stacked = false, profileHref = "/profile", profileA
   const name = session.user.name ?? session.user.email ?? "";
 
   if (stacked) {
-    // In the mobile menu this is just one more menu row. Who you're signed
-    // in as belongs on the Profile page the menu already links to, so the
-    // avatar and name would only repeat it. Sign out isn't destructive —
-    // neutral until hover, and behind a divider so it isn't hit by accident.
+    // One more menu row, mark and all: every row above carries one, and a bare
+    // label would sit left of the edge they share. Who you're signed in as is
+    // on the Profile page this menu lists, so a name here would repeat it.
     return (
       <button
         onClick={() => signOut()}
-        className="w-full rounded-lg px-3 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-red-600 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-red-400"
+        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-red-600 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-red-400"
       >
+        <LeaveIcon />
         Sign out
       </button>
     );
@@ -221,58 +222,6 @@ function MenuLink({
       {icon}
       {children}
     </Link>
-  );
-}
-
-/**
- * The row marks, in the same hand as the nav's hamburger: 20-unit box, 1.75
- * stroke, no fill. They take their colour from the row, so Sign out's turns
- * red on hover along with its label.
- */
-function RowIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="shrink-0"
-    >
-      {children}
-    </svg>
-  );
-}
-
-function PersonIcon() {
-  return (
-    <RowIcon>
-      <circle cx="10" cy="7" r="3" />
-      <path d="M4.5 16.5c1.1-2.4 3-3.6 5.5-3.6s4.4 1.2 5.5 3.6" />
-    </RowIcon>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <RowIcon>
-      <path d="M10 3l5.5 2v4.3c0 3.2-2.2 5.7-5.5 6.7-3.3-1-5.5-3.5-5.5-6.7V5z" />
-    </RowIcon>
-  );
-}
-
-/* The arrow leaves through the gap in the box, which is the door. */
-function LeaveIcon() {
-  return (
-    <RowIcon>
-      <path d="M8 4.5H5.5A1.5 1.5 0 0 0 4 6v8a1.5 1.5 0 0 0 1.5 1.5H8" />
-      <path d="M12.5 13L15.5 10 12.5 7" />
-      <path d="M15.5 10H8" />
-    </RowIcon>
   );
 }
 

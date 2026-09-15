@@ -6,6 +6,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AuthButton } from "./AuthButton";
 import { Logo } from "./Logo";
+import {
+  CoursesIcon,
+  HomeIcon,
+  PersonIcon,
+  ScheduleIcon,
+  ShieldIcon,
+} from "./RowIcons";
 
 export function NavBar() {
   return <Suspense fallback={<div className="h-16 border-b border-neutral-200 dark:border-neutral-800" />}><NavBarContent /></Suspense>;
@@ -45,10 +52,15 @@ function NavBarContent() {
    * here as well would name the same destinations twice. The mobile menu has
    * no picture — it hides the account block entirely — so there they stay
    * rows, in the positions they already had.
+   *
+   * Which is also why only the menu gets marks. In the bar the rows sit in a
+   * line and read as one strip of words; stacked in the panel they are a
+   * column, and a column of labels wants something at its left edge. The set
+   * is the account menu's, so the two lists of rows are in one hand.
    */
-  const links = (withAccount: boolean) => (
+  const links = (inMenu: boolean) => (
     <>
-      <NavLink href="/" active={pathname === "/"}>Home</NavLink>
+      <NavLink href="/" active={pathname === "/"} icon={inMenu && <HomeIcon />}>Home</NavLink>
       {signedIn && (
         /* Ahead of Schedule, because it comes first: a week grid with nothing
            on it is what you get for skipping this.
@@ -60,6 +72,7 @@ function NavBarContent() {
         <NavLink
           href={currentCode ? `/courses?group=${encodeURIComponent(currentCode)}` : "/courses"}
           active={pathname === "/courses"}
+          icon={inMenu && <CoursesIcon />}
         >
           Courses
         </NavLink>
@@ -68,15 +81,16 @@ function NavBarContent() {
         <NavLink
           href={currentCode ? `/g/${currentCode}?view=mine` : "/my-schedule"}
           active={schedule}
+          icon={inMenu && <ScheduleIcon />}
         >
           Schedule
         </NavLink>
       )}
-      {signedIn && withAccount && (
-        <NavLink href={profileHref} active={pathname === "/profile"}>Profile</NavLink>
+      {signedIn && inMenu && (
+        <NavLink href={profileHref} active={pathname === "/profile"} icon={<PersonIcon />}>Profile</NavLink>
       )}
-      {isAdmin && withAccount && (
-        <NavLink href="/admin" active={pathname === "/admin"}>Admin</NavLink>
+      {isAdmin && inMenu && (
+        <NavLink href="/admin" active={pathname === "/admin"} icon={<ShieldIcon />}>Admin</NavLink>
       )}
     </>
   );
@@ -142,22 +156,30 @@ function NavBarContent() {
 function NavLink({
   href,
   active,
+  icon,
   children,
 }: {
   href: string;
   active: boolean;
+  /**
+   * Decorative, and only the mobile menu passes one — the row's own text is
+   * what names the destination. ReactNode covers the `false` the bar's rows
+   * pass, so each call can be `inMenu && <Icon />` rather than a ternary.
+   */
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
         active
           ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
           : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
       }`}
     >
+      {icon}
       {children}
     </Link>
   );
