@@ -51,6 +51,24 @@ export function fromTermCode(code: string): string {
   return `${season.charAt(0).toUpperCase()}${season.slice(1)} ${year}`;
 }
 
+/**
+ * The shape `meetup.groups.term` and `meetup.user_courses.term` both store.
+ *
+ * A guard rather than a lookup against the API: a term this app has never
+ * heard of resolves to an empty course list on its own, which is the right
+ * answer, and pinning the set here would mean editing a regex every September.
+ * What this rules out is a term that could never be one — which matters now
+ * that a term arrives in a request body rather than being read off a group.
+ */
+export function isTermCode(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-(spring|summer|fall)$/.test(value);
+}
+
+/** Class numbers are 3–6 digits; anything else never matches a section anyway. */
+export function isClassNumber(value: unknown): value is string {
+  return typeof value === "string" && /^\d{3,6}$/.test(value);
+}
+
 export function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + m;
@@ -112,6 +130,21 @@ export function currentTermCode(date = new Date()): string {
   const month = date.getMonth(); // 0-indexed
   const season = month <= 3 ? "spring" : month <= 7 ? "summer" : "fall";
   return `${date.getFullYear()}-${season}`;
+}
+
+/**
+ * What a term <select> offers: this year and next, three seasons each.
+ *
+ * Deliberately not narrowed to terms that have started. Someone joins a spring
+ * group in December, and a list that only went as far as today would have
+ * nothing for them to pick.
+ */
+export function termOptions(now = new Date()): string[] {
+  const out: string[] = [];
+  for (const year of [now.getFullYear(), now.getFullYear() + 1]) {
+    for (const season of ["spring", "summer", "fall"]) out.push(`${year}-${season}`);
+  }
+  return out;
 }
 
 /**

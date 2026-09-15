@@ -1,23 +1,32 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listMembershipsForUser } from "@/lib/groups";
+import { listUserCourseTerms } from "@/lib/user-courses";
 import { MAX_AVATAR_CHARS, getUser, isValidAvatar, setAvatar } from "@/lib/users";
 
-/** Everything the profile page needs: the Google identity plus every group row. */
+/**
+ * Everything the profile page needs: the identity, every group row, and every
+ * term there's a schedule saved for.
+ *
+ * `terms` is not derivable from `memberships` any more. Courses can be added at
+ * /courses before joining anything, so a term can have a schedule and no group
+ * — and bucketing the profile page by memberships alone would hide it.
+ */
 export async function GET() {
   const session = await auth();
   if (!session?.appUserId) {
     return NextResponse.json({ error: "sign in first" }, { status: 401 });
   }
 
-  const [user, memberships] = await Promise.all([
+  const [user, memberships, terms] = await Promise.all([
     getUser(session.appUserId),
     listMembershipsForUser(session.appUserId),
+    listUserCourseTerms(session.appUserId),
   ]);
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
-  return NextResponse.json({ user, memberships });
+  return NextResponse.json({ user, memberships, terms });
 }
 
 /**

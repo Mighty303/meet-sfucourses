@@ -9,8 +9,9 @@ Course data comes from the public [sfucourses API](https://api.sfucourses.com)
 (`/v1/rest/sections?term=2025-fall`) — no key, open CORS. **This repo does not
 fork sfucourses.com**, it only consumes that endpoint.
 
-Sections are added in-app: search the term's course list and add each one you're
-in. Tutorials and labs are their own class numbers, so each is added separately.
+Sections are added in-app at **`/courses`**: search the term's course list and
+add each one you're in. Tutorials and labs are their own class numbers, so each
+is added separately.
 
 Only class numbers are persisted. Meeting times are always resolved against the
 API at read time, so an upstream schedule change is picked up without a migration.
@@ -85,13 +86,21 @@ anyone with the link, and a signed-in user can **claim** one to take it over
 along with its saved schedule, rather than starting a duplicate row.
 
 Your schedule is stored per person, per term, in `meetup.user_courses` — not
-per group. Join a second group in the same term and your classes are already
+per group, and not behind one. `/courses` edits it directly through
+`/api/me/courses`, so you can say what you're enrolled in before you've joined
+anything; signing up lands there, with a way past it for people who'd rather
+not. Join a second group in the same term and your classes are already
 there; edit them anywhere and every group in that term follows. Terms are kept
 apart because a class number is only unique inside one, so a flat list would
 resolve a fall section against the spring catalogue and quietly draw the wrong
 course. Ownerless rows have no profile to read from and keep their own courses
 in `meetup.member_courses`; `meetup.member_courses_effective` is the view that
 decides which of the two a member row shows.
+
+A group page therefore shows your saved sections but doesn't edit them — the
+search box lives at `/courses`, because when everyone is free and which classes
+you're in are two different questions and only one of them needs a week grid
+on screen to answer.
 
 ## Admin portal
 
@@ -134,11 +143,16 @@ A group is still a secret invite code — anyone with the link can view it. What
 sign-in adds is ownership: your schedule and name are yours to edit, and your
 identity follows you across devices instead of living in `localStorage`.
 
-After signing in, **My Schedule** in the navigation opens just your saved classes
+After signing in, **Schedule** in the navigation opens just your saved classes
 and free time in the current group. The `?view=mine` link keeps this view selected
 when refreshed or bookmarked; **Schedule** switches back to the group. From home,
-My Schedule opens your newest group. If you haven't joined one yet, it shows how
-to get started.
+it opens your newest group.
+
+With no group at all it draws your week on its own, from `meetup.user_courses`
+through `/api/me/schedule` — the same grid, the same per-course colours and the
+same going/skipping/online controls, with nobody else's column beside yours. A
+schedule saved at `/courses` is worth looking at before there is anyone to
+compare it with.
 
 Not built yet: custom busy blocks (the `meetup.member_blocks` table exists and is
 read, but there's no UI to add them), calendar export, meeting-spot suggestions.

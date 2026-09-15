@@ -32,6 +32,12 @@ interface Me {
     avatar: string | null;
   };
   memberships: Membership[];
+  /**
+   * Every term with a schedule saved, which is no longer the same set as the
+   * terms you have groups in — /courses writes one before there is a group to
+   * hang it on.
+   */
+  terms: { term: string; classNumbers: string[] }[];
 }
 
 /**
@@ -81,19 +87,34 @@ export default function ProfilePage() {
   useEffect(() => { if (authStatus === "authenticated") load(); }, [authStatus, load]);
 
   /**
-   * Memberships bucketed by term, because that's what a schedule is keyed to.
-   * Two groups in one term share one timetable, so they get one picker between
-   * them rather than two that silently edit the same list. Whichever member row
-   * the picker writes through is immaterial — the write lands on the profile.
+   * One card per term, because that's what a schedule is keyed to. Two groups
+   * in one term share one timetable, so they get one picker between them
+   * rather than two that silently edit the same list.
+   *
+   * The union of the terms you have a schedule in and the terms you have a
+   * group in, not just the latter. A term can now have courses and no group —
+   * that's what /courses makes possible — and a term can have a group and no
+   * courses, which is the card that prompts you to fill it in. Ordered by the
+   * saved-schedule list, which comes back newest first, with any group-only
+   * terms after it.
    */
   const byTerm = useMemo(() => {
-    const out = new Map<string, Membership[]>();
+    const groups = new Map<string, Membership[]>();
     for (const m of data?.memberships ?? []) {
-      const list = out.get(m.group.term);
+      const list = groups.get(m.group.term);
       if (list) list.push(m);
-      else out.set(m.group.term, [m]);
+      else groups.set(m.group.term, [m]);
     }
-    return [...out.entries()];
+    const terms = [
+      ...(data?.terms ?? []).map((t) => t.term),
+      ...[...groups.keys()],
+    ].filter((t, i, all) => all.indexOf(t) === i);
+    const saved = new Map((data?.terms ?? []).map((t) => [t.term, t.classNumbers]));
+    return terms.map((term) => ({
+      term,
+      groups: groups.get(term) ?? [],
+      classNumbers: saved.get(term) ?? [],
+    }));
   }, [data]);
 
   function setError(memberId: number, message: string | null) {
@@ -362,10 +383,14 @@ export default function ProfilePage() {
 
             {byTerm.length === 0 ? (
               <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                Join a group and your courses for its term go here.
+                Nothing saved yet.{" "}
+                <Link href="/courses" className="text-blue-600 hover:underline dark:text-blue-400">
+                  Add your courses
+                </Link>{" "}
+                — you don&apos;t need a group first.
               </p>
             ) : (
-              byTerm.map(([term, list]) => (
+              byTerm.map(({ term, groups, classNumbers }) => (
                 <article
                   key={term}
                   className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
@@ -373,23 +398,26 @@ export default function ProfilePage() {
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <h3 className="font-medium">{fromTermCode(term)}</h3>
                     <span className="text-sm text-neutral-500">
-                      {list.length === 1
-                        ? list[0].group.name
-                        : `${list.length} groups · ${list.map((m) => m.group.name).join(", ")}`}
+                      {groups.length === 0
+                        ? "no groups this term"
+                        : groups.length === 1
+                          ? groups[0].group.name
+                          : `${groups.length} groups · ${groups.map((m) => m.group.name).join(", ")}`}
                     </span>
                     <span className="ml-auto text-sm text-neutral-500">
-                      {list[0].classNumbers.length > 0
-                        ? `${list[0].classNumbers.length} section${list[0].classNumbers.length === 1 ? "" : "s"} saved`
+                      {classNumbers.length > 0
+                        ? `${classNumbers.length} section${classNumbers.length === 1 ? "" : "s"} saved`
                         : "nothing saved yet"}
                     </span>
                   </div>
-                  {/* Any of the term's member rows will do as the write target;
-                      they all resolve to the same profile schedule. */}
+                  {/* Written straight to the term schedule. It used to travel
+                      through whichever member row of yours happened to be in a
+                      group of that term, which only worked while every term you
+                      could edit was one you were in a group for. */}
                   <CoursePicker
                     term={term}
-                    groupCode={list[0].group.code}
-                    memberId={list[0].memberId}
-                    classNumbers={list[0].classNumbers}
+                    target={{ via: "me" }}
+                    classNumbers={classNumbers}
                     onChange={load}
                   />
                 </article>

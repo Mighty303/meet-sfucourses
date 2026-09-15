@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { currentTermCode, fromTermCode } from "@/lib/sfu";
+import { currentTermCode, fromTermCode, termOptions } from "@/lib/sfu";
 
 /**
  * Starting a group and joining one by code — the two things both halves of the
@@ -12,16 +12,6 @@ import { currentTermCode, fromTermCode } from "@/lib/sfu";
  * Creating works signed out: the group is simply left without an admin until
  * the first person joins and adopts it.
  */
-
-const TERMS = (() => {
-  const now = new Date();
-  const seasons = ["spring", "summer", "fall"];
-  const out: string[] = [];
-  for (const year of [now.getFullYear(), now.getFullYear() + 1]) {
-    for (const s of seasons) out.push(`${year}-${s}`);
-  }
-  return out;
-})();
 
 export function GroupForms({ startDelay = 0 }: { startDelay?: number }) {
   const router = useRouter();
@@ -69,7 +59,7 @@ export function GroupForms({ startDelay = 0 }: { startDelay?: number }) {
           onChange={(e) => setTerm(e.target.value)}
           className="rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         >
-          {TERMS.map((t) => (
+          {termOptions().map((t) => (
             <option key={t} value={t}>{fromTermCode(t)}</option>
           ))}
         </select>

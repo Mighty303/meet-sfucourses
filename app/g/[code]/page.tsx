@@ -7,17 +7,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CalendarTools } from "@/components/CalendarTools";
-import { CoursePicker } from "@/components/CoursePicker";
+import { CourseChips } from "@/components/CourseChips";
 import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
-import { blocksFromSection, commonFree, weekDates } from "@/lib/overlap";
+import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
 import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
-import type { DayKey, SectionHit } from "@/lib/sfu";
+import type { DayKey } from "@/lib/sfu";
+import { addDays, mondayOf, shortDate, toISODate, writeDate } from "@/lib/week-dates";
 
 interface Member {
   id: number;
@@ -57,48 +58,6 @@ interface GroupState {
   termBounds: { start: string; end: string; typicalStart: string } | null;
   /** Everyone's attendance deviations for this week — see lib/attendance.ts. */
   attendance: AttendanceRow[];
-}
-
-/** Monday of the week containing `d`, as YYYY-MM-DD. */
-function mondayOf(d: Date): string {
-  const m = new Date(d);
-  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
-  return toISODate(m);
-}
-
-function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Midday avoids the date shifting under daylight-saving transitions. */
-function parseISODate(iso: string): Date {
-  return new Date(`${iso}T12:00:00`);
-}
-
-function addDays(iso: string, days: number): string {
-  const d = parseISODate(iso);
-  d.setDate(d.getDate() + days);
-  return toISODate(d);
-}
-
-function shortDate(iso: string): string {
-  return parseISODate(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/**
- * "Thursday, Sep 18" — named in full, because a status is about one specific
- * day and getting the wrong one wrong is silent: you'd mark next week's lecture
- * and wonder why nobody noticed.
- */
-function writeDate(iso: string): string {
-  return parseISODate(iso).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 // Shorter than this isn't worth crossing campus for, and nobody was going to
@@ -143,8 +102,6 @@ function GroupSchedule({ code }: { code: string }) {
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  // The section under the cursor in the picker, sketched onto the grid.
-  const [preview, setPreview] = useState<{ course: string; section: SectionHit } | null>(null);
   // Deleting is irreversible and takes everyone's schedules, so the button has
   // to be armed first — no dialog, just a second, differently-worded click.
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -446,11 +403,6 @@ function GroupSchedule({ code }: { code: string }) {
     if (view === "mine") return myCourseColors;
     return Object.fromEntries(Object.keys(myCourseColors).map((code) => [code, me.color]));
   }, [myCourseColors, me, view]);
-
-  const previewBlocks = useMemo(
-    () => (preview ? blocksFromSection(preview.course, preview.section) : []),
-    [preview]
-  );
 
   /**
    * The five dates the grid is currently showing. A status is about a date, not
@@ -754,18 +706,39 @@ function GroupSchedule({ code }: { code: string }) {
       ) : (
         <div className="flex flex-col gap-6 rounded-xl border border-neutral-200 p-5 sm:p-6 dark:border-neutral-800">
           {/* Name and colour are set once on the profile page — they follow you
-              into every group, so there's nothing to edit here. */}
-          <h2 className="font-medium">Your schedule</h2>
+              into every group, so there's nothing to edit here.
 
-          <CoursePicker
-            term={state.group.term}
-            groupCode={code}
-            memberId={me.id}
-            classNumbers={me.classNumbers}
-            courseColors={myChipColors}
-            onChange={load}
-            onPreview={setPreview}
-          />
+              Neither does the schedule, any more. This used to be the whole
+              picker: a search box, a scrolling list of every section matching
+              what you typed, and its results opening under a page that already
+              had a week grid, a member list, a week picker and a duration
+              slider on it. What a group page is for is when everyone is free;
+              which classes you're in is a different question, asked once, and
+              it has its own page now. What's left here is the answer to it —
+              and, since the swatches are the grid's, the legend for the
+              colours below. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2 className="font-medium">Your schedule</h2>
+            <Link
+              href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            >
+              {me.classNumbers.length > 0 ? "Edit courses →" : "Add your courses →"}
+            </Link>
+          </div>
+
+          {me.classNumbers.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              Nothing saved for {fromTermCode(state.group.term)} yet. Until you add
+              your sections, the group&apos;s free time is worked out without you.
+            </p>
+          ) : (
+            <CourseChips
+              term={state.group.term}
+              classNumbers={me.classNumbers}
+              courseColors={myChipColors}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             {error && <p className="text-sm text-amber-600">{error}</p>}
@@ -1099,8 +1072,6 @@ function GroupSchedule({ code }: { code: string }) {
           // Only on your own week: in a group the colour has to stay the
           // person, which is what you scan a column for.
           courseColors={view === "mine" ? myCourseColors : undefined}
-          preview={previewBlocks}
-          previewColor={me?.color}
           attendance={attendance}
         />
       )}
