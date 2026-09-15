@@ -40,13 +40,13 @@ function NavBarContent() {
     : "/profile";
 
   /**
-   * The same rows in both places, except for Profile: on desktop it is the
-   * account chip at the far end of the bar, so a row here as well would be the
-   * same destination listed twice. The mobile menu has no chip — it hides the
-   * account block entirely — so there it stays a row, in its old position
-   * rather than appended after Admin.
+   * The same rows in both places, except for the account ones. On desktop
+   * Profile and Admin live in the menu behind the picture, so listing them
+   * here as well would name the same destinations twice. The mobile menu has
+   * no picture — it hides the account block entirely — so there they stay
+   * rows, in the positions they already had.
    */
-  const links = (withProfile: boolean) => (
+  const links = (withAccount: boolean) => (
     <>
       <NavLink href="/" active={pathname === "/"}>Home</NavLink>
       {signedIn && (
@@ -72,10 +72,10 @@ function NavBarContent() {
           Schedule
         </NavLink>
       )}
-      {signedIn && withProfile && (
+      {signedIn && withAccount && (
         <NavLink href={profileHref} active={pathname === "/profile"}>Profile</NavLink>
       )}
-      {isAdmin && (
+      {isAdmin && withAccount && (
         <NavLink href="/admin" active={pathname === "/admin"}>Admin</NavLink>
       )}
     </>
