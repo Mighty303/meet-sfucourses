@@ -1,0 +1,2187 @@
+[
+  {
+    "dept": "ALS",
+    "number": "601",
+    "title": "Canadian Legal System",
+    "units": "4",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "G100",
+        "deliveryMethod": "In Person",
+        "classNumber": "1235",
+        "instructors": [
+          {
+            "name": "Margaret Hall",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "",
+            "days": "",
+            "startTime": "",
+            "endTime": "",
+            "sectionCode": "SEM"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "ALS",
+    "number": "631",
+    "title": "MA Examination",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "G100",
+        "deliveryMethod": "In Person",
+        "classNumber": "1239",
+        "instructors": [
+          {
+            "name": "Margaret Hall",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-16",
+            "campus": "",
+            "days": "We",
+            "startTime": "9:00",
+            "endTime": "15:50",
+            "sectionCode": "CAP"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "ARCH",
+    "number": "100",
+    "title": "Ancient Peoples and Places",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "OL01",
+        "deliveryMethod": "Online",
+        "classNumber": "5394",
+        "instructors": [
+          {
+            "name": "Greg Morrissey",
+            "email": "gem@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "",
+            "days": "",
+            "startTime": "",
+            "endTime": "",
+            "sectionCode": "OLC"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "ARCH",
+    "number": "200",
+    "title": "Special Topics in Archaeology",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "5400",
+        "instructors": [
+          {
+            "name": "Sabrina Higgins",
+            "email": "shiggins@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "10:30",
+            "endTime": "12:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "BISC",
+    "number": "101",
+    "title": "General Biology",
+    "units": "4",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "2549",
+        "instructors": [
+          {
+            "name": "Tony Williams",
+            "email": "tdwillia@sfu.ca"
+          },
+          {
+            "name": "Megan Barker",
+            "email": "barker@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "9:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D101",
+        "deliveryMethod": "In Person",
+        "classNumber": "2571",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D102",
+        "deliveryMethod": "In Person",
+        "classNumber": "2572",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D103",
+        "deliveryMethod": "In Person",
+        "classNumber": "2573",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D104",
+        "deliveryMethod": "In Person",
+        "classNumber": "2574",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D105",
+        "deliveryMethod": "In Person",
+        "classNumber": "2569",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D106",
+        "deliveryMethod": "In Person",
+        "classNumber": "2575",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "15:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D107",
+        "deliveryMethod": "In Person",
+        "classNumber": "2576",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D108",
+        "deliveryMethod": "In Person",
+        "classNumber": "2577",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D109",
+        "deliveryMethod": "In Person",
+        "classNumber": "2578",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D110",
+        "deliveryMethod": "In Person",
+        "classNumber": "2579",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D111",
+        "deliveryMethod": "In Person",
+        "classNumber": "2580",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D113",
+        "deliveryMethod": "In Person",
+        "classNumber": "2582",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D114",
+        "deliveryMethod": "In Person",
+        "classNumber": "2583",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D115",
+        "deliveryMethod": "In Person",
+        "classNumber": "2584",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D119",
+        "deliveryMethod": "In Person",
+        "classNumber": "2588",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D120",
+        "deliveryMethod": "In Person",
+        "classNumber": "2589",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D121",
+        "deliveryMethod": "In Person",
+        "classNumber": "2590",
+        "instructors": [
+          {
+            "name": "Megan Barker",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Fr",
+            "startTime": "11:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D200",
+        "deliveryMethod": "In Person",
+        "classNumber": "2105",
+        "instructors": [
+          {
+            "name": "Jeffrey Yung",
+            "email": "jeffreyy@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "10:30",
+            "endTime": "12:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D201",
+        "deliveryMethod": "In Person",
+        "classNumber": "2127",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "8:30",
+            "endTime": "9:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "D202",
+        "deliveryMethod": "In Person",
+        "classNumber": "2128",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "D203",
+        "deliveryMethod": "In Person",
+        "classNumber": "2130",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "D204",
+        "deliveryMethod": "In Person",
+        "classNumber": "2131",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "D205",
+        "deliveryMethod": "In Person",
+        "classNumber": "2132",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "D206",
+        "deliveryMethod": "In Person",
+        "classNumber": "2133",
+        "instructors": [],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "TUT"
+          }
+        ]
+      },
+      {
+        "section": "LAS1",
+        "deliveryMethod": "In Person",
+        "classNumber": "2129",
+        "instructors": [
+          {
+            "name": "Jeffrey Yung",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Th",
+            "startTime": "8:30",
+            "endTime": "10:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "LAS2",
+        "deliveryMethod": "In Person",
+        "classNumber": "2152",
+        "instructors": [
+          {
+            "name": "Jeffrey Yung",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Th",
+            "startTime": "10:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "LAS3",
+        "deliveryMethod": "In Person",
+        "classNumber": "2153",
+        "instructors": [
+          {
+            "name": "Jeffrey Yung",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Th",
+            "startTime": "13:30",
+            "endTime": "15:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "BISC",
+    "number": "106",
+    "title": "Biological Systems for Engineers",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "B100",
+        "deliveryMethod": "Blended",
+        "classNumber": "2162",
+        "instructors": [
+          {
+            "name": "Jaimmie Que",
+            "email": "jaimmieq@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "",
+            "days": "",
+            "startTime": "",
+            "endTime": "",
+            "sectionCode": "OLC"
+          }
+        ]
+      },
+      {
+        "section": "LAB1",
+        "deliveryMethod": "In Person",
+        "classNumber": "2163",
+        "instructors": [
+          {
+            "name": "Jaimmie Que",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "BUS",
+    "number": "203",
+    "title": "Professional Development - Launch",
+    "units": "1",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "2352",
+        "instructors": [
+          {
+            "name": "Susan Christie-Bell",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-11",
+            "endDate": "2026-09-11",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-20",
+            "endDate": "2026-09-20",
+            "campus": "Surrey",
+            "days": "Su",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-10-02",
+            "endDate": "2026-10-02",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-10-30",
+            "endDate": "2026-10-30",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-20",
+            "endDate": "2026-11-20",
+            "campus": "Surrey",
+            "days": "Fr",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-28",
+            "endDate": "2026-11-28",
+            "campus": "Surrey",
+            "days": "Sa",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          }
+        ]
+      },
+      {
+        "section": "E100",
+        "deliveryMethod": "In Person",
+        "classNumber": "2353",
+        "instructors": [
+          {
+            "name": "Natalia Soloshchenko",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-14",
+            "endDate": "2026-09-14",
+            "campus": "Burnaby",
+            "days": "Mo",
+            "startTime": "17:30",
+            "endTime": "18:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-20",
+            "endDate": "2026-09-20",
+            "campus": "Burnaby",
+            "days": "Su",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-28",
+            "endDate": "2026-09-28",
+            "campus": "Burnaby",
+            "days": "Mo",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-10-26",
+            "endDate": "2026-10-26",
+            "campus": "Burnaby",
+            "days": "Mo",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-16",
+            "endDate": "2026-11-16",
+            "campus": "Burnaby",
+            "days": "Mo",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-28",
+            "endDate": "2026-11-28",
+            "campus": "Burnaby",
+            "days": "Sa",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          }
+        ]
+      },
+      {
+        "section": "E200",
+        "deliveryMethod": "In Person",
+        "classNumber": "2354",
+        "instructors": [
+          {
+            "name": "Natalia Soloshchenko",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-15",
+            "endDate": "2026-09-15",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "17:30",
+            "endTime": "18:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-20",
+            "endDate": "2026-09-20",
+            "campus": "Burnaby",
+            "days": "Su",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-29",
+            "endDate": "2026-09-29",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-10-27",
+            "endDate": "2026-10-27",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-17",
+            "endDate": "2026-11-17",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "17:30",
+            "endTime": "19:20",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-11-28",
+            "endDate": "2026-11-28",
+            "campus": "Burnaby",
+            "days": "Sa",
+            "startTime": "8:00",
+            "endTime": "16:00",
+            "sectionCode": "SEM"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "BUS",
+    "number": "694",
+    "title": "Brave Conversations for Building Trust and Collaboration I",
+    "units": "2",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "G100",
+        "deliveryMethod": "In Person",
+        "classNumber": "2044",
+        "instructors": [
+          {
+            "name": "Jeffrey Yip",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-11",
+            "endDate": "2026-09-11",
+            "campus": "",
+            "days": "Fr",
+            "startTime": "9:00",
+            "endTime": "17:30",
+            "sectionCode": "SEM"
+          },
+          {
+            "startDate": "2026-09-18",
+            "endDate": "2026-09-18",
+            "campus": "SEGAL",
+            "days": "Fr",
+            "startTime": "9:00",
+            "endTime": "17:30",
+            "sectionCode": "SEM"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "105W",
+    "title": "Social Issues and Communication Strategies in Computing Science",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4815",
+        "instructors": [
+          {
+            "name": "Eva  Mackamul",
+            "email": "emackamu@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Mo, We, Fr",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D200",
+        "deliveryMethod": "In Person",
+        "classNumber": "4816",
+        "instructors": [
+          {
+            "name": "Diana Cukierman",
+            "email": "diana@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "12:30",
+            "endTime": "14:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "120",
+    "title": "Introduction to Computing Science and Programming I",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4817",
+        "instructors": [
+          {
+            "name": "Amir Aghasharif",
+            "email": ""
+          },
+          {
+            "name": "Amir Aghasharif",
+            "email": "aaghasha@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Mo, We, Fr",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D200",
+        "deliveryMethod": "In Person",
+        "classNumber": "4818",
+        "instructors": [
+          {
+            "name": "Toby Donaldson",
+            "email": "tjd@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo, We, Fr",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D300",
+        "deliveryMethod": "In Person",
+        "classNumber": "6556",
+        "instructors": [
+          {
+            "name": "Diana Cukierman",
+            "email": "diana@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "8:30",
+            "endTime": "10:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "8:30",
+            "endTime": "9:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "125",
+    "title": "Introduction to Computing Science and Programming II",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4820",
+        "instructors": [
+          {
+            "name": "Bobby Chan",
+            "email": "bobbyc@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "8:30",
+            "endTime": "10:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "8:30",
+            "endTime": "9:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D101",
+        "deliveryMethod": "In Person",
+        "classNumber": "4841",
+        "instructors": [
+          {
+            "name": "Bobby Chan",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D102",
+        "deliveryMethod": "In Person",
+        "classNumber": "4842",
+        "instructors": [
+          {
+            "name": "Bobby Chan",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D103",
+        "deliveryMethod": "In Person",
+        "classNumber": "4843",
+        "instructors": [
+          {
+            "name": "Bobby Chan",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D104",
+        "deliveryMethod": "In Person",
+        "classNumber": "4844",
+        "instructors": [
+          {
+            "name": "Bobby Chan",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "130",
+    "title": "Introduction to Computer Programming I",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4821",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": "bfraser@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo, We, Fr",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D101",
+        "deliveryMethod": "In Person",
+        "classNumber": "4824",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D102",
+        "deliveryMethod": "In Person",
+        "classNumber": "4825",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D103",
+        "deliveryMethod": "In Person",
+        "classNumber": "4826",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D104",
+        "deliveryMethod": "In Person",
+        "classNumber": "4827",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D105",
+        "deliveryMethod": "In Person",
+        "classNumber": "4828",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D106",
+        "deliveryMethod": "In Person",
+        "classNumber": "4829",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "8:30",
+            "endTime": "9:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D107",
+        "deliveryMethod": "In Person",
+        "classNumber": "4830",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D108",
+        "deliveryMethod": "In Person",
+        "classNumber": "4831",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "We",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "201",
+    "title": "Systems Programming",
+    "units": "4",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4822",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": "bfraser@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo, We",
+            "startTime": "14:30",
+            "endTime": "16:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D101",
+        "deliveryMethod": "In Person",
+        "classNumber": "4832",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D102",
+        "deliveryMethod": "In Person",
+        "classNumber": "4833",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "12:30",
+            "endTime": "13:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D103",
+        "deliveryMethod": "In Person",
+        "classNumber": "4834",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D104",
+        "deliveryMethod": "In Person",
+        "classNumber": "4835",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D105",
+        "deliveryMethod": "In Person",
+        "classNumber": "4836",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D106",
+        "deliveryMethod": "In Person",
+        "classNumber": "4837",
+        "instructors": [
+          {
+            "name": "Brian Fraser",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Mo",
+            "startTime": "11:30",
+            "endTime": "12:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D200",
+        "deliveryMethod": "In Person",
+        "classNumber": "4823",
+        "instructors": [
+          {
+            "name": "Ahmadreza Nezami",
+            "email": "anezami@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We, Fr",
+            "startTime": "12:30",
+            "endTime": "14:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D201",
+        "deliveryMethod": "In Person",
+        "classNumber": "4838",
+        "instructors": [
+          {
+            "name": "Ahmadreza Nezami",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "8:30",
+            "endTime": "9:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D202",
+        "deliveryMethod": "In Person",
+        "classNumber": "4839",
+        "instructors": [
+          {
+            "name": "Ahmadreza Nezami",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D203",
+        "deliveryMethod": "In Person",
+        "classNumber": "4840",
+        "instructors": [
+          {
+            "name": "Ahmadreza Nezami",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "210",
+    "title": "Probability and Computing",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4847",
+        "instructors": [
+          {
+            "name": "Sharan Vaswani",
+            "email": "svaswani@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Tu",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "9:30",
+            "endTime": "11:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "D101",
+        "deliveryMethod": "In Person",
+        "classNumber": "4868",
+        "instructors": [
+          {
+            "name": "Sharan Vaswani",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "14:30",
+            "endTime": "15:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D102",
+        "deliveryMethod": "In Person",
+        "classNumber": "4869",
+        "instructors": [
+          {
+            "name": "Sharan Vaswani",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "15:30",
+            "endTime": "16:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D103",
+        "deliveryMethod": "In Person",
+        "classNumber": "4870",
+        "instructors": [
+          {
+            "name": "Sharan Vaswani",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "16:30",
+            "endTime": "17:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "D104",
+        "deliveryMethod": "In Person",
+        "classNumber": "4871",
+        "instructors": [
+          {
+            "name": "Sharan Vaswani",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "17:30",
+            "endTime": "18:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "E100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4848",
+        "instructors": [
+          {
+            "name": "Wuyang Chen",
+            "email": "wuyang@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Mo",
+            "startTime": "16:30",
+            "endTime": "18:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "We",
+            "startTime": "16:30",
+            "endTime": "17:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      },
+      {
+        "section": "E101",
+        "deliveryMethod": "In Person",
+        "classNumber": "4872",
+        "instructors": [
+          {
+            "name": "Wuyang Chen",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "9:30",
+            "endTime": "10:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      },
+      {
+        "section": "E102",
+        "deliveryMethod": "In Person",
+        "classNumber": "4873",
+        "instructors": [
+          {
+            "name": "Wuyang Chen",
+            "email": ""
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Burnaby",
+            "days": "Th",
+            "startTime": "10:30",
+            "endTime": "11:20",
+            "sectionCode": "LAB"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "dept": "CMPT",
+    "number": "213",
+    "title": "Object Oriented Design in Java",
+    "units": "3",
+    "term": "Fall 2026",
+    "sections": [
+      {
+        "section": "D100",
+        "deliveryMethod": "In Person",
+        "classNumber": "4845",
+        "instructors": [
+          {
+            "name": "Victor Cheung",
+            "email": "vca45@sfu.ca"
+          }
+        ],
+        "schedules": [
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Tu",
+            "startTime": "13:30",
+            "endTime": "14:20",
+            "sectionCode": "LEC"
+          },
+          {
+            "startDate": "2026-09-09",
+            "endDate": "2026-12-07",
+            "campus": "Surrey",
+            "days": "Th",
+            "startTime": "12:30",
+            "endTime": "14:20",
+            "sectionCode": "LEC"
+          }
+        ]
+      }
+    ]
+  }
+]

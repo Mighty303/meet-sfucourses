@@ -10,6 +10,9 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    // tests/fixtures/refresh.ts is run by `node --experimental-strip-types`,
+    // which needs the explicit .ts specifier. Harmless under noEmit.
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,

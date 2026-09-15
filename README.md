@@ -127,8 +127,50 @@ Google account rather than an address. The nav link is driven by
 | `npm run migrate` | applies `db/migrations/*.sql` in order (idempotent) |
 | `npm run inspect` | prints row counts and term-cache status |
 | `node scripts/reset-demo.mjs` | deletes smoke-test groups |
-| `node scripts/check-authz.mjs` | verifies the ownership and claim rules against the database |
 | `./scripts/set-google-oauth.sh` | writes Google OAuth credentials locally and to Vercel |
+
+## Tests
+
+Vitest, in `tests/`. Three suites, split by what they need rather than by what
+they cover — so the default one needs nothing at all.
+
+| command | does | needs |
+|---|---|---|
+| `npm test` | the unit suite: interval maths, the heat map, attendance, the sfucourses parsers | nothing |
+| `npm run test:watch` | the same, in watch mode | nothing |
+| `npm run test:smoke` | checks the live sfucourses API still has the shape `lib/sfu.ts` expects | the network |
+| `npm run test:db` | group, membership and attendance SQL against a throwaway Neon branch | `NEON_API_KEY` |
+| `npm run test:all` | all three | both |
+| `npm run test:fixture` | regenerates `tests/fixtures/term-sample.json` from the live API | the network |
+
+`npm test` is offline and deterministic: the parsers are checked against a
+committed slice of a real term dump rather than invented data, so the awkward
+shapes SFU actually publishes — sections with no campus, sections with no
+meeting days at all — stay covered without a network call.
+
+### A note on `package-lock.json`
+
+Regenerate it on Linux, not on a Mac:
+
+```
+docker run --rm -v "$PWD":/w -w /w node:22-bookworm npm install --package-lock-only
+```
+
+`sharp` and `@tailwindcss/oxide` ship wasm builds whose own dependencies npm
+prunes from the lockfile when it resolves on macOS. The result installs fine
+there and then fails `npm ci` on every Linux runner with two `@emnapi` packages
+"missing from lock file". A lockfile written on Linux covers both.
+
+`npm run test:db` creates its own Neon branch, migrates it, and deletes it
+afterwards; it never touches the `DATABASE_URL` in `.env.local`, and it skips
+with a message rather than failing when `NEON_API_KEY` is unset. Without a key
+the branch is never created, so there is nothing to clean up.
+
+The rule that online is not on campus — a lecture attended from home is busy
+time but puts nobody in a building — is pinned in `tests/unit/on-campus.test.ts`
+and again end-to-end in `tests/db/attendance.test.ts`. Reverting any one of
+`onCampus`, `busyForMeetup` or `anchorCampus` in `lib/overlap.ts` turns that
+suite red.
 
 ## Schema
 

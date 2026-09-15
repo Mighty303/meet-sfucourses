@@ -1,0 +1,58 @@
+# What runs on every change, and what deliberately does not.
+#
+# The unit suite gates merges: it needs no network, no database and no secrets,
+# so it can never fail for a reason unrelated to the diff. The smoke suite talks
+# to SFU's server and the database suite costs a Neon branch — neither belongs
+# in the path of a pull request, so they run on their own schedule.
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit, types and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      # Before tsc, not after: next build generates the route types in
+      # .next/types that tsconfig includes, and app/layout.tsx uses one of them.
+      - run: npm run build
+        env:
+          # The build only needs these to exist, not to be valid: nothing is
+          # prerendered against a real database.
+          DATABASE_URL: postgresql://user:pass@localhost/db
+          AUTH_SECRET: build-only-not-a-real-secret
+      - run: npx tsc --noEmit
+
+  database:
+    name: database (Neon branch)
+    runs-on: ubuntu-latest
+    # Skips itself with a message when the secret is absent — which is what a
+    # pull request from a fork gets, since secrets are not exposed to those.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:db
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
