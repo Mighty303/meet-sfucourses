@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { casEnabled } from "@/lib/cas";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
@@ -28,7 +29,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>
+        {/* Asked once, on the server, so a modal deep inside a client page
+            can still know whether to offer the SFU door. */}
+        <Providers sfu={casEnabled()}>
           <NavBar />
           {children}
           <Footer />
