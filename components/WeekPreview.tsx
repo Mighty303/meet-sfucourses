@@ -53,6 +53,7 @@ export function WeekPreview({
   error,
   courseColors,
   conflicts,
+  preview = [],
 }: {
   term: string;
   /** Null until the first answer lands, and while a term switch is in flight. */
@@ -62,8 +63,15 @@ export function WeekPreview({
   /** Course code -> colour, so the cards beside the grid can use the same one. */
   courseColors?: Record<string, string>;
   conflicts: Conflict[];
+  /** A section under the cursor in the search results, sketched over the week. */
+  preview?: BusyBlock[];
 }) {
-  const empty = state !== null && state.classNumbers.length === 0;
+  const nothingSaved = state !== null && state.classNumbers.length === 0;
+  // The empty state is the wrong thing to show while a section is being
+  // considered — the first add is exactly when seeing where it lands is worth
+  // most, and a placeholder that said "add a section and it appears here" would
+  // be covering the answer to that.
+  const empty = nothingSaved && preview.length === 0;
 
   return (
     <section className="flex flex-col gap-3">
@@ -95,6 +103,7 @@ export function WeekPreview({
               solo
               weekStart={state?.week}
               courseColors={courseColors}
+              preview={preview}
               columnHeight={PREVIEW_HEIGHT}
             />
           </div>

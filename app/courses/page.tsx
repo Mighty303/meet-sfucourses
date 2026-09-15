@@ -4,7 +4,7 @@ import { CoursesPanel } from "@/components/CoursesPanel";
 import { findGroup } from "@/lib/groups";
 import { safeNext } from "@/lib/safe-next";
 import { currentTermCode, isTermCode } from "@/lib/sfu";
-import { getSoloState, listUserCourses } from "@/lib/user-courses";
+import { getSoloState, listUserCourseTerms, listUserCourses } from "@/lib/user-courses";
 
 /**
  * Which sections you're in — the one question that used to be asked on the
@@ -65,11 +65,17 @@ export default async function Courses({
 
   const classNumbers = schedule?.classNumbers ?? (await listUserCourses(session.appUserId, startTerm));
 
+  // What the term pills count. A term you have sections in is worth showing
+  // even when it has scrolled off the end of what the picker offers — that's
+  // the only way back to last spring's list once the year turns.
+  const savedTerms = await listUserCourseTerms(session.appUserId);
+
   return (
     <CoursesPanel
       startTerm={startTerm}
       startCourses={classNumbers}
       startSchedule={schedule}
+      savedTerms={savedTerms.map((t) => ({ term: t.term, count: t.classNumbers.length }))}
       next={to}
     />
   );

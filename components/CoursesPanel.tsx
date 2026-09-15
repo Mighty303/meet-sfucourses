@@ -8,8 +8,8 @@ import { WeekPreview, type PreviewState } from "@/components/WeekPreview";
 import { conflictedClassNumbers, findConflicts } from "@/lib/conflicts";
 import { courseColors } from "@/lib/course-color";
 import { removeCourse } from "@/lib/course-writes";
-import { attending } from "@/lib/overlap";
-import { fromTermCode, termOptions } from "@/lib/sfu";
+import { attending, blocksFromSection } from "@/lib/overlap";
+import { compareTerms, currentTermCode, fromTermCode, termOptions, type SectionHit } from "@/lib/sfu";
 
 /**
  * The body of /courses: a term, a search box, and the week the two of them add
@@ -25,6 +25,7 @@ export function CoursesPanel({
   startTerm,
   startCourses,
   startSchedule,
+  savedTerms,
   next,
 }: {
   startTerm: string;
@@ -36,6 +37,8 @@ export function CoursesPanel({
    * grid can't be drawn from a saved schedule alone.
    */
   startSchedule: PreviewState | null;
+  /** How many sections are saved in each term you've saved anything in. */
+  savedTerms: { term: string; count: number }[];
   /** Where Continue and Skip both go. Already through safeNext. */
   next: string;
 }) {
@@ -48,6 +51,9 @@ export function CoursesPanel({
   const [weekError, setWeekError] = useState<string | null>(null);
   // The section being removed from a card, so its × can't be pressed twice.
   const [removing, setRemoving] = useState<string | null>(null);
+  // The search result under the cursor, sketched onto the grid before it's
+  // saved. Null the rest of the time, which is most of the time.
+  const [preview, setPreview] = useState<{ course: string; section: SectionHit } | null>(null);
   // The term the newest request was for. Two switches in quick succession can
   // come back out of order, and the older answer must not overwrite the newer.
   const wanted = useRef(startTerm);
@@ -95,6 +101,41 @@ export function CoursesPanel({
     load(next);
   }
 
+  const previewBlocks = useMemo(
+    () => (preview ? blocksFromSection(preview.course, preview.section) : []),
+    [preview]
+  );
+
+  /**
+   * Which terms get a pill.
+   *
+   * Three sources, because none of them is enough alone: the terms ahead of you
+   * (what you're here to fill in), the terms you've already saved something in
+   * (which may be behind you — that's the only way back to them), and whichever
+   * term the link you followed named. Past terms you have nothing in are left
+   * out; they'd be five dead buttons.
+   */
+  const pillTerms = useMemo(() => {
+    const now = currentTermCode();
+    const all = new Set<string>([
+      ...termOptions().filter((t) => compareTerms(t, now) >= 0),
+      ...savedTerms.map((t) => t.term),
+      startTerm,
+    ]);
+    return [...all].sort(compareTerms);
+  }, [savedTerms, startTerm]);
+
+  /**
+   * The count on each pill. The term you're looking at reads from live state
+   * rather than from the server's list, so adding a section moves its own
+   * number without a reload.
+   */
+  const counts = useMemo(() => {
+    const out = new Map(savedTerms.map((t) => [t.term, t.count]));
+    if (courses !== null) out.set(term, courses.length);
+    return out;
+  }, [savedTerms, term, courses]);
+
   /**
    * A colour per course, shared by the grid and the cards beside it — which is
    * what makes the cards a key to the grid rather than a second list of the
@@ -136,7 +177,7 @@ export function CoursesPanel({
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-6 pb-20 sm:pb-24">
-      <div className="fade-up flex flex-wrap items-start justify-between gap-3">
+      <div className="fade-up flex flex-col gap-4">
         <div className="max-w-lg">
           <h1 className="text-2xl font-semibold tracking-tight">Your courses</h1>
           <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
@@ -145,19 +186,44 @@ export function CoursesPanel({
             reads from it.
           </p>
         </div>
-        <select
-          value={term}
-          onChange={(e) => switchTerm(e.target.value)}
-          aria-label="Term"
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
-        >
-          {/* The term you arrived on is always in the list, even if it's old
-              enough to have fallen off the end of it — otherwise following
-              "Edit courses" from a past group would silently switch terms. */}
-          {(termOptions().includes(startTerm) ? termOptions() : [startTerm, ...termOptions()]).map((t) => (
-            <option key={t} value={t}>{fromTermCode(t)}</option>
-          ))}
-        </select>
+
+        {/* Pills rather than a <select>, because a term is not a setting you
+            configure — it's which list you're looking at, and there are six of
+            them. Open, they say how many sections each one holds; closed, a
+            dropdown said nothing at all and hid the fact that last spring's
+            list was still there. */}
+        <div role="group" aria-label="Term" className="flex flex-wrap gap-2">
+          {pillTerms.map((t) => {
+            const on = t === term;
+            const count = counts.get(t) ?? 0;
+            return (
+              <button
+                key={t}
+                type="button"
+                aria-pressed={on}
+                onClick={() => { if (!on) switchTerm(t); }}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  on
+                    ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900"
+                    : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                }`}
+              >
+                {fromTermCode(t)}
+                {count > 0 && (
+                  <span
+                    className={`rounded-full px-1.5 text-xs tabular-nums ${
+                      on
+                        ? "bg-white/20 dark:bg-neutral-900/15"
+                        : "bg-neutral-200 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* The search on the left, what it builds on the right. Stacked below
@@ -180,6 +246,7 @@ export function CoursesPanel({
             loading={courses === null}
             showSaved={false}
             onChange={() => load(term)}
+            onPreview={(hit) => setPreview(hit)}
           />
 
           {/* Under the box rather than over it, which is the other half of the
@@ -222,6 +289,7 @@ export function CoursesPanel({
             error={weekError}
             courseColors={colors}
             conflicts={conflicts}
+            preview={previewBlocks}
           />
 
           {/* Skip is a link, not a lesser button: this step is a suggestion

@@ -132,6 +132,26 @@ export function currentTermCode(date = new Date()): string {
   return `${date.getFullYear()}-${season}`;
 }
 
+/** Chronological, which is not the order the codes sort in — fall follows summer. */
+const SEASON_ORDER = ["spring", "summer", "fall"];
+
+/**
+ * Sort two term codes by when the term actually runs.
+ *
+ * "2026-fall" < "2026-spring" < "2026-summer" as strings, which is three terms
+ * in the wrong order out of three. Every list of terms a person reads is in
+ * calendar order, so the comparison belongs here rather than being rewritten as
+ * a CASE expression each time one is needed.
+ */
+export function compareTerms(a: string, b: string): number {
+  const [yearA, seasonA] = a.split("-");
+  const [yearB, seasonB] = b.split("-");
+  return (
+    yearA.localeCompare(yearB) ||
+    SEASON_ORDER.indexOf(seasonA) - SEASON_ORDER.indexOf(seasonB)
+  );
+}
+
 /**
  * What a term <select> offers: this year and next, three seasons each.
  *
