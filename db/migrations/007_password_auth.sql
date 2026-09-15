@@ -31,7 +31,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_meetup_users_password_email
 -- A row has to be reachable through one door or the other. Dropped first
 -- because migrations here are re-run from the top and ADD CONSTRAINT has no
 -- IF NOT EXISTS.
+--
+-- sfu_username is included (and created if absent) so a re-run on a database
+-- that already has SFU-only rows — Neon CI branches inherit production — does
+-- not fail the two-door check before 010 can restore the three-door form.
+-- 010's ADD COLUMN IF NOT EXISTS is then a no-op.
+ALTER TABLE meetup.users ADD COLUMN IF NOT EXISTS sfu_username VARCHAR(32);
+
 ALTER TABLE meetup.users DROP CONSTRAINT IF EXISTS users_has_credential;
 
 ALTER TABLE meetup.users ADD CONSTRAINT users_has_credential
-  CHECK (google_sub IS NOT NULL OR password_hash IS NOT NULL);
+  CHECK (google_sub IS NOT NULL OR password_hash IS NOT NULL OR sfu_username IS NOT NULL);
