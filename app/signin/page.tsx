@@ -10,6 +10,10 @@ const SFU_ERRORS: Record<string, string> = {
     "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once — start again below.",
   session:
     "SFU signed you in at cas.sfu.ca, but creating a session here failed. Try again; if it keeps happening the database may need migration 010.",
+  db:
+    "SFU signed you in at cas.sfu.ca, but saving your account here failed. Try again; if it keeps happening the database may need migration 010.",
+  jwt:
+    "SFU signed you in and saved your account, but creating the browser session failed. Try again.",
 };
 
 const SFU_ERROR_DEFAULT =
