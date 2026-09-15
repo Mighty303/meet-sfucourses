@@ -3,7 +3,7 @@
 import { CROSS_MS, HoverCard, useHoverCard, type HoverCardData } from "@/components/HoverCard";
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
-import { DayHeading } from "@/components/DayHeading";
+import { DAY_HEADING_BOX, DayHeading } from "@/components/DayHeading";
 import type { AttendanceStatus } from "@/lib/attendance-status";
 import type { BusyBlock, FreeWindow } from "@/lib/overlap";
 import { formatTime, WEEKDAYS, type DayKey } from "@/lib/sfu";
@@ -364,7 +364,7 @@ export function WeekGrid({
         {/* Hour gutter. The empty header mirrors the day-name row so the hour
             labels line up with the grid lines instead of sitting a row high. */}
         <div className="w-12 shrink-0">
-          <div className="mb-1 text-center font-medium" aria-hidden>&nbsp;</div>
+          <div className={DAY_HEADING_BOX} aria-hidden />
           <div className={`relative ${columnHeight}`}>
             {hours.map((h) => (
               <div
