@@ -338,9 +338,8 @@ export default function ProfilePage() {
                   and has no edit control yet — either way the per-group names
                   are the ones to change, so the copy doesn't split hairs. */}
               <p className="mt-2 text-xs text-neutral-500">
-                Your picture is cropped square and shrunk to 128px before it&apos;s
-                saved. The name above is the one on your account. The per-group
-                names below are the ones you can change.
+                The name above is the one on your account. The per-group names
+                below are the ones you can change.
               </p>
             </div>
           </section>
@@ -376,8 +375,7 @@ export default function ProfilePage() {
               <h2 className="font-medium">Your schedule</h2>
               <p className="mt-0.5 text-xs text-neutral-500">
                 One schedule per term, shared by every group you&apos;re in that
-                term. Add a section once and it shows up in all of them. Remove
-                it here and it goes from all of them too.
+                term.
               </p>
             </div>
 

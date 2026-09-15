@@ -1134,7 +1134,6 @@ function GroupSchedule({ code }: { code: string }) {
           busyByMember={state.busyByMember}
           dayStart={DAY_START}
           dayEnd={DAY_END}
-          solo={view === "mine"}
           weekStart={week ?? undefined}
           attendance={attendance}
         />

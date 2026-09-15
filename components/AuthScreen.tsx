@@ -38,11 +38,14 @@ export function AuthScreen({
         <h1 className="text-2xl font-semibold tracking-tight">
           {register ? "Create an account" : "Sign in"}
         </h1>
-        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-          {register
-            ? "You need one to add your own schedule. Either door works, and the password one never talks to Google."
-            : "Welcome back, whichever way you signed up."}
-        </p>
+        {/* Only on the way in for the first time. "Welcome back" said nothing
+            the heading hadn't, and the first sentence of the sign-up line is
+            the landing page's own pitch, one click later. */}
+        {register && (
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+            Either door works, and the password one never talks to Google.
+          </p>
+        )}
       </div>
 
       <SignInPanel
