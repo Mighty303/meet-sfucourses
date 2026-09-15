@@ -5,9 +5,9 @@ import { safeNext } from "@/lib/safe-next";
 
 const SFU_ERRORS: Record<string, string> = {
   state:
-    "SFU sign-in didn't complete — this browser lost the short-lived handoff cookie. Start again below (one click, don't refresh the return link).",
+    "SFU sign-in didn't complete. This browser lost the short-lived handoff cookie. Start again below (one click, don't refresh the return link).",
   ticket:
-    "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once — start again below.",
+    "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once. Start again below.",
   session:
     "SFU signed you in at cas.sfu.ca, but creating a session here failed. Try again; if it keeps happening the database may need migration 010.",
   db:
@@ -17,7 +17,7 @@ const SFU_ERRORS: Record<string, string> = {
 };
 
 const SFU_ERROR_DEFAULT =
-  "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once — start again below.";
+  "SFU sign-in didn't complete. The link back from cas.sfu.ca is only good once. Start again below.";
 
 /**
  * `?next=` is where to land afterwards — set by whatever sent you here, so a
@@ -26,16 +26,20 @@ const SFU_ERROR_DEFAULT =
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; step?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; step?: string; dbError?: string }>;
 }) {
-  const [session, { next, error, step }] = await Promise.all([auth(), searchParams]);
+  const [session, { next, error, step, dbError }] = await Promise.all([auth(), searchParams]);
   const to = safeNext(next);
   // Already signed in: this page has nothing to offer, and leaving it reachable
   // means a stale tab can sign you into a second account by accident.
   if (session?.appUserId) redirect(to);
   // Only the SFU round trip sends anyone back here with an error; next-auth's
   // own failures are handled inside the panel. `step` narrows which half failed.
-  const sfuError =
+  let sfuError =
     error === "sfu" ? (step && SFU_ERRORS[step]) || SFU_ERROR_DEFAULT : null;
+  // Safe classification only (e.g. missing_column) — never SQL or secrets.
+  if (sfuError && step === "db" && dbError && /^[a-z0-9_]{1,40}$/i.test(dbError)) {
+    sfuError = `${sfuError} (${dbError})`;
+  }
   return <AuthScreen mode="signin" next={to} error={sfuError} />;
 }

@@ -72,7 +72,7 @@ export async function GET(req: Request) {
   } catch (err) {
     const hint = sfuDbErrorHint(err);
     console.error("sfu cas upsert failed", { dbError: hint, err });
-    // Non-sensitive hint only (PG code class / short tag — no SQL or secrets).
+    // Non-sensitive hint only (PG code class / short tag, no SQL or secrets).
     return done(`/signin?error=sfu&step=db&dbError=${encodeURIComponent(hint)}`);
   }
 
