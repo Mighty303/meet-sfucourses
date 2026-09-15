@@ -38,18 +38,26 @@ export function DayHeading({
   attendance?: AttendanceControl;
   hover: ReturnType<typeof useHoverCard>;
 }) {
-  const tone =
-    isToday ? "text-neutral-900 dark:text-neutral-100" : "text-neutral-600 dark:text-neutral-300";
+  // Today is the whole pill rather than a dot beside the name. On a phone only
+  // one day is on screen, so the header is the only thing saying which day it
+  // is — and which one is today.
+  const tone = isToday
+    ? "border-emerald-500/60 bg-emerald-400/25 text-emerald-900 dark:text-emerald-100"
+    : "border-neutral-200 bg-neutral-100/70 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-300";
+  const hoverTone = isToday
+    ? "hover:border-emerald-500 hover:bg-emerald-400/40"
+    : "hover:border-neutral-300 hover:bg-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800";
   const mine = attendance?.dayStatus[day];
 
+  // Outlined on today, where a bare emerald dot would sink into the green fill.
   const mark = mine && (
     <span
-      className={`h-1.5 w-1.5 rounded-full ${
+      className={`h-1.5 w-1.5 rounded-full ${isToday ? "outline outline-1 outline-white/70 dark:outline-black/40" : ""} ${
         mine.status === "remote"
           ? "bg-blue-500"
           : mine.status === "skipping"
             ? "ring-1 ring-neutral-400"
-            : "bg-emerald-500"
+            : "bg-emerald-600 dark:bg-emerald-400"
       }`}
     />
   );
@@ -57,16 +65,13 @@ export function DayHeading({
   const inner = (
     <>
       {LABELS[day]}
-      {/* On a phone only one day is on screen, so the header is the
-          only thing saying which. */}
-      {isToday && <span className="text-red-500">•</span>}
       {mark}
     </>
   );
 
   if (!attendance) {
     return (
-      <div className={`${DAY_HEADING_BOX} ${tone}`}>
+      <div className={`${DAY_HEADING_BOX} border ${tone}`}>
         {inner}
       </div>
     );
@@ -92,7 +97,7 @@ export function DayHeading({
       // A resting fill and a full-height box: the whole-day handle is worth
       // aiming at, and a caption-sized strip of text was easy to miss between
       // the columns.
-      className={`${DAY_HEADING_BOX} w-full cursor-pointer border border-neutral-200 bg-neutral-100/70 transition-colors hover:border-neutral-300 hover:bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-800/60 dark:hover:border-neutral-700 dark:hover:bg-neutral-800 ${tone}`}
+      className={`${DAY_HEADING_BOX} w-full cursor-pointer border transition-colors ${tone} ${hoverTone}`}
       onMouseEnter={(e) => hover.show(card(e.clientX, e.clientY))}
       onMouseLeave={() => hover.hide(CROSS_MS)}
       // Touch has no hover, and focus has no cursor — both need somewhere to
