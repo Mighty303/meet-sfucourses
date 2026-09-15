@@ -1,26 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CourseChips, courseCode, meetingLabel } from "@/components/CourseChips";
 import type { CourseHit, SectionHit } from "@/lib/sfu";
+
+/**
+ * Where an add or remove is written.
+ *
+ * A member row was only ever a route to the user's schedule for the term — the
+ * group-scoped endpoint joins members to groups purely to learn which term to
+ * file the section under. "me" is that same write with no group to travel
+ * through, which is what lets this picker exist before you're in one.
+ *
+ * Both are kept because an ownerless member row still has courses of its own,
+ * and those have no user to hang off.
+ */
+export type CourseTarget =
+  | { via: "member"; groupCode: string; memberId: number }
+  | { via: "me" };
 
 interface Props {
   /** The term this schedule is for, e.g. "2026-fall" — searches are scoped to it. */
   term: string;
-  /**
-   * A member row of yours in a group of that term, and the group it's in. Only
-   * a route to the API: an add or remove lands on your profile schedule for the
-   * term, so which of your rows it travels through makes no difference.
-   */
-  groupCode: string;
-  memberId: number;
+  target: CourseTarget;
   /** Class numbers already saved, so the picker can mark and unmark them. */
   classNumbers: string[];
   /**
-   * Course code -> the colour that course is drawn in on the grid. Whatever
-   * that is — one per course on your own week, your single member colour in a
-   * group — the chip carries the same swatch, which is what makes this list
-   * the key to the grid rather than just a list.
+   * The saved list is still being fetched, so an empty one means "not yet"
+   * rather than "none". Only /courses needs this — everywhere else the list
+   * arrives with the page.
    */
+  loading?: boolean;
+  /** Passed through to the chips — see CourseChips for what the swatch means. */
   courseColors?: Record<string, string>;
   /** Called after every add or remove so the page can refresh the grid. */
   onChange: () => void;
@@ -42,24 +53,10 @@ function Spinner() {
   );
 }
 
-function courseCode(c: CourseHit): string {
-  return `${c.dept} ${c.number}`;
-}
-
-/** "Mo, We 10:30–11:20 · Burnaby", or "no meeting time" for async sections. */
-function meetingLabel(s: SectionHit): string {
-  const timed = s.meetings.filter((m) => m.days.trim() !== "");
-  if (timed.length === 0) return "no meeting time";
-  return timed
-    .map((m) => `${m.days} ${m.startTime}–${m.endTime}${m.campus ? ` · ${m.campus}` : ""}`)
-    .join("  |  ");
-}
-
-export function CoursePicker({ term, groupCode, memberId, classNumbers, courseColors, onChange, onPreview }: Props) {
+export function CoursePicker({ term, target, classNumbers, loading = false, courseColors, onChange, onPreview }: Props) {
   const [query, setQuery] = useState("");
   // Tagged with the query they answer, so a result set never outlives its box.
   const [hits, setHits] = useState<{ q: string; courses: CourseHit[] }>({ q: "", courses: [] });
-  const [saved, setSaved] = useState<CourseHit[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Clearing puts the cursor back in the box: the button is a shortcut to
@@ -67,21 +64,6 @@ export function CoursePicker({ term, groupCode, memberId, classNumbers, courseCo
   const inputRef = useRef<HTMLInputElement>(null);
 
   const savedSet = new Set(classNumbers);
-  // Results belong to whatever is in the box now; a stale list from the
-  // previous query would otherwise flash while the new one is in flight.
-  const key = classNumbers.join(",");
-
-  // Saved sections come back as course codes so the chips read "CMPT 225 D100"
-  // instead of a bare class number.
-  useEffect(() => {
-    if (key === "") return;
-    let live = true;
-    fetch(`/api/terms/${term}/courses?numbers=${encodeURIComponent(key)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (live && data) setSaved(data.courses); })
-      .catch(() => {});
-    return () => { live = false; };
-  }, [term, key]);
 
   // Debounced: people type "cmpt 225" a character at a time.
   const q = query.trim();
@@ -99,12 +81,24 @@ export function CoursePicker({ term, groupCode, memberId, classNumbers, courseCo
     return () => { live = false; clearTimeout(timer); };
   }, [term, q, searchable]);
 
+  /**
+   * The two endpoints answer with the same shape, so only the URL differs —
+   * the group-scoped one carries the term implicitly in the member row, and
+   * the user-scoped one has to be told which term it is editing.
+   */
+  const endpoint =
+    target.via === "me"
+      ? `/api/me/courses`
+      : `/api/groups/${target.groupCode}/members/${target.memberId}/courses`;
+
   async function add(classNumber: string) {
     setBusy(classNumber);
-    const res = await fetch(`/api/groups/${groupCode}/members/${memberId}/courses`, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classNumber }),
+      body: JSON.stringify(
+        target.via === "me" ? { term, classNumber } : { classNumber }
+      ),
     });
     setBusy(null);
     if (!res.ok) {
@@ -117,10 +111,9 @@ export function CoursePicker({ term, groupCode, memberId, classNumbers, courseCo
 
   async function remove(classNumber: string) {
     setBusy(classNumber);
-    const res = await fetch(
-      `/api/groups/${groupCode}/members/${memberId}/courses?classNumber=${classNumber}`,
-      { method: "DELETE" }
-    );
+    const params = new URLSearchParams({ classNumber });
+    if (target.via === "me") params.set("term", term);
+    const res = await fetch(`${endpoint}?${params}`, { method: "DELETE" });
     setBusy(null);
     if (!res.ok) {
       setError((await res.json().catch(() => ({}))).error ?? "could not remove that section");
@@ -183,49 +176,18 @@ export function CoursePicker({ term, groupCode, memberId, classNumbers, courseCo
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold tracking-tight">Your courses</h3>
-        {key === "" ? (
-          <p className="text-sm text-neutral-500">Nothing saved yet — add your sections below.</p>
-        ) : saved.length === 0 ? (
-          <p className="text-sm text-neutral-500">Loading your sections…</p>
-        ) : null}
-        {key !== "" && saved.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {saved.map((c) =>
-              c.sections.map((s) => (
-                <li key={s.classNumber}>
-                  {/* The chip is a label, not a button. The whole thing used to
-                      be the remove control, so reaching for a course to read
-                      its meeting times dropped it from every group you're in —
-                      an undo-less delete on the most obvious thing to click.
-                      Only the × removes now. */}
-                  <span
-                    title={`${courseCode(c)} ${s.section} — ${meetingLabel(s)}`}
-                    className="flex items-center gap-2 rounded-lg border border-neutral-300 py-1.5 pl-2.5 pr-1.5 text-sm dark:border-neutral-700"
-                  >
-                    {courseColors?.[courseCode(c)] && (
-                      <span
-                        aria-hidden
-                        className="h-3 w-3 shrink-0 rounded-sm"
-                        style={{ backgroundColor: courseColors[courseCode(c)] }}
-                      />
-                    )}
-                    <span className="font-medium">{courseCode(c)}</span>
-                    <span className="text-neutral-500">{s.section}</span>
-                    <button
-                      onClick={() => remove(s.classNumber)}
-                      disabled={busy === s.classNumber}
-                      aria-label={`Remove ${courseCode(c)} ${s.section}`}
-                      title={`Remove ${courseCode(c)} ${s.section}`}
-                      className="flex h-5 w-5 items-center justify-center rounded-md leading-none text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/40 dark:hover:text-red-400"
-                    >
-                      <span aria-hidden>×</span>
-                    </button>
-                  </span>
-                </li>
-              ))
-            )}
-          </ul>
+        {classNumbers.length === 0 && (
+          <p className="text-sm text-neutral-500">
+            {loading ? "Loading your sections…" : "Nothing saved yet — add your sections below."}
+          </p>
         )}
+        <CourseChips
+          term={term}
+          classNumbers={classNumbers}
+          courseColors={courseColors}
+          onRemove={remove}
+          busy={busy}
+        />
       </div>
 
       <div className="flex flex-col gap-2">

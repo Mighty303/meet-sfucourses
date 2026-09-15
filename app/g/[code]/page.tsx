@@ -7,17 +7,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CalendarTools } from "@/components/CalendarTools";
-import { CoursePicker } from "@/components/CoursePicker";
+import { CourseChips } from "@/components/CourseChips";
 import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
-import { blocksFromSection, commonFree, weekDates } from "@/lib/overlap";
+import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
 import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
-import type { DayKey, SectionHit } from "@/lib/sfu";
+import type { DayKey } from "@/lib/sfu";
+import { addDays, mondayOf, shortDate, toISODate, writeDate } from "@/lib/week-dates";
 
 interface Member {
   id: number;
@@ -57,48 +58,6 @@ interface GroupState {
   termBounds: { start: string; end: string; typicalStart: string } | null;
   /** Everyone's attendance deviations for this week — see lib/attendance.ts. */
   attendance: AttendanceRow[];
-}
-
-/** Monday of the week containing `d`, as YYYY-MM-DD. */
-function mondayOf(d: Date): string {
-  const m = new Date(d);
-  m.setDate(m.getDate() - ((m.getDay() + 6) % 7));
-  return toISODate(m);
-}
-
-function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Midday avoids the date shifting under daylight-saving transitions. */
-function parseISODate(iso: string): Date {
-  return new Date(`${iso}T12:00:00`);
-}
-
-function addDays(iso: string, days: number): string {
-  const d = parseISODate(iso);
-  d.setDate(d.getDate() + days);
-  return toISODate(d);
-}
-
-function shortDate(iso: string): string {
-  return parseISODate(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/**
- * "Thursday, Sep 18" — named in full, because a status is about one specific
- * day and getting the wrong one wrong is silent: you'd mark next week's lecture
- * and wonder why nobody noticed.
- */
-function writeDate(iso: string): string {
-  return parseISODate(iso).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 // Shorter than this isn't worth crossing campus for, and nobody was going to
@@ -143,8 +102,10 @@ function GroupSchedule({ code }: { code: string }) {
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  // The section under the cursor in the picker, sketched onto the grid.
-  const [preview, setPreview] = useState<{ course: string; section: SectionHit } | null>(null);
+  // Everything about the group that isn't its week: renaming, leaving, deleting.
+  // Behind one press, because none of it is read — it is all acted on, once.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   // Deleting is irreversible and takes everyone's schedules, so the button has
   // to be armed first — no dialog, just a second, differently-worded click.
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -176,6 +137,24 @@ function GroupSchedule({ code }: { code: string }) {
   // concern behind this rule doesn't apply.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // A press outside closes the group menu, and so does Escape — the two ways
+  // out of a dropdown people already know. Its own contents are exempt, or the
+  // press that arms "Leave" would close the thing it was aimed at.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: Event) => {
+      if (e.type === "pointerdown" && menuRef.current?.contains(e.target as Node)) return;
+      if (e.type === "keydown" && (e as KeyboardEvent).key !== "Escape") return;
+      setMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [menuOpen]);
 
   // Identity comes from the session — no localStorage, so your schedule follows
   // you to any device you sign in on.
@@ -447,11 +426,6 @@ function GroupSchedule({ code }: { code: string }) {
     return Object.fromEntries(Object.keys(myCourseColors).map((code) => [code, me.color]));
   }, [myCourseColors, me, view]);
 
-  const previewBlocks = useMemo(
-    () => (preview ? blocksFromSection(preview.course, preview.section) : []),
-    [preview]
-  );
-
   /**
    * The five dates the grid is currently showing. A status is about a date, not
    * about "Thursday" in the abstract — skipping one week's lecture says nothing
@@ -575,81 +549,192 @@ function GroupSchedule({ code }: { code: string }) {
               </button>
             </form>
           ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              {/* The group names the page in both views — the Group/Mine
-                  toggle below says which of the two you're reading. */}
-              <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
-              {isAdmin && (
-                <button
-                  onClick={() => setDraftName(state.group.name)}
-                  // Nothing spells out what this does any more, so the icon has
-                  // to: a title for the pointer, an aria-label for a reader.
-                  aria-label="Rename group"
-                  title="Rename group"
-                  className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
-                >
-                  <PencilIcon />
-                </button>
-              )}
-            </div>
+            /* The group names the page in both views — the Group/Mine toggle
+               below says which of the two you're reading. The pencil that used
+               to sit beside it has gone into the ⋮ with the other three things
+               you can do to a group, where it is a word rather than an icon
+               nobody could name. */
+            <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
           )}
           <p className="text-sm text-neutral-500">
             {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
           </p>
-          {view === "mine" && <p className="mt-1 text-sm text-neutral-500">Only your classes and free time are shown.</p>}
+          {view === "mine" && (
+            <>
+              <p className="mt-1 text-sm text-neutral-500">Only your classes and free time are shown.</p>
+              {/* Your own week has no member list to hang the chips off, so
+                  they sit under the heading instead — one wrapped row, not the
+                  card this used to be. */}
+              {me && (
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <CourseChips
+                    term={state.group.term}
+                    classNumbers={me.classNumbers}
+                    courseColors={myChipColors}
+                    compact
+                  />
+                  <Link
+                    href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}?view=mine`)}`}
+                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {me.classNumbers.length > 0 ? "Edit courses →" : "Add your courses →"}
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </div>
-        <div className="flex w-full flex-col gap-2 lg:w-auto">
-          <div>
-            <h2 className="font-medium">Invite link</h2>
-            <p className="text-xs text-neutral-500">
-              Anyone with this can open the group and add their own schedule.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Always visible: clipboard access is unreliable (it silently never
-                settles when the document isn't focused), and people want to see
-                the link they're sharing anyway. */}
-            <input
-              readOnly
-              value={shareUrl}
-              onFocus={(e) => e.currentTarget.select()}
-              className="w-48 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 sm:w-80 lg:w-[26rem] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
-            />
-            <button
-              onClick={() => {
-                // Optimistic — the promise may never settle, so don't wait on it.
-                setCopyState("copied");
-                setTimeout(() => setCopyState("idle"), 2000);
-                navigator.clipboard?.writeText(shareUrl).catch(() => setCopyState("failed"));
-              }}
-              className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 active:scale-[0.98] dark:border-neutral-700 dark:hover:bg-neutral-800"
+        {/* The two things you do to a group rather than read from it, on one
+            row. The invite used to be a labelled panel with the URL always on
+            screen — a paragraph and a text field permanently occupying the top
+            of a page you opened to look at a week. It is a one-time action, so
+            it is a button, and the field only appears if the copy actually
+            failed. Everything rarer than that is behind the ⋮. */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              // Optimistic — the promise may never settle, so don't wait on it.
+              setCopyState("copied");
+              setTimeout(() => setCopyState("idle"), 2000);
+              navigator.clipboard?.writeText(shareUrl).catch(() => setCopyState("failed"));
+            }}
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 active:scale-[0.98] dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              className="shrink-0 text-neutral-500 dark:text-neutral-400"
             >
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                className="shrink-0 text-neutral-500 dark:text-neutral-400"
+              {copyState === "copied" ? (
+                <path d="M4.5 10.5l3.5 3.5 7.5-8" />
+              ) : (
+                <>
+                  <rect x="7.25" y="7.25" width="9" height="9" rx="2" />
+                  <path d="M12.75 4.75a2 2 0 00-2-2h-6a2 2 0 00-2 2v6a2 2 0 002 2" />
+                </>
+              )}
+            </svg>
+            {copyState === "copied" ? "Copied" : "Copy invite link"}
+          </button>
+
+          {me && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Group options"
+                aria-expanded={menuOpen}
+                title="Group options"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
               >
-                {copyState === "copied" ? (
-                  <path d="M4.5 10.5l3.5 3.5 7.5-8" />
-                ) : (
-                  <>
-                    <rect x="7.25" y="7.25" width="9" height="9" rx="2" />
-                    <path d="M12.75 4.75a2 2 0 00-2-2h-6a2 2 0 00-2 2v6a2 2 0 002 2" />
-                  </>
-                )}
-              </svg>
-              {copyState === "copied" ? "Copied" : copyState === "failed" ? "Select & copy ↑" : "Copy link"}
-            </button>
-          </div>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <circle cx="10" cy="4.5" r="1.4" />
+                  <circle cx="10" cy="10" r="1.4" />
+                  <circle cx="10" cy="15.5" r="1.4" />
+                </svg>
+              </button>
+
+              {menuOpen && (
+                /* Not a modal — the repo has none. A panel anchored to the
+                   button it came out of, dismissed by pressing anywhere else. */
+                <div className="absolute right-0 z-40 mt-1 flex w-64 flex-col gap-1 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setDraftName(state.group.name); setMenuOpen(false); }}
+                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    >
+                      <PencilIcon />
+                      Rename group
+                    </button>
+                  )}
+
+                  {confirmLeave ? (
+                    /* Armed in place rather than in a dialog: the second click
+                       is differently worded and differently coloured, which is
+                       the whole of the confirmation. */
+                    <div className="flex flex-col gap-1.5 rounded-md bg-neutral-100 p-2 text-xs dark:bg-neutral-800">
+                      <span className="text-neutral-600 dark:text-neutral-300">
+                        Leave {state.group.name}?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={leave}
+                          disabled={saving}
+                          className="rounded-md bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
+                        >
+                          {saving ? "Leaving…" : "Leave"}
+                        </button>
+                        <button onClick={() => setConfirmLeave(false)} className="text-neutral-500">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmLeave(true)}
+                      disabled={saving}
+                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                    >
+                      <LeaveIcon />
+                      Leave group
+                    </button>
+                  )}
+
+                  {isAdmin && (
+                    confirmDelete ? (
+                      <div className="flex flex-col gap-1.5 rounded-md bg-neutral-100 p-2 text-xs dark:bg-neutral-800">
+                        <span className="text-neutral-600 dark:text-neutral-300">
+                          Delete {state.group.name} and everyone&apos;s schedules in it?
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={deleteGroup}
+                            disabled={saving}
+                            className="rounded-md bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
+                          >
+                            {saving ? "Deleting…" : "Delete for everyone"}
+                          </button>
+                          <button onClick={() => setConfirmDelete(false)} className="text-neutral-500">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        disabled={saving}
+                        className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                      >
+                        <TrashIcon />
+                        Delete group
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
+
+      {copyState === "failed" && (
+        <div className="-mt-4 flex items-center gap-2">
+          <p className="text-sm text-neutral-500">Copying didn&apos;t work — take it from here:</p>
+          <input
+            readOnly
+            autoFocus
+            value={shareUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-64 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 sm:w-96 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+          />
+        </div>
+      )}
 
       {/* What you're reading: your own week, or one of your groups as a whole.
           One pill is selected at a time, and switching is a real navigation, so
@@ -752,79 +837,17 @@ function GroupSchedule({ code }: { code: string }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-6 rounded-xl border border-neutral-200 p-5 sm:p-6 dark:border-neutral-800">
-          {/* Name and colour are set once on the profile page — they follow you
-              into every group, so there's nothing to edit here. */}
-          <h2 className="font-medium">Your schedule</h2>
+        /* Nothing. Being in the group used to be a card here: your saved
+           sections, a link to change them, and the two buttons for getting out.
+           It sat between the heading and the week, which meant the thing the
+           page is named after started below the fold.
 
-          <CoursePicker
-            term={state.group.term}
-            groupCode={code}
-            memberId={me.id}
-            classNumbers={me.classNumbers}
-            courseColors={myChipColors}
-            onChange={load}
-            onPreview={setPreview}
-          />
-
-          <div className="flex flex-wrap items-center gap-3">
-            {error && <p className="text-sm text-amber-600">{error}</p>}
-            {confirmLeave ? (
-              <span className="ml-auto flex items-center gap-2 text-xs">
-                <span className="text-neutral-600 dark:text-neutral-300">
-                  Leave {state.group.name}?
-                </span>
-                <button
-                  onClick={leave}
-                  disabled={saving}
-                  className="rounded-lg bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
-                >
-                  {saving ? "Leaving…" : "Leave"}
-                </button>
-                <button onClick={() => setConfirmLeave(false)} className="text-neutral-500">
-                  Cancel
-                </button>
-              </span>
-            ) : (
-              <button
-                onClick={() => setConfirmLeave(true)}
-                disabled={saving}
-                className="ml-auto flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-              >
-                <LeaveIcon />
-                Leave group
-              </button>
-            )}
-            {isAdmin && (
-              confirmDelete ? (
-                <span className="flex items-center gap-2 text-xs">
-                  <span className="text-neutral-600 dark:text-neutral-300">
-                    Delete {state.group.name} and everyone&apos;s schedules in it?
-                  </span>
-                  <button
-                    onClick={deleteGroup}
-                    disabled={saving}
-                    className="rounded-lg bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
-                  >
-                    {saving ? "Deleting…" : "Delete for everyone"}
-                  </button>
-                  <button onClick={() => setConfirmDelete(false)} className="text-neutral-500">
-                    Cancel
-                  </button>
-                </span>
-              ) : (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={saving}
-                  className="flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs text-neutral-600 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:border-red-900 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                >
-                  <TrashIcon />
-                  Delete group
-                </button>
-              )
-            )}
-          </div>
-        </div>
+           The sections moved into the member list, onto your own row, where
+           they cost no vertical space at all and sit beside the grid they
+           describe. Leaving and deleting moved into the ⋮ — both are done once
+           and never read. What is left here is the error line, because a failed
+           join or rename has to land somewhere you are already looking. */
+        error && <p className="-mt-4 text-sm text-amber-600">{error}</p>
       )}
 
       {/* The people and the week they add up to, side by side from `lg`. Ticking
@@ -964,6 +987,38 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
+
+                {/* Your own row carries your sections, indented under your name.
+                    Outside the <label>, or reaching for a course code to read
+                    its meeting times would tick you off the grid.
+
+                    Here rather than in a card above the week, because this
+                    column is already beside the grid: the list costs the page
+                    no height, and what it says — these five sections are the
+                    blocks in your colour — is only useful next to them. */}
+                {me && m.id === me.id && (
+                  <div className="mt-1.5 flex flex-col items-start gap-1.5 pl-5">
+                    {me.classNumbers.length === 0 ? (
+                      <p className="text-xs text-neutral-500">
+                        Nothing saved. Until you add your sections, the
+                        group&apos;s free time is worked out without you.
+                      </p>
+                    ) : (
+                      <CourseChips
+                        term={state.group.term}
+                        classNumbers={me.classNumbers}
+                        courseColors={myChipColors}
+                        compact
+                      />
+                    )}
+                    <Link
+                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+                      className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {me.classNumbers.length > 0 ? "Edit courses →" : "Add your courses →"}
+                    </Link>
+                  </div>
+                )}
               </li>
             );
           })}
@@ -1099,8 +1154,6 @@ function GroupSchedule({ code }: { code: string }) {
           // Only on your own week: in a group the colour has to stay the
           // person, which is what you scan a column for.
           courseColors={view === "mine" ? myCourseColors : undefined}
-          preview={previewBlocks}
-          previewColor={me?.color}
           attendance={attendance}
         />
       )}

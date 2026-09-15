@@ -14,15 +14,23 @@ import { SignInPanel } from "@/components/SignInPanel";
 export function AuthScreen({
   mode,
   next,
+  toggleNext = next,
 }: {
   mode: "signin" | "register";
   /** Already passed through safeNext by the page above. */
   next: string;
+  /**
+   * Where the other half of the toggle should land, when that isn't the same
+   * place. Sign-up sends new accounts via /courses, and someone clicking
+   * "already have an account" is saying they aren't a new account — so the
+   * link across carries the real destination rather than the detour.
+   */
+  toggleNext?: string;
 }) {
   const register = mode === "register";
   // Carried across the toggle, so bouncing between the two doesn't lose where
   // you were headed.
-  const query = next === "/" ? "" : `?next=${encodeURIComponent(next)}`;
+  const query = toggleNext === "/" ? "" : `?next=${encodeURIComponent(toggleNext)}`;
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col justify-center gap-6 p-6 pb-20 sm:pb-24">

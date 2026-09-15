@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { addMemberCourse, getMemberCourses, removeMemberCourse } from "@/lib/groups";
 import { authorizeMember } from "@/lib/member-access";
+import { isClassNumber } from "@/lib/sfu";
 
-/** Class numbers are 3–6 digits; anything else never matches a section anyway. */
+/** Trimmed first, since this one comes off a form rather than out of our own code. */
 function readClassNumber(value: unknown): string | null {
-  return typeof value === "string" && /^\d{3,6}$/.test(value.trim())
-    ? value.trim()
-    : null;
+  const trimmed = typeof value === "string" ? value.trim() : value;
+  return isClassNumber(trimmed) ? trimmed : null;
 }
 
 export async function POST(

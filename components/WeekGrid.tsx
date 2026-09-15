@@ -35,7 +35,10 @@ function freeStyle(w: FreeWindow, solo: boolean) {
       // the one band worth skipping — and a flat contradiction of the legend
       // three lines above it. Worded as the legend's own swatch now, so the key
       // and the block say the same thing.
-      tag: "NOBODY ON CAMPUS",
+      //
+      // "Nobody" counts a group; on your own week there is nobody to count, and
+      // the band is just the part of the day you have no reason to be in.
+      tag: solo ? "OFF CAMPUS" : "NOBODY ON CAMPUS",
     };
   }
   return w.sharedCampus
@@ -322,7 +325,7 @@ export function WeekGrid({
           {[
             { box: "bg-emerald-400/30 ring-2 ring-inset ring-emerald-500/60", label: solo ? "Between classes" : "Everyone free" },
             ...(solo ? [] : [{ box: "bg-amber-300/25 ring-2 ring-inset ring-amber-500/50", label: "Split campus" }]),
-            { box: "bg-neutral-400/10 ring-1 ring-inset ring-neutral-400/30", label: "Nobody on campus" },
+            { box: "bg-neutral-400/10 ring-1 ring-inset ring-neutral-400/30", label: solo ? "Off campus" : "Nobody on campus" },
           ].map((k) => (
             <span key={k.label} className="flex items-center gap-1 text-neutral-500">
               <span className={`h-3.5 w-6 rounded-sm ${k.box}`} />

@@ -39,6 +39,18 @@ function NavBarContent() {
     <>
       <NavLink href="/" active={pathname === "/"}>Home</NavLink>
       {signedIn && (
+        /* Ahead of Schedule, because it comes first: a week grid with nothing
+           on it is what you get for skipping this. The group you're looking at
+           rides along so the page can offer that group's term and send you
+           back to it. */
+        <NavLink
+          href={currentCode ? `/courses?next=${encodeURIComponent(`/g/${currentCode}`)}` : "/courses"}
+          active={pathname === "/courses"}
+        >
+          Courses
+        </NavLink>
+      )}
+      {signedIn && (
         <NavLink
           href={currentCode ? `/g/${currentCode}?view=mine` : "/my-schedule"}
           active={schedule}
