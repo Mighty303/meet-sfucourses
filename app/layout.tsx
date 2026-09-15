@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { NavBar } from "@/components/NavBar";
 import { Footer } from "@/components/Footer";
+import { FeedbackWidget } from "@/components/FeedbackWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <NavBar />
           {children}
           <Footer />
+          {/* Last, and fixed to the corner: it floats over every page, so it
+              belongs outside the flow the footer ends. */}
+          <FeedbackWidget />
         </Providers>
       </body>
     </html>

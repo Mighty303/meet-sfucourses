@@ -5,9 +5,11 @@ import { AuthButton } from "@/components/AuthButton";
 import { Avatar } from "@/components/Avatar";
 import { adminFor } from "@/lib/admin";
 import {
+  FEEDBACK_LIMIT,
   formatBytes,
   getAdminMetrics,
   type AdminMetrics,
+  type FeedbackRow,
   type GroupRow,
 } from "@/lib/metrics";
 import { fromTermCode } from "@/lib/sfu";
@@ -45,6 +47,7 @@ export default async function AdminPage() {
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-4 sm:p-6">
       <Header metrics={m} email={admin.email} />
       <Headline metrics={m} />
+      <FeedbackSection metrics={m} />
       <StorageSection metrics={m} />
       <ActivitySection metrics={m} />
       <GroupsSection metrics={m} />
@@ -119,6 +122,90 @@ function Headline({ metrics: { totals } }: { metrics: AdminMetrics }) {
       />
     </section>
   );
+}
+
+/* ---------------------------------------------------------------- feedback */
+
+/**
+ * Everything sent from the button in the corner, newest first. High up the
+ * page, above the counters, because it is the only section here that can be
+ * waiting on a reply — the numbers keep, a person asking a question does not.
+ */
+function FeedbackSection({ metrics: { feedback, generatedAt } }: { metrics: AdminMetrics }) {
+  // Measured from when the numbers were read, not from now: the render has to
+  // be a pure function of its props, and the two are the same instant anyway
+  // on a page that refuses to be cached.
+  const cutoff = new Date(generatedAt).getTime() - 7 * 24 * 60 * 60 * 1000;
+  const week = feedback.filter((f) => new Date(f.createdAt).getTime() > cutoff).length;
+
+  return (
+    <Panel
+      title={`Feedback (${feedback.length}${feedback.length === FEEDBACK_LIMIT ? "+" : ""})`}
+      note={
+        feedback.length === 0
+          ? "Nothing sent yet."
+          : `${week} in the last 7 days · newest ${FEEDBACK_LIMIT} shown.`
+      }
+    >
+      {feedback.length === 0 ? (
+        <p className="text-sm text-neutral-500">
+          The button sits in the bottom-right corner of every page except this one.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {feedback.map((f) => (
+            <li
+              key={f.id}
+              className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
+            >
+              {/* Their words, wrapped as they typed them — a report that turns
+                  into one long line loses the shape they gave it. */}
+              <p className="whitespace-pre-wrap break-words text-sm">{f.message}</p>
+              <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500">
+                <span>{sender(f)}</span>
+                <span aria-hidden>·</span>
+                <span title={fullTime(f.createdAt)}>{ago(f.createdAt)}</span>
+                {f.path && (
+                  <>
+                    <span aria-hidden>·</span>
+                    {/* Safe to link: lib/feedback-limits.ts only stores a value
+                        that starts with a single slash, so this can't leave. */}
+                    <Link
+                      href={f.path}
+                      className="font-mono text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                    >
+                      {f.path}
+                    </Link>
+                  </>
+                )}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Who to write back to. The account address leads, because it is on file
+ * rather than typed into this form, and a different address sent alongside it
+ * is shown beside it rather than instead of it — typing one while signed in is
+ * a deliberate "reply here, not there".
+ */
+function sender(f: FeedbackRow): string {
+  const account = f.accountEmail
+    ? f.name
+      ? `${f.name} <${f.accountEmail}>`
+      : f.accountEmail
+    : null;
+
+  if (account && f.email && f.email.toLowerCase() !== f.accountEmail?.toLowerCase()) {
+    return `${account} · reply to ${f.email}`;
+  }
+  if (account) return account;
+  if (f.email) return `${f.email} (not signed in)`;
+  return "anonymous";
 }
 
 /* ----------------------------------------------------------------- storage */
