@@ -51,6 +51,28 @@ export function attending(blocks: BusyBlock[]): BusyBlock[] {
   return blocks.filter((b) => b.status !== "skipping");
 }
 
+/**
+ * Classes that put someone on campus that day. Online lectures don't — a day
+ * of only online classes is the same as a day off campus for meetup purposes.
+ */
+export function onCampus(blocks: BusyBlock[]): BusyBlock[] {
+  return attending(blocks).filter((b) => b.status !== "remote");
+}
+
+/**
+ * Busy intervals that constrain campus meetups for one person on one day.
+ *
+ * A remote-only day contributes nothing: they're not coming in, so their Zoom
+ * hours must not block everyone else's free window. A mixed day keeps online
+ * lectures as busy, so a Zoom hour between two campus classes isn't offered
+ * as a meetup slot either.
+ */
+function busyForMeetup(blocks: BusyBlock[], day: DayKey): BusyBlock[] {
+  const dayBlocks = attending(blocks).filter((b) => b.day === day);
+  if (!dayBlocks.some((b) => b.status !== "remote")) return [];
+  return dayBlocks;
+}
+
 export interface FreeWindow extends Interval {
   day: DayKey;
   /** Distinct campuses the members are anchored to around this window. */
@@ -295,8 +317,8 @@ export function commonFree({
   const windows: FreeWindow[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
-    const onCampus = members
+    const dayBusy = members.map((m) => busyForMeetup(m.busy, day));
+    const onCampusNames = members
       .filter((_, i) => dayBusy[i].length > 0)
       .map((m) => m.name);
     const allBlocks = dayBusy.flat();
@@ -328,7 +350,7 @@ export function commonFree({
         betweenClasses:
           allBlocks.some((b) => b.end === slot.start) &&
           allBlocks.some((b) => b.start === slot.end),
-        onCampus,
+        onCampus: onCampusNames,
       });
     }
   }
@@ -378,7 +400,7 @@ export function partialFree({
   const windows: PartialWindow[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
+    const dayBusy = members.map((m) => busyForMeetup(m.busy, day));
 
     // Cut the day at every class edge. Nobody's status changes inside a segment,
     // so any window is a run of whole segments — which makes the search a walk
@@ -524,19 +546,23 @@ export function availabilityBands({
   const bands: AvailabilityBand[] = [];
 
   for (const day of days) {
-    const dayBusy = members.map((m) => attending(m.busy).filter((b) => b.day === day));
-    const away = members.map((_, i) => i).filter((i) => dayBusy[i].length === 0);
+    // Campus presence and busy occupancy can differ: a remote-only day is off
+    // campus entirely, while a mixed day still treats Zoom hours as busy.
+    const dayCampus = members.map((m) => onCampus(m.busy).filter((b) => b.day === day));
+    const dayBusy = members.map((m) => busyForMeetup(m.busy, day));
+    const away = members.map((_, i) => i).filter((i) => dayCampus[i].length === 0);
     // When each member first has to be on campus, and when the day is finally
-    // over for everyone. Both are class edges, so they're always cut points and
-    // a segment is never half in and half out.
-    const arrival = dayBusy.map((busy) =>
+    // over for everyone who came in. Online-only lectures don't count — they'd
+    // pin "arrival" to a Zoom the person never leaves home for.
+    const arrival = dayCampus.map((busy) =>
       busy.length === 0 ? null : Math.min(...busy.map((b) => b.start))
     );
-    const allBlocks = dayBusy.flat();
+    const allBlocks = dayCampus.flat();
     const lastOut = allBlocks.length === 0 ? null : Math.max(...allBlocks.map((b) => b.end));
 
-    // Cut the day wherever anyone's status can change. Between two cuts nobody
-    // starts or stops a class, so the free set is constant across the segment.
+    // Cut the day wherever anyone's meetup-busy status can change (including
+    // remote hours on a mixed day). Between two cuts nobody starts or stops a
+    // class that matters, so the free set is constant across the segment.
     const cuts = new Set<number>([dayStart, dayEnd]);
     for (const busy of dayBusy) {
       for (const b of busy) {

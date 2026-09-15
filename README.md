@@ -38,10 +38,12 @@ block itself, or for a whole day from the day's heading:
   a real free window opens for the group. The block stays on the detailed grid,
   hollowed out and dashed — and on the availability heatmap as a dashed outline
   over the greener band — because seeing *why* a window opened is the point.
-- **Online** keeps the hour busy but stops it anchoring you to a campus in
-  step 5, so a window between two online lectures can't be called cross-campus.
-  The heatmap uses a blue hatch (and a blue outline) so an all-online hour
-  doesn't read as the same "in a room" state as an on-campus lecture.
+- **Online** stops anchoring you to a campus. If it's your only class that day,
+  you drop out of availability entirely (same as having no campus day). If you
+  also have in-person classes, the online hour stays busy so it isn't offered as
+  a meetup slot. The heatmap uses a blue hatch (and a blue outline) so an
+  all-online hour doesn't read as the same "in a room" state as an on-campus
+  lecture.
 
 Statuses are stored against the user and a date — not against a group — so
 marking Thursday's lecture skipped shows in every group you're in at once. Only
