@@ -86,6 +86,8 @@ export interface Member {
  * apart: absent means read-only, which is exactly what a signed-out visitor or
  * a non-member sees, and there is no half of this worth having on its own.
  */
+export type AttendancePickOpts = { repeat?: boolean };
+
 export interface AttendanceControl {
   /** The viewer's own member row. Only their blocks carry the control. */
   memberId: number;
@@ -95,8 +97,18 @@ export interface AttendanceControl {
   dayStatus: Partial<Record<DayKey, { status: AttendanceStatus; note: string | null }>>;
   /** "Monday, Sep 14" — the page owns the dates, so it owns the wording. */
   dayLabel: (day: DayKey) => string;
-  setBlock: (block: BusyBlock, status: AttendanceStatus, note: string | null) => void;
-  setDay: (day: DayKey, status: AttendanceStatus, note: string | null) => void;
+  setBlock: (
+    block: BusyBlock,
+    status: AttendanceStatus,
+    note: string | null,
+    opts?: AttendancePickOpts
+  ) => void | Promise<void>;
+  setDay: (
+    day: DayKey,
+    status: AttendanceStatus,
+    note: string | null,
+    opts?: AttendancePickOpts
+  ) => void | Promise<void>;
 }
 
 interface Entry {
@@ -507,7 +519,9 @@ export function WeekGrid({
                           ? {
                               current: b.status ?? "going",
                               note: b.note ?? null,
-                              onPick: (status, note) => attendance.setBlock(b, status, note),
+                              onPick: (status, note, opts) =>
+                                attendance.setBlock(b, status, note, opts),
+                              allowRepeat: true,
                             }
                           : undefined,
                     });

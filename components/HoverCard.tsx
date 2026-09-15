@@ -26,7 +26,20 @@ export type HoverLine = string | { label: string; value: string };
 export interface HoverStatus {
   current: AttendanceStatus;
   note: string | null;
-  onPick: (status: AttendanceStatus, note: string | null) => void;
+  /**
+   * May return a promise — the buttons spin until it settles, so a slow save
+   * doesn't look like the press was ignored.
+   */
+  onPick: (
+    status: AttendanceStatus,
+    note: string | null,
+    opts?: { repeat?: boolean }
+  ) => void | Promise<void>;
+  /**
+   * Offer a Google-Calendar-style "also apply to future weeks" checkbox. Off
+   * for one-off fixtures that have no series to write into.
+   */
+  allowRepeat?: boolean;
 }
 
 export interface HoverCardData {
@@ -136,46 +149,106 @@ const TONE: Record<AttendanceStatus, string> = {
   remote: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300",
 };
 
+function Spinner() {
+  return (
+    <svg
+      className="h-3.5 w-3.5 animate-spin"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 /**
- * Three buttons and a note, under whatever the card was already saying. Kept in
- * the card rather than in a panel of its own because the two answer the same
- * question one after the other: what is this class, and am I going to it.
+ * Three buttons, an optional "repeat for future weeks" checkbox, and a note —
+ * under whatever the card was already saying. Kept in the card rather than in a
+ * panel of its own because the two answer the same question one after the
+ * other: what is this class, and am I going to it.
+ *
+ * The checkbox is the Google Calendar move: one decision, applied to this
+ * meeting and every later one in the series, without a second dialog.
  */
 function StatusRow({ status }: { status: HoverStatus }) {
   const [note, setNote] = useState(status.note ?? "");
+  const [repeat, setRepeat] = useState(false);
+  const [pending, setPending] = useState<AttendanceStatus | null>(null);
+
+  async function pick(next: AttendanceStatus) {
+    if (pending) return;
+    setPending(next);
+    try {
+      await status.onPick(next, note.trim().slice(0, 80) || null, {
+        repeat: status.allowRepeat ? repeat : false,
+      });
+    } finally {
+      setPending(null);
+    }
+  }
 
   return (
     <div className="mt-2.5 border-t border-neutral-200 pt-2.5 dark:border-neutral-700">
       <div className="flex gap-1.5">
-        {ATTENDANCE_STATUSES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            title={BLURB[s]}
-            onClick={() => status.onPick(s, note.trim().slice(0, 80) || null)}
-            className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
-              s === status.current
-                ? TONE[s]
-                : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            }`}
-          >
-            {STATUS_EFFECT[s].label}
-          </button>
-        ))}
+        {ATTENDANCE_STATUSES.map((s) => {
+          const busy = pending === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              title={BLURB[s]}
+              disabled={pending !== null}
+              onClick={() => pick(s)}
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:opacity-70 ${
+                s === status.current
+                  ? TONE[s]
+                  : "border-neutral-300 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {busy ? <Spinner /> : null}
+              {STATUS_EFFECT[s].label}
+            </button>
+          );
+        })}
       </div>
       {/* The selected one explains itself, so the three buttons don't each need
           a line of their own and the card stays the size of a tooltip. */}
       <p className="mt-1.5 text-[11px] leading-snug text-neutral-500">
         {BLURB[status.current]}
       </p>
+      {status.allowRepeat && (
+        <label className="mt-2 flex cursor-pointer items-start gap-2 text-[11px] leading-snug text-neutral-600 dark:text-neutral-300">
+          <input
+            type="checkbox"
+            checked={repeat}
+            disabled={pending !== null}
+            onChange={(e) => setRepeat(e.target.checked)}
+            className="mt-0.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"
+          />
+          <span>
+            Also apply to future weeks
+            <span className="block text-neutral-400 dark:text-neutral-500">
+              Same weekday for the rest of the term
+            </span>
+          </span>
+        </label>
+      )}
       <input
         value={note}
         onChange={(e) => setNote(e.target.value)}
         maxLength={80}
+        disabled={pending !== null}
         placeholder="Add a note (optional)"
         // Saved with whichever status is pressed next, not on a button of its
         // own — a note with no status is nothing.
-        className="mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+        className="mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-xs disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900"
       />
     </div>
   );
@@ -215,7 +288,7 @@ export function HoverCard({
       style={{
         left: Math.min(card.x + 14, (typeof window !== "undefined" ? window.innerWidth : 1200) - 300),
         top: live
-          ? Math.min(card.y + 14, (typeof window !== "undefined" ? window.innerHeight : 800) - 270)
+          ? Math.min(card.y + 14, (typeof window !== "undefined" ? window.innerHeight : 800) - 340)
           : card.y + 14,
       }}
       onMouseEnter={live ? onEnter : undefined}
