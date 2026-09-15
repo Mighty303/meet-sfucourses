@@ -35,7 +35,18 @@ function NavBarContent() {
   const isAdmin = signedIn && session?.isAdmin === true;
   const schedule = pathname === "/my-schedule" || (!!currentCode && viewParam === "mine");
 
-  const links = (
+  const profileHref = currentCode
+    ? `/profile?from=${encodeURIComponent(currentCode)}`
+    : "/profile";
+
+  /**
+   * The same rows in both places, except for the account ones. On desktop
+   * Profile and Admin live in the menu behind the picture, so listing them
+   * here as well would name the same destinations twice. The mobile menu has
+   * no picture — it hides the account block entirely — so there they stay
+   * rows, in the positions they already had.
+   */
+  const links = (withAccount: boolean) => (
     <>
       <NavLink href="/" active={pathname === "/"}>Home</NavLink>
       {signedIn && (
@@ -61,15 +72,10 @@ function NavBarContent() {
           Schedule
         </NavLink>
       )}
-      {signedIn && (
-        <NavLink
-          href={currentCode ? `/profile?from=${encodeURIComponent(currentCode)}` : "/profile"}
-          active={pathname === "/profile"}
-        >
-          Profile
-        </NavLink>
+      {signedIn && withAccount && (
+        <NavLink href={profileHref} active={pathname === "/profile"}>Profile</NavLink>
       )}
-      {isAdmin && (
+      {isAdmin && withAccount && (
         <NavLink href="/admin" active={pathname === "/admin"}>Admin</NavLink>
       )}
     </>
@@ -86,14 +92,14 @@ function NavBarContent() {
           <Logo />
         </Link>
 
-        {signedIn && <div className="hidden items-center gap-x-1 sm:flex">{links}</div>}
+        {signedIn && <div className="hidden items-center gap-x-1 sm:flex">{links(false)}</div>}
 
         {/* Signed in, the account block is desktop-only — the mobile menu
             carries Sign out, and both at once is a cramped bar and a repeated
             control. Signed out it is the whole point of the bar, so it shows
             at every width and the menu below never opens. */}
         <div className={`ml-auto flex items-center gap-2 ${signedIn ? "hidden sm:flex" : ""}`}>
-          <AuthButton />
+          <AuthButton profileHref={profileHref} profileActive={pathname === "/profile"} />
         </div>
 
         {/* Only signed in. Signed out the bar holds two buttons and the mark,
@@ -123,7 +129,7 @@ function NavBarContent() {
           onClick={() => setOpen(false)}
           className="flex flex-col gap-1 border-t border-neutral-200 p-3 sm:hidden dark:border-neutral-800"
         >
-          {links}
+          {links(true)}
           <div className="mt-1 border-t border-neutral-200 pt-2 dark:border-neutral-800">
             <AuthButton stacked />
           </div>

@@ -1,16 +1,37 @@
 "use client";
 
 import { signOut, useSession } from "next-auth/react";
-import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { Avatar } from "./Avatar";
 
-// `stacked` is for the mobile menu, where the row has the whole panel width
-// to itself, so the account block is styled as menu rows rather than as
-// the compact desktop control.
-export function AuthButton({ stacked = false }: { stacked?: boolean }) {
+interface Props {
+  /**
+   * The mobile menu, where the row has the whole panel width to itself, so the
+   * account block is styled as menu rows rather than as the compact desktop
+   * control. It already lists Profile, so there is nothing for a menu to hold.
+   */
+  stacked?: boolean;
+  /** Where Profile goes. Built by the nav, which has the path to read. */
+  profileHref?: string;
+  profileActive?: boolean;
+  /** Admin moves in here with the rest of the account-scoped rows. */
+  adminHref?: string;
+}
+
+/**
+ * Who you're signed in as, and everything that belongs to the account.
+ *
+ * Signed in, the picture is a button rather than a label: Profile, Admin and
+ * Sign out are all things you do to your own account, and spreading them along
+ * the bar mixed them in with the three pages the app is actually made of. One
+ * control at the end of the bar, and the account rows live under it — which is
+ * also where a fourth row can go later without the bar growing.
+ */
+export function AuthButton({ stacked = false, profileHref = "/profile", profileActive = false, adminHref = "/admin" }: Props) {
   const { data: session, status } = useSession();
   if (status === "loading") {
-    return <div className="h-8 w-24 animate-pulse rounded-lg bg-neutral-200 dark:bg-neutral-800" />;
+    return <div className="h-9 w-9 animate-pulse rounded-full bg-neutral-200 dark:bg-neutral-800" />;
   }
 
   // Signed out these are signposts rather than the act itself — both providers
@@ -40,6 +61,8 @@ export function AuthButton({ stacked = false }: { stacked?: boolean }) {
     );
   }
 
+  const name = session.user.name ?? session.user.email ?? "";
+
   if (stacked) {
     // In the mobile menu this is just one more menu row. Who you're signed
     // in as belongs on the Profile page the menu already links to, so the
@@ -56,26 +79,221 @@ export function AuthButton({ stacked = false }: { stacked?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {session.user.image && (
-        <Image
-          src={session.user.image}
-          alt=""
-          width={28}
-          height={28}
-          className="rounded-full"
-        />
-      )}
-      <span className="max-w-[7rem] truncate text-sm text-neutral-600 sm:max-w-none dark:text-neutral-300">
-        {session.user.name ?? session.user.email}
-      </span>
+    <AccountMenu
+      name={name}
+      email={session.user.email ?? null}
+      image={session.user.image ?? null}
+      profileHref={profileHref}
+      profileActive={profileActive}
+      adminHref={session.isAdmin === true ? adminHref : null}
+    />
+  );
+}
+
+/**
+ * The picture, and the rows behind it.
+ *
+ * Deliberately not a `<dialog>` or a portal: the panel is four rows of links
+ * anchored to the button that opened it, and the nav is the only thing above
+ * it on the page. Open state is local because nothing else needs to know.
+ */
+function AccountMenu({
+  name,
+  email,
+  image,
+  profileHref,
+  profileActive,
+  adminHref,
+}: {
+  name: string;
+  email: string | null;
+  image: string | null;
+  profileHref: string;
+  profileActive: boolean;
+  /** Null for everyone who isn't an admin, which is almost everyone. */
+  adminHref: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // Pointer down rather than click, so pressing a link elsewhere on the page
+    // closes this on the way down instead of after the navigation starts.
+    const onDown = (e: PointerEvent) => {
+      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrap} className="relative">
       <button
-        onClick={() => signOut()}
-        className="rounded-lg border border-neutral-300 px-2.5 py-1 text-xs transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        ref={trigger}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls="account-menu"
+        aria-label={`Account: ${name}`}
+        className={`flex items-center gap-1 rounded-full p-0.5 transition-colors ${
+          open || profileActive
+            ? "bg-neutral-200 dark:bg-neutral-700"
+            : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        }`}
       >
-        Sign out
+        <Avatar src={image} name={name} size={30} />
+        <Chevron open={open} />
       </button>
+
+      {open && (
+        <div
+          id="account-menu"
+          role="menu"
+          // Navigating is the point, so a press on any row inside closes the
+          // panel on the way out.
+          onClick={() => setOpen(false)}
+          className="absolute right-0 top-full z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
+        >
+          {/* The name left the bar when the picture became the button, so it
+              goes here — a picture alone doesn't say which account. */}
+          <div className="px-3 py-2">
+            <p className="truncate text-sm font-medium">{name}</p>
+            {email && email !== name && (
+              <p className="truncate text-xs text-neutral-500">{email}</p>
+            )}
+          </div>
+
+          <div className="border-t border-neutral-200 pt-1 dark:border-neutral-800">
+            <MenuLink href={profileHref} active={profileActive} icon={<PersonIcon />}>Profile</MenuLink>
+            {adminHref && <MenuLink href={adminHref} active={false} icon={<ShieldIcon />}>Admin</MenuLink>}
+          </div>
+
+          {/* Sign out isn't destructive, so it stays neutral until hover, and
+              sits behind a divider so it isn't hit on the way to Profile. */}
+          <div className="mt-1 border-t border-neutral-200 pt-1 dark:border-neutral-800">
+            <button
+              role="menuitem"
+              onClick={() => signOut()}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-red-600 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-red-400"
+            >
+              <LeaveIcon />
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+function MenuLink({
+  href,
+  active,
+  icon,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  /** Decorative. The row's own text is what names the destination. */
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      role="menuitem"
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+        active
+          ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
+          : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      }`}
+    >
+      {icon}
+      {children}
+    </Link>
+  );
+}
+
+/**
+ * The row marks, in the same hand as the nav's hamburger: 20-unit box, 1.75
+ * stroke, no fill. They take their colour from the row, so Sign out's turns
+ * red on hover along with its label.
+ */
+function RowIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      {children}
+    </svg>
+  );
+}
+
+function PersonIcon() {
+  return (
+    <RowIcon>
+      <circle cx="10" cy="7" r="3" />
+      <path d="M4.5 16.5c1.1-2.4 3-3.6 5.5-3.6s4.4 1.2 5.5 3.6" />
+    </RowIcon>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <RowIcon>
+      <path d="M10 3l5.5 2v4.3c0 3.2-2.2 5.7-5.5 6.7-3.3-1-5.5-3.5-5.5-6.7V5z" />
+    </RowIcon>
+  );
+}
+
+/* The arrow leaves through the gap in the box, which is the door. */
+function LeaveIcon() {
+  return (
+    <RowIcon>
+      <path d="M8 4.5H5.5A1.5 1.5 0 0 0 4 6v8a1.5 1.5 0 0 0 1.5 1.5H8" />
+      <path d="M12.5 13L15.5 10 12.5 7" />
+      <path d="M15.5 10H8" />
+    </RowIcon>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={`mr-1 text-neutral-500 transition-transform dark:text-neutral-400 ${open ? "rotate-180" : ""}`}
+    >
+      <path d="M6 8l4 4 4-4" />
+    </svg>
+  );
+}
