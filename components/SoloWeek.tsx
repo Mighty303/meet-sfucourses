@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { courseColors } from "@/lib/course-color";
@@ -54,16 +54,34 @@ export function SoloWeek({ startTerm, terms }: { startTerm: string; terms: strin
   const [state, setState] = useState<SoloState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * What the newest request was for. Paging a week or switching a term starts
+   * another fetch without cancelling the last, and the two can come back in
+   * either order — an older answer landing second would draw one week under
+   * another week's heading, since `setWeek` below keeps whichever is already
+   * set. Comparing against this drops the answer nobody is waiting for any
+   * more.
+   */
+  const wanted = useRef<string | null>(null);
+
   const load = useCallback(async () => {
     const params = new URLSearchParams({ term });
     if (week) params.set("week", week);
+    const asked = params.toString();
+    wanted.current = asked;
     const res = await fetch(`/api/me/schedule?${params}`);
+    if (wanted.current !== asked) return;
     if (!res.ok) {
-      setError("Could not load your schedule.");
+      setError(
+        res.status === 502
+          ? `${fromTermCode(term)} isn't published by SFU yet, so there's nothing to draw.`
+          : "Could not load your schedule."
+      );
       return;
     }
-    setError(null);
     const next: SoloState = await res.json();
+    if (wanted.current !== asked) return;
+    setError(null);
     setState(next);
     // First load, and every term switch: adopt the week the server clamped to,
     // so a term that hasn't started opens on its first week rather than on an
@@ -75,6 +93,9 @@ export function SoloWeek({ startTerm, terms }: { startTerm: string; terms: strin
   useEffect(() => { load(); }, [load]);
 
   function switchTerm(next: string) {
+    // Anything still in flight was asked for the old term; nulling this means
+    // its answer is discarded rather than drawn under the new term's heading.
+    wanted.current = null;
     setTerm(next);
     // Dropped, not kept: a week in the fall term means nothing in the spring
     // one, and the next load clamps to whatever that term's bounds allow.

@@ -19,7 +19,9 @@ export async function POST(
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  const { classNumber } = await req.json().catch(() => ({}));
+  const { classNumber } = ((await req.json().catch(() => null)) ?? {}) as {
+    classNumber?: unknown;
+  };
   const n = readClassNumber(classNumber);
   if (!n) return NextResponse.json({ error: "classNumber is required" }, { status: 400 });
 

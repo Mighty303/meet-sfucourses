@@ -973,11 +973,33 @@ function GroupSchedule({ code }: { code: string }) {
                       </span>
                     );
                   })()}
-                  <span className="ml-auto shrink-0 text-xs text-neutral-500">
-                    {!hasSchedule
-                      ? "no schedule yet"
-                      : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
-                  </span>
+                  {/* On your own row the count is the way to change it.
+                      A list of the sections themselves used to sit under here,
+                      and it was a stack of identical chips restating the blocks
+                      three inches to the right — in a group every course of
+                      yours is drawn in your one member colour, so the swatches
+                      were five copies of the same dot. The count is the part
+                      that was telling you something.
+
+                      A link, not a button inside the label: interactive content
+                      inside a <label> doesn't forward its click to the control,
+                      so following it doesn't also tick you off the grid. */}
+                  {me && m.id === me.id ? (
+                    <Link
+                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+                      className="ml-auto shrink-0 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {hasSchedule
+                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
+                        : "add your courses →"}
+                    </Link>
+                  ) : (
+                    <span className="ml-auto shrink-0 text-xs text-neutral-500">
+                      {!hasSchedule
+                        ? "no schedule yet"
+                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
+                    </span>
+                  )}
                   {unresolved > 0 && (
                     <span
                       className="shrink-0 text-xs text-amber-600"
@@ -987,38 +1009,6 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
-
-                {/* Your own row carries your sections, indented under your name.
-                    Outside the <label>, or reaching for a course code to read
-                    its meeting times would tick you off the grid.
-
-                    Here rather than in a card above the week, because this
-                    column is already beside the grid: the list costs the page
-                    no height, and what it says — these five sections are the
-                    blocks in your colour — is only useful next to them. */}
-                {me && m.id === me.id && (
-                  <div className="mt-1.5 flex flex-col items-start gap-1.5 pl-5">
-                    {me.classNumbers.length === 0 ? (
-                      <p className="text-xs text-neutral-500">
-                        Nothing saved. Until you add your sections, the
-                        group&apos;s free time is worked out without you.
-                      </p>
-                    ) : (
-                      <CourseChips
-                        term={state.group.term}
-                        classNumbers={me.classNumbers}
-                        courseColors={myChipColors}
-                        compact
-                      />
-                    )}
-                    <Link
-                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
-                      className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {me.classNumbers.length > 0 ? "Edit courses →" : "Add your courses →"}
-                    </Link>
-                  </div>
-                )}
               </li>
             );
           })}

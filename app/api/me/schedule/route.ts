@@ -22,11 +22,23 @@ export async function GET(req: Request) {
   const term = q.get("term");
   const week = q.get("week") ? new Date(`${q.get("week")}T12:00:00`) : new Date();
 
-  const state = await getSoloState(session.appUserId, isTermCode(term) ? term : currentTermCode(), {
-    week: Number.isNaN(week.getTime()) ? new Date() : week,
-    dayStart: toMinutes(q.get("dayStart") ?? "08:00"),
-    dayEnd: toMinutes(q.get("dayEnd") ?? "22:00"),
-    minMinutes: Number(q.get("minMinutes") ?? 60),
-  });
-  return NextResponse.json(state);
+  // A term the upstream API has never heard of — next summer, say, which the
+  // switcher offers before SFU publishes it — makes fetchTermSections throw.
+  // That is an upstream gap, not a fault in the request, so it answers the way
+  // the course lookup next door does rather than as a 500.
+  try {
+    const state = await getSoloState(
+      session.appUserId,
+      isTermCode(term) ? term : currentTermCode(),
+      {
+        week: Number.isNaN(week.getTime()) ? new Date() : week,
+        dayStart: toMinutes(q.get("dayStart") ?? "08:00"),
+        dayEnd: toMinutes(q.get("dayEnd") ?? "22:00"),
+        minMinutes: Number(q.get("minMinutes") ?? 60),
+      }
+    );
+    return NextResponse.json(state);
+  } catch {
+    return NextResponse.json({ error: "course data is unavailable" }, { status: 502 });
+  }
 }
