@@ -41,10 +41,18 @@ export function DayHeading({
   // Today is the whole pill rather than a dot beside the name. On a phone only
   // one day is on screen, so the header is the only thing saying which day it
   // is — and which one is today.
-  const tone = isToday
+  //
+  // The green is for the heading that *does* something: on a read-only week —
+  // the courses-page preview — a filled pill would promise a control that
+  // isn't there, and green would claim a status the page can't hold. That
+  // today still gets a ring.
+  const green = isToday && attendance !== undefined;
+  const tone = green
     ? "border-emerald-500/60 bg-emerald-400/25 text-emerald-900 dark:text-emerald-100"
-    : "border-neutral-200 bg-neutral-100/70 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-300";
-  const hoverTone = isToday
+    : isToday
+      ? "border-neutral-400 bg-neutral-100/70 text-neutral-900 dark:border-neutral-500 dark:bg-neutral-800/60 dark:text-neutral-100"
+      : "border-neutral-200 bg-neutral-100/70 text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/60 dark:text-neutral-300";
+  const hoverTone = green
     ? "hover:border-emerald-500 hover:bg-emerald-400/40"
     : "hover:border-neutral-300 hover:bg-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800";
   const mine = attendance?.dayStatus[day];
@@ -52,7 +60,7 @@ export function DayHeading({
   // Outlined on today, where a bare emerald dot would sink into the green fill.
   const mark = mine && (
     <span
-      className={`h-1.5 w-1.5 rounded-full ${isToday ? "outline outline-1 outline-white/70 dark:outline-black/40" : ""} ${
+      className={`h-1.5 w-1.5 rounded-full ${green ? "outline outline-1 outline-white/70 dark:outline-black/40" : ""} ${
         mine.status === "remote"
           ? "bg-blue-500"
           : mine.status === "skipping"
