@@ -72,10 +72,47 @@ body {
   animation: fade-in 0.55s ease-out both;
 }
 
+/*
+ * Landing hero: the photo eases in a hair larger so the campus reads as a
+ * place you arrive into, and the brand copy rises after the wash settles.
+ * Travel stays short — same restraint as `.fade-up` on the blocks below.
+ */
+@keyframes hero-image-in {
+  from {
+    opacity: 0.65;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hero-image {
+  animation: hero-image-in 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-copy {
+  animation: hero-copy-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
 /* Taken at its word: no movement, no fade, and nothing left at opacity 0. */
 @media (prefers-reduced-motion: reduce) {
   .fade-up,
-  .fade-in {
+  .fade-in,
+  .hero-image,
+  .hero-copy {
     animation: none;
   }
 }
