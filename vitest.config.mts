@@ -6,7 +6,9 @@ import { defineConfig } from "vitest/config";
 // for a reason that has nothing to do with the code.
 //
 // `resolve.tsconfigPaths` is what makes the `@/*` alias work, so a test file
-// imports exactly the way app code does.
+// imports exactly the way app code does. The `unit` project takes .tsx as
+// well as .ts, so a component can be checked by rendering it rather than only
+// through the functions underneath it.
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
@@ -14,7 +16,7 @@ export default defineConfig({
       {
         test: {
           name: "unit",
-          include: ["tests/unit/**/*.test.ts"],
+          include: ["tests/unit/**/*.test.{ts,tsx}"],
           environment: "node",
           // Enforces the suite's one promise: it needs nothing to run.
           setupFiles: ["tests/unit-setup.ts"],

@@ -1,6 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/Modal";
+import { useSfuDoor } from "@/components/SfuDoor";
 import { SignInPanel } from "@/components/SignInPanel";
 
 /**
@@ -13,10 +14,10 @@ import { SignInPanel } from "@/components/SignInPanel";
  * is what the panel above the grid used to do, spending a heading, a paragraph
  * and two links on a decision the visitor had no information to make yet.
  *
- * SignInPanel unchanged inside it: Google, email and password, and the flip
- * between signing in and creating an account. `next` lands them back here with
- * `join=1`, which the group page acts on by adding them without a second
- * press.
+ * SignInPanel unchanged inside it: the SFU door, Google, email and password,
+ * and the flip between signing in and creating an account. `next` lands them
+ * back here with `join=1`, which the group page acts on by adding them without
+ * a second press.
  */
 export function AccountGate({
   open,
@@ -31,6 +32,9 @@ export function AccountGate({
   /** Already a path on this site — see joinHref on the group page. */
   next: string;
 }) {
+  // From the root layout rather than a prop: every component between here and
+  // it is "use client", so there is nothing on the way down that could ask.
+  const sfu = useSfuDoor();
   return (
     <Modal open={open} onClose={onClose} title="Add your schedule" width="28rem">
       <div className="flex flex-col gap-4 px-5 py-5">
@@ -40,7 +44,7 @@ export function AccountGate({
           <span className="font-medium text-neutral-900 dark:text-neutral-100">{groupName}</span>{" "}
           as soon as you&apos;re back.
         </p>
-        <SignInPanel next={next} />
+        <SignInPanel next={next} sfu={sfu} />
       </div>
     </Modal>
   );
