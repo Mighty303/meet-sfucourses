@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -39,6 +40,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               belongs outside the flow the footer ends. */}
           <FeedbackWidget />
         </Providers>
+        {/* Umami: cookieless pageview tracking. data-domains pins it to the
+            real host, so previews and localhost stay out of the numbers. */}
+        <Script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="9bdfa43c-21c4-4174-bb1b-105e2d56331e"
+          data-domains="meet.sfucourses.com"
+        />
       </body>
     </html>
   );
