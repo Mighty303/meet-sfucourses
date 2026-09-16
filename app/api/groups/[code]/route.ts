@@ -5,6 +5,7 @@ import {
   findGroup,
   getGroupState,
   isGroupOwner,
+  listMembers,
   renameGroup,
 } from "@/lib/groups";
 import { toMinutes } from "@/lib/sfu";
@@ -20,6 +21,14 @@ export async function GET(
   }
 
   const q = new URL(req.url).searchParams;
+
+  // The group and who is in it, and nothing that needs SFU's timetable. What
+  // the settings page reads: renaming somebody, or leaving, has to work in a
+  // term whose sections aren't published yet — the week below 502s there.
+  if (q.get("view") === "roster") {
+    return NextResponse.json({ group, members: await listMembers(group.id) });
+  }
+
   const week = q.get("week") ? new Date(`${q.get("week")}T12:00:00`) : new Date();
 
   // Resolving the week needs the term's sections, and a term SFU has not

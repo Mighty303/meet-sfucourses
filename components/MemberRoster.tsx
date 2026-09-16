@@ -2,83 +2,51 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { Modal } from "@/components/Modal";
 
-interface ManagedMember {
+export interface RosterMember {
   id: number;
   displayName: string;
   color: string;
   userId: number | null;
   image: string | null;
+  sfuVerified: boolean;
 }
 
 /**
- * The group admin's roster: rename anyone, hand the group over, remove anyone.
+ * Everyone in the group, and — for its admin — what can be done to them:
+ * rename, hand the group over, remove.
  *
- * A modal rather than controls on the member list itself. That list is a filter
- * — every row is a checkbox you press to take someone out of the overlap — and
- * hanging three buttons off each row would put "remove them from the group"
- * half an inch from "hide them from this week" in a 14rem column. These are
- * done once and rarely; the list is read constantly.
+ * Read-only for everyone else rather than hidden from them. A member opening
+ * the settings page has a fair question ("who is in this?") and the answer is
+ * the same list; only the buttons are the admin's.
  *
  * Every action reloads through `onChanged` instead of patching a local copy:
- * removing a member moves the admin badge (the server hands the group on), and
- * a roster that disagreed with the grid beside it would be worse than a blink.
+ * removing a member moves the admin badge, because the server hands the group
+ * on, and a roster that disagreed with itself would be worse than a blink.
  */
-export function ManageMembers({
-  open,
-  onClose,
+export function MemberRoster({
   code,
   groupName,
   members,
   ownerUserId,
   myMemberId,
-  onChanged,
-}: {
-  open: boolean;
-  onClose: () => void;
-  code: string;
-  groupName: string;
-  members: ManagedMember[];
-  ownerUserId: number | null;
-  /** Your own row, which gets "You" and no kick button — leaving is in the ⋮. */
-  myMemberId: number | null;
-  onChanged: () => void;
-}) {
-  return (
-    <Modal open={open} onClose={onClose} title="Manage members" width="30rem">
-      <Roster
-        code={code}
-        groupName={groupName}
-        members={members}
-        ownerUserId={ownerUserId}
-        myMemberId={myMemberId}
-        onChanged={onChanged}
-      />
-    </Modal>
-  );
-}
-
-function Roster({
-  code,
-  groupName,
-  members,
-  ownerUserId,
-  myMemberId,
+  canManage,
   onChanged,
 }: {
   code: string;
   groupName: string;
-  members: ManagedMember[];
+  members: RosterMember[];
   ownerUserId: number | null;
+  /** Your own row, which gets "you" and no remove button — leaving is its own. */
   myMemberId: number | null;
+  canManage: boolean;
   onChanged: () => void;
 }) {
   // The row being renamed and what has been typed into it, so "" is a real
   // state rather than "nobody is editing".
   const [draft, setDraft] = useState<{ id: number; value: string } | null>(null);
   // Both of these take something away — a place in the group, or your own
-  // admin — so each arms in place, the way Leave and Delete do in the ⋮.
+  // admin — so each arms in place rather than acting on the first press.
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
   const [confirmAdmin, setConfirmAdmin] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -96,12 +64,11 @@ function Roster({
     setBusy(false);
     if (!res.ok) {
       setError((await res.json().catch(() => ({}))).error ?? fallback);
-      return false;
+      return;
     }
     setError(null);
     reset();
     onChanged();
-    return true;
   }
 
   async function rename(e: React.FormEvent) {
@@ -135,14 +102,17 @@ function Roster({
   }
 
   return (
-    <div className="flex flex-col gap-3 px-5 py-5">
-      <p className="text-xs text-neutral-500">
-        You&apos;re the admin of {groupName}. Renaming somebody changes the name
-        everyone in the group sees; removing them takes their schedule off this
-        grid, not off their account.
-      </p>
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="font-medium">Members</h2>
+        <p className="text-xs text-neutral-500">
+          {canManage
+            ? "Renaming somebody changes the name everyone here sees. Removing them takes their schedule off this grid, not off their account."
+            : `${members.length} ${members.length === 1 ? "person" : "people"} in ${groupName}.`}
+        </p>
+      </div>
 
-      <ul className="flex max-h-[min(60vh,26rem)] flex-col gap-1 overflow-y-auto">
+      <ul className="flex flex-col gap-1">
         {members.map((m) => {
           const isOwner = m.userId !== null && m.userId === ownerUserId;
           const isMe = m.id === myMemberId;
@@ -165,6 +135,7 @@ function Roster({
                       onChange={(e) => setDraft({ id: m.id, value: e.target.value })}
                       autoFocus
                       maxLength={60}
+                      onKeyDown={(e) => { if (e.key === "Escape") setDraft(null); }}
                       className="min-w-0 flex-1 rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
                     />
                     <button
@@ -187,6 +158,17 @@ function Roster({
                     <span className="truncate text-sm font-medium" style={{ color: m.color }}>
                       {m.displayName}
                     </span>
+                    {m.sfuVerified && (
+                      /* The same narrow claim the member list makes: CAS let
+                         them in, so they're at SFU. Never which computing ID. */
+                      <span
+                        title="Signed in with an SFU computing ID"
+                        aria-label="SFU verified"
+                        className="shrink-0 text-xs leading-none text-[#a6192e] dark:text-red-400"
+                      >
+                        ✓
+                      </span>
+                    )}
                     {isMe && <span className="shrink-0 text-xs text-neutral-500">you</span>}
                     {isOwner && (
                       <span className="shrink-0 rounded border border-neutral-300 px-1 text-[10px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
@@ -194,36 +176,38 @@ function Roster({
                       </span>
                     )}
 
-                    <div className="ml-auto flex shrink-0 items-center gap-1">
-                      <IconButton
-                        label={`Rename ${m.displayName}`}
-                        onClick={() => { reset(); setDraft({ id: m.id, value: m.displayName }); }}
-                        disabled={busy}
-                      >
-                        <PencilIcon />
-                      </IconButton>
-                      {/* An ownerless row has no account to hand a group to,
-                          and there is nothing to hand yourself. */}
-                      {!isOwner && m.userId !== null && (
+                    {canManage && (
+                      <div className="ml-auto flex shrink-0 items-center gap-1">
                         <IconButton
-                          label={`Make ${m.displayName} the admin`}
-                          onClick={() => { reset(); setConfirmAdmin(m.id); }}
+                          label={`Rename ${m.displayName}`}
+                          onClick={() => { reset(); setDraft({ id: m.id, value: m.displayName }); }}
                           disabled={busy}
                         >
-                          <CrownIcon />
+                          <PencilIcon />
                         </IconButton>
-                      )}
-                      {!isMe && (
-                        <IconButton
-                          label={`Remove ${m.displayName}`}
-                          danger
-                          onClick={() => { reset(); setConfirmRemove(m.id); }}
-                          disabled={busy}
-                        >
-                          <RemoveIcon />
-                        </IconButton>
-                      )}
-                    </div>
+                        {/* An ownerless row has no account to hand a group to,
+                            and there is nothing to hand yourself. */}
+                        {!isOwner && m.userId !== null && (
+                          <IconButton
+                            label={`Make ${m.displayName} the admin`}
+                            onClick={() => { reset(); setConfirmAdmin(m.id); }}
+                            disabled={busy}
+                          >
+                            <CrownIcon />
+                          </IconButton>
+                        )}
+                        {!isMe && (
+                          <IconButton
+                            label={`Remove ${m.displayName}`}
+                            danger
+                            onClick={() => { reset(); setConfirmRemove(m.id); }}
+                            disabled={busy}
+                          >
+                            <RemoveIcon />
+                          </IconButton>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -258,8 +242,9 @@ function Roster({
   );
 }
 
-/** The two-press pattern the group menu uses, in the one place a row needs it. */
-function Confirm({
+/** Armed in place: the second press is worded differently, and that is the whole
+    of the confirmation. Shared by every irreversible thing on this page. */
+export function Confirm({
   question,
   action,
   pending,

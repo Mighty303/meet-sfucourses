@@ -68,6 +68,38 @@ export interface Member {
   sfuVerified: boolean;
 }
 
+/** A member as the roster reads them: who they are, not what they study. */
+export type RosterEntry = Omit<Member, "classNumbers">;
+
+/**
+ * The people in a group, without resolving anybody's timetable.
+ *
+ * getGroupState answers the same question on its way to drawing a week, but it
+ * needs the term's sections to do it and 502s when SFU hasn't published them.
+ * The settings page has to work in that case — leaving a group, or renaming
+ * someone, has nothing to do with whether the timetable exists yet.
+ */
+export async function listMembers(groupId: number): Promise<RosterEntry[]> {
+  const sql = getDb();
+  const rows = await sql`
+    SELECT m.id, m.display_name, m.color, m.user_id,
+           COALESCE(u.avatar, u.image) AS image,
+           (u.sfu_username IS NOT NULL) AS sfu_verified
+    FROM meetup.members m
+    LEFT JOIN meetup.users u ON u.id = m.user_id
+    WHERE m.group_id = ${groupId}
+    ORDER BY m.id
+  `;
+  return rows.map((r) => ({
+    id: r.id as number,
+    displayName: r.display_name as string,
+    color: r.color as string,
+    userId: (r.user_id as number | null) ?? null,
+    image: (r.image as string | null) ?? null,
+    sfuVerified: r.sfu_verified === true,
+  }));
+}
+
 export interface GroupState {
   group: Group;
   members: Member[];

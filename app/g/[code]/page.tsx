@@ -8,13 +8,12 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { HeatGrid } from "@/components/HeatGrid";
-import { ManageMembers } from "@/components/ManageMembers";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
-import { forgetLastGroup, rememberLastGroup } from "@/lib/last-group";
+import { rememberLastGroup } from "@/lib/last-group";
 import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
 import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
@@ -102,21 +101,6 @@ function GroupSchedule({ code }: { code: string }) {
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  // Everything about the group that isn't its week: renaming, leaving, deleting.
-  // Behind one press, because none of it is read — it is all acted on, once.
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  // Deleting is irreversible and takes everyone's schedules, so the button has
-  // to be armed first — no dialog, just a second, differently-worded click.
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  // Leaving drops your sections from everyone's view, so it arms the same way.
-  const [confirmLeave, setConfirmLeave] = useState(false);
-  // The group's own name, which only its admin can change. Null when nobody is
-  // editing it; the string being edited otherwise, so "" is a real state.
-  const [draftName, setDraftName] = useState<string | null>(null);
-  // The admin's roster — renaming, kicking, handing the group over. Its own
-  // modal, because none of it belongs beside a checkbox that only hides people.
-  const [managing, setManaging] = useState(false);
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
   // The account modal, asked for by the guest bar.
@@ -151,24 +135,6 @@ function GroupSchedule({ code }: { code: string }) {
   // concern behind this rule doesn't apply.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
-
-  // A press outside closes the group menu, and so does Escape — the two ways
-  // out of a dropdown people already know. Its own contents are exempt, or the
-  // press that arms "Leave" would close the thing it was aimed at.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (e: Event) => {
-      if (e.type === "pointerdown" && menuRef.current?.contains(e.target as Node)) return;
-      if (e.type === "keydown" && (e as KeyboardEvent).key !== "Escape") return;
-      setMenuOpen(false);
-    };
-    window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", close);
-    return () => {
-      window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", close);
-    };
-  }, [menuOpen]);
 
   // Identity comes from the session — no localStorage, so your schedule follows
   // you to any device you sign in on.
@@ -282,14 +248,6 @@ function GroupSchedule({ code }: { code: string }) {
     load();
   }
 
-  async function leave() {
-    if (!me) return;
-    setSaving(true);
-    await fetch(`/api/groups/${code}/members/${me.id}`, { method: "DELETE" });
-    setSaving(false);
-    setConfirmLeave(false);
-    load();
-  }
 
   /**
    * Save whichever status was pressed. Written against the user and the date,
@@ -326,35 +284,7 @@ function GroupSchedule({ code }: { code: string }) {
     load();
   }
 
-  async function saveGroupName(e: React.FormEvent) {
-    e.preventDefault();
-    if (draftName === null || !draftName.trim()) return;
-    setSaving(true);
-    const res = await fetch(`/api/groups/${code}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: draftName }),
-    });
-    setSaving(false);
-    if (!res.ok) { setError((await res.json()).error ?? "could not rename this group"); return; }
-    setError(null);
-    setDraftName(null);
-    load();
-  }
 
-  async function deleteGroup() {
-    setSaving(true);
-    const res = await fetch(`/api/groups/${code}`, { method: "DELETE" });
-    setSaving(false);
-    if (!res.ok) {
-      setConfirmDelete(false);
-      setError((await res.json()).error ?? "could not delete this group");
-      return;
-    }
-    // Nothing left at this URL to reload, and nothing to come back to either.
-    forgetLastGroup(code);
-    router.push("/");
-  }
 
   // Only people with a schedule can constrain anything — someone who hasn't
   // pasted theirs would read as "free always" and silently widen every window.
@@ -482,34 +412,7 @@ function GroupSchedule({ code }: { code: string }) {
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8">
       <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
         <div>
-          {/* The name is the group's, not a member's, so it's edited here
-              rather than on the profile page — and only by the admin. */}
-          {draftName !== null ? (
-            <form onSubmit={saveGroupName} className="flex flex-wrap items-center gap-2">
-              <input
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                autoFocus
-                maxLength={120}
-                onKeyDown={(e) => { if (e.key === "Escape") setDraftName(null); }}
-                className="rounded-lg border border-neutral-300 px-2 py-1 text-2xl font-semibold tracking-tight dark:border-neutral-700 dark:bg-neutral-900"
-              />
-              <button
-                disabled={saving || !draftName.trim()}
-                className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-              >
-                Save
-              </button>
-              <button type="button" onClick={() => setDraftName(null)} className="text-sm text-neutral-500">
-                Cancel
-              </button>
-            </form>
-          ) : (
-            /* The pencil that used to sit beside it has gone into the ⋮ with
-               the other three things you can do to a group, where it is a word
-               rather than an icon nobody could name. */
-            <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
-          )}
+          <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
           <p className="text-sm text-neutral-500">
             {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
           </p>
@@ -554,129 +457,19 @@ function GroupSchedule({ code }: { code: string }) {
             {copyState === "copied" ? "Copied" : "Copy invite link"}
           </button>
 
-          {me && (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-label="Group options"
-                aria-expanded={menuOpen}
-                title="Group options"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
-              >
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                  <circle cx="10" cy="4.5" r="1.4" />
-                  <circle cx="10" cy="10" r="1.4" />
-                  <circle cx="10" cy="15.5" r="1.4" />
-                </svg>
-              </button>
-
-              {menuOpen && (
-                /* Not a modal — the repo has none. A panel anchored to the
-                   button it came out of, dismissed by pressing anywhere else. */
-                <div className="absolute right-0 z-40 mt-1 flex w-64 flex-col gap-1 rounded-lg border border-neutral-200 bg-white p-1.5 shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setDraftName(state.group.name); setMenuOpen(false); }}
-                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    >
-                      <PencilIcon />
-                      Rename group
-                    </button>
-                  )}
-
-                  {isAdmin && (
-                    <button
-                      onClick={() => { setManaging(true); setMenuOpen(false); }}
-                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                    >
-                      <PeopleIcon />
-                      Manage members
-                    </button>
-                  )}
-
-                  {confirmLeave ? (
-                    /* Armed in place rather than in a dialog: the second click
-                       is differently worded and differently coloured, which is
-                       the whole of the confirmation. */
-                    <div className="flex flex-col gap-1.5 rounded-md bg-neutral-100 p-2 text-xs dark:bg-neutral-800">
-                      <span className="text-neutral-600 dark:text-neutral-300">
-                        Leave {state.group.name}?
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={leave}
-                          disabled={saving}
-                          className="rounded-md bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
-                        >
-                          {saving ? "Leaving…" : "Leave"}
-                        </button>
-                        <button onClick={() => setConfirmLeave(false)} className="text-neutral-500">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmLeave(true)}
-                      disabled={saving}
-                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                    >
-                      <LeaveIcon />
-                      Leave group
-                    </button>
-                  )}
-
-                  {isAdmin && (
-                    confirmDelete ? (
-                      <div className="flex flex-col gap-1.5 rounded-md bg-neutral-100 p-2 text-xs dark:bg-neutral-800">
-                        <span className="text-neutral-600 dark:text-neutral-300">
-                          Delete {state.group.name} and everyone&apos;s schedules in it?
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={deleteGroup}
-                            disabled={saving}
-                            className="rounded-md bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
-                          >
-                            {saving ? "Deleting…" : "Delete for everyone"}
-                          </button>
-                          <button onClick={() => setConfirmDelete(false)} className="text-neutral-500">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDelete(true)}
-                        disabled={saving}
-                        className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
-                      >
-                        <TrashIcon />
-                        Delete group
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Everything you do to a group rather than read from it lives on
+              one page now — its name, its people, and the two ways out. The ⋮
+              this replaces held four items and could not hold a fifth. */}
+          <Link
+            href={`/g/${code}/settings`}
+            aria-label="Group settings"
+            title="Group settings"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+          >
+            <GearIcon />
+          </Link>
         </div>
       </header>
-
-      {/* Mounted for the admin only, and Modal unmounts its body when closed,
-          so nothing here costs a non-admin anything. */}
-      {isAdmin && (
-        <ManageMembers
-          open={managing}
-          onClose={() => setManaging(false)}
-          code={code}
-          groupName={state.group.name}
-          members={state.members}
-          ownerUserId={state.group.ownerUserId}
-          myMemberId={me?.id ?? null}
-          onChanged={load}
-        />
-      )}
 
       {copyState === "failed" && (
         <div className="-mt-4 flex items-center gap-2">
@@ -847,19 +640,18 @@ function GroupSchedule({ code }: { code: string }) {
                   Include everyone
                 </button>
               )}
-              {/* The other door into the same modal, and the one people will
-                  actually find: a name that needs fixing is read here, not in
-                  a menu of things you do to the group as a whole. Neutral
-                  rather than blue — the link above it undoes a filter, which
-                  is this list's own business, and two blue words side by side
-                  would read as a pair. */}
+              {/* The second door to the settings page, and the one people will
+                  actually find: a name that needs fixing is read here, not up
+                  in the header. Neutral rather than blue — the link above it
+                  undoes a filter, which is this list's own business, and two
+                  blue words side by side would read as a pair. */}
               {isAdmin && (
-                <button
-                  onClick={() => setManaging(true)}
+                <Link
+                  href={`/g/${code}/settings`}
                   className="text-xs text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
                 >
                   Manage
-                </button>
+                </Link>
               )}
             </div>
           )}
@@ -1202,26 +994,6 @@ function Pill({
   );
 }
 
-function PencilIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="shrink-0"
-    >
-      <path d="M13.75 3.25l3 3-9.5 9.5-3.75.75.75-3.75 9.5-9.5z" />
-      <path d="M12.25 4.75l3 3" />
-    </svg>
-  );
-}
-
 /**
  * The member list's collapse handle, on its right edge.
  *
@@ -1258,69 +1030,23 @@ function CollapseHandle({ open, onToggle }: { open: boolean; onToggle: () => voi
   );
 }
 
-function LeaveIcon() {
+function GearIcon() {
   return (
     <svg
-      width="15"
-      height="15"
-      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.75"
+      strokeWidth="1.9"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className="shrink-0"
     >
-      {/* Door, then an arrow stepping out of it. */}
-      <path d="M11.5 3.25h4.25v13.5H11.5" />
-      <path d="M8.75 10h-6" />
-      <path d="M5.5 7l-2.75 3 2.75 3" />
+      {/* A toothed cog, not a hub with rays — the rays read as brightness. */}
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
     </svg>
   );
 }
 
-function PeopleIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="shrink-0"
-    >
-      {/* One person in front, the shoulder of a second behind them. */}
-      <circle cx="8" cy="7" r="2.75" />
-      <path d="M3.25 16.25c0-2.35 2.13-4.25 4.75-4.25s4.75 1.9 4.75 4.25" />
-      <path d="M13.5 5.1a2.75 2.75 0 010 5.3" />
-      <path d="M15 12.4c1.5.66 2.5 1.98 2.5 3.5" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className="shrink-0"
-    >
-      <path d="M3.5 6h13" />
-      <path d="M8 3.5h4" />
-      <path d="M5.25 6l.75 10.25h8l.75-10.25" />
-      <path d="M8.5 9v4.75M11.5 9v4.75" />
-    </svg>
-  );
-}
