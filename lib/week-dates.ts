@@ -1,8 +1,8 @@
 /**
  * The calendar arithmetic both week views do, in one place.
  *
- * These lived inside the group page until /my-schedule grew a week of its own
- * to page through. They are all local-time: a class at 10:30 is 10:30 where the
+ * These lived inside the group page until a second week grew its own dates to
+ * page through. They are all local-time: a class at 10:30 is 10:30 where the
  * person is, and the app never stores or compares an instant, only a date and a
  * minute-of-day.
  */

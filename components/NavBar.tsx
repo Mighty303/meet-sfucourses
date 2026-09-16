@@ -2,8 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { readLastGroup } from "@/lib/last-group";
 import { AuthButton } from "./AuthButton";
 import { Logo } from "./Logo";
 import {
@@ -15,20 +16,27 @@ import {
 } from "./RowIcons";
 
 export function NavBar() {
-  return <Suspense fallback={<div className="h-16 border-b border-neutral-200 dark:border-neutral-800" />}><NavBarContent /></Suspense>;
-}
-
-function NavBarContent() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
-  // Group schedules are reached from the home page, which lists them; the nav
-  // only needs the group you're already looking at, for the "Schedule" link.
+  // Group calendars are reached from the home page, which lists them; the nav
+  // only needs the group you're already looking at, for "Courses".
   const currentCode = pathname.startsWith("/g/") ? pathname.split("/")[2] : null;
 
-  const viewParam = searchParams.get("view");
+  /**
+   * The calendar to go back to when you aren't on one: whichever group page
+   * last loaded in this browser (lib/last-group.ts).
+   *
+   * Read in an effect rather than during render — localStorage is impure and
+   * the server has none to agree with, so reading it inline would hydrate to a
+   * different href than the markup. Null on the first paint, which is why the
+   * row is absent rather than pointing somewhere provisional.
+   */
+  const [lastCode, setLastCode] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setLastCode(readLastGroup()); }, [pathname]);
+  const calendarCode = currentCode ?? lastCode;
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +48,6 @@ function NavBarContent() {
   const signedIn = status === "authenticated";
   // Server-side flag, so the allowlist never ships in the client bundle.
   const isAdmin = signedIn && session?.isAdmin === true;
-  const schedule = pathname === "/my-schedule" || (!!currentCode && viewParam === "mine");
 
   const profileHref = currentCode
     ? `/profile?from=${encodeURIComponent(currentCode)}`
@@ -62,8 +69,10 @@ function NavBarContent() {
     <>
       <NavLink href="/" active={pathname === "/"} icon={inMenu && <HomeIcon />}>Home</NavLink>
       {signedIn && (
-        /* Ahead of Schedule, because it comes first: a week grid with nothing
-           on it is what you get for skipping this.
+        /* Ahead of Calendar, because it comes first: a week grid with nothing
+           on it is what you get for skipping this. It is also where your own
+           week lives now — the sections and the grid they add up to, on one
+           page — which is why there is no row for that of its own.
 
            The group's code rides along, not its term — the nav only has the
            path to read, and a group is not necessarily in the term it is
@@ -77,13 +86,17 @@ function NavBarContent() {
           Courses
         </NavLink>
       )}
-      {signedIn && (
+      {signedIn && calendarCode && (
+        /* The group calendar you were last on, so coming back from Courses or
+           Profile doesn't mean going via Home and picking the same group out
+           of the list again. Absent until there is one to point at — an empty
+           row here would be a second Home under a different word. */
         <NavLink
-          href={currentCode ? `/g/${currentCode}?view=mine` : "/my-schedule"}
-          active={schedule}
+          href={`/g/${calendarCode}`}
+          active={!!currentCode}
           icon={inMenu && <ScheduleIcon />}
         >
-          Schedule
+          Calendar
         </NavLink>
       )}
       {signedIn && inMenu && (

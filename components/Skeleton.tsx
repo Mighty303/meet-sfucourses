@@ -100,11 +100,8 @@ function WindowListSkeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-/**
- * The group page while the group state is in flight. `solo` matches the
- * "?view=mine" layout, which drops the member list.
- */
-export function GroupPageSkeleton({ solo = false }: { solo?: boolean }) {
+/** The group page while the group state is in flight. */
+export function GroupPageSkeleton() {
   return (
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 p-4 sm:p-6" aria-busy>
       <span className="sr-only">Loading schedule…</span>
@@ -128,24 +125,22 @@ export function GroupPageSkeleton({ solo = false }: { solo?: boolean }) {
         <Bar className="h-9 w-full" />
       </div>
 
-      {!solo && (
-        <section aria-hidden>
-          <Bar className="mb-2 h-4 w-24 animate-pulse" />
-          <ul className="grid animate-pulse gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-            {["w-24", "w-20", "w-28", "w-16", "w-24", "w-20"].map((w, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700"
-              >
-                <Dot className="h-3 w-3 shrink-0" />
-                <Dot className="h-[18px] w-[18px] shrink-0" />
-                <Bar className={`h-3.5 ${w}`} />
-                <Bar className="ml-auto h-3 w-16 shrink-0" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section aria-hidden>
+        <Bar className="mb-2 h-4 w-24 animate-pulse" />
+        <ul className="grid animate-pulse gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+          {["w-24", "w-20", "w-28", "w-16", "w-24", "w-20"].map((w, i) => (
+            <li
+              key={i}
+              className="flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700"
+            >
+              <Dot className="h-3 w-3 shrink-0" />
+              <Dot className="h-[18px] w-[18px] shrink-0" />
+              <Bar className={`h-3.5 ${w}`} />
+              <Bar className="ml-auto h-3 w-16 shrink-0" />
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <div className="flex animate-pulse items-center justify-center gap-2" aria-hidden>
         <Bar className="h-9 w-10" />

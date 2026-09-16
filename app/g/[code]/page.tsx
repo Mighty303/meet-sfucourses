@@ -6,16 +6,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccountGate } from "@/components/AccountGate";
-import { Avatar } from "@/components/Avatar";
 import { CalendarTools } from "@/components/CalendarTools";
-import { CourseChips } from "@/components/CourseChips";
 import { HeatGrid } from "@/components/HeatGrid";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
-import { courseColors } from "@/lib/course-color";
+import { forgetLastGroup, rememberLastGroup } from "@/lib/last-group";
 import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
 import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
@@ -92,10 +90,6 @@ function GroupSchedule({ code }: { code: string }) {
   // Member ids ticked off in the list. Kept as ids, not indices, so it survives
   // someone joining or leaving mid-session.
   const [hidden, setHidden] = useState<Set<number>>(new Set());
-  // "mine" narrows the whole page to your own row: your classes at full width
-  // and your own gaps, without everyone else's blocks to read past. Only a
-  // request until we know there is an account behind it — see `view` below.
-  const wantsMine = searchParams.get("view") === "mine";
   // Which of the two week views to draw, when the URL says. In the URL so a
   // reload — and a shared link — keeps whichever view you were reading; absent,
   // the group's own size decides (see `grid`, below the member counts).
@@ -121,10 +115,8 @@ function GroupSchedule({ code }: { code: string }) {
   const [draftName, setDraftName] = useState<string | null>(null);
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
-  // The account modal: asked for by the guest bar, or by arriving on a link to
-  // your own week without an account to have one on.
+  // The account modal, asked for by the guest bar.
   const [gateAsked, setGateAsked] = useState(false);
-  const [mineHandled, setMineHandled] = useState(false);
   // The row this browser started the group with, if it did. Undefined until
   // localStorage has been read, which can't happen during render.
   const [guestMember, setGuestMember] = useState<GuestMember | null | undefined>(undefined);
@@ -177,11 +169,7 @@ function GroupSchedule({ code }: { code: string }) {
   // Identity comes from the session — no localStorage, so your schedule follows
   // you to any device you sign in on.
   const signedIn = authStatus === "authenticated";
-  // A guest asking for their own week is asking for an account, not for a
-  // different page: the group stays on screen behind the modal, because it is
-  // the thing they can still read.
-  const view = wantsMine && signedIn ? "mine" : "everyone";
-  const gateOpen = !signedIn && (gateAsked || (wantsMine && !mineHandled));
+  const gateOpen = !signedIn && gateAsked;
   const me = signedIn ? state?.members.find((m) => m.userId === session?.appUserId) ?? null : null;
   // Rows with no owner: claimable by whoever signs in and says that's them.
   const unclaimed = state?.members.filter((m) => m.userId === null) ?? [];
@@ -201,6 +189,11 @@ function GroupSchedule({ code }: { code: string }) {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setGuestMember(readGuestMember(code)); }, [code]);
+
+  // Where the nav's Calendar row points next time. Gated on `state` rather than
+  // on the code in the URL, so a typo or a group you've been removed from
+  // doesn't become the place you land.
+  useEffect(() => { if (state) rememberLastGroup(state.group.code); }, [state]);
 
   // Your other groups, so switching between them doesn't mean a trip via Home.
   // Independent of the group fetch: it's keyed on you, not on the code, so it
@@ -250,13 +243,11 @@ function GroupSchedule({ code }: { code: string }) {
    * carries across; the week doesn't, because another group can be another term
    * entirely, so it re-clamps from the server.
    */
-  function pillHref(nextCode: string, nextView: "mine" | "everyone"): string {
+  function pillHref(nextCode: string): string {
     const params = new URLSearchParams();
-    if (nextView === "mine") params.set("view", "mine");
     // The pin travels, the derived choice doesn't: carrying this group's answer
-    // into another one would pin a view the reader never picked. It doesn't
-    // travel to your own schedule at all, which has only the one reading.
-    if (pinnedGrid && nextView !== "mine") params.set("grid", pinnedGrid);
+    // into another one would pin a view the reader never picked.
+    if (pinnedGrid) params.set("grid", pinnedGrid);
     return `/g/${nextCode}${params.size > 0 ? `?${params}` : ""}`;
   }
 
@@ -356,7 +347,8 @@ function GroupSchedule({ code }: { code: string }) {
       setError((await res.json()).error ?? "could not delete this group");
       return;
     }
-    // Nothing left at this URL to reload.
+    // Nothing left at this URL to reload, and nothing to come back to either.
+    forgetLastGroup(code);
     router.push("/");
   }
 
@@ -370,11 +362,8 @@ function GroupSchedule({ code }: { code: string }) {
     [state]
   );
   const shown = useMemo(
-    () =>
-      view === "mine"
-        ? scheduled.filter((m) => m.id === me?.id)
-        : scheduled.filter((m) => !hidden.has(m.id)),
-    [scheduled, hidden, view, me?.id]
+    () => scheduled.filter((m) => !hidden.has(m.id)),
+    [scheduled, hidden]
   );
 
   /**
@@ -389,18 +378,10 @@ function GroupSchedule({ code }: { code: string }) {
    * what's actually in the way, so those come first until the third schedule
    * lands.
    *
-   * `view=mine` isn't a choice at all: Availability shades a band by how many
-   * of you are free, and with one schedule that ramp has two steps — free and
-   * not — which the labelled blocks already say, with the course names written
-   * on them. So the toggle isn't offered there, and the pin doesn't apply
-   * either, or a link carrying `grid=heat` would land you on a two-colour
-   * heatmap with nothing on screen to leave it by.
-   *
    * `scheduled` is known before the first render — the page is gated on
    * `state` below — so this never flips under the reader.
    */
-  const grid: "detailed" | "heat" =
-    view === "mine" ? "detailed" : (pinnedGrid ?? (scheduled.length < 3 ? "detailed" : "heat"));
+  const grid: "detailed" | "heat" = pinnedGrid ?? (scheduled.length < 3 ? "detailed" : "heat");
 
   const schedules = useMemo(
     () => shown.map((m) => ({ name: m.displayName, busy: state?.busyByMember[m.id] ?? [] })),
@@ -412,44 +393,11 @@ function GroupSchedule({ code }: { code: string }) {
   // reload — the server's own `free` is for API callers, not for this view.
   const free = useMemo(
     () =>
-      schedules.length >= (view === "mine" ? 1 : 2)
+      schedules.length >= 2
         ? commonFree({ members: schedules, dayStart: DAY_START, dayEnd: DAY_END, minMinutes: MIN_MINUTES })
         : [],
-    [schedules, view]
+    [schedules]
   );
-
-  /**
-   * A colour per course of your own, for `view=mine`.
-   *
-   * Built from both halves of your schedule — the blocks on the grid and the
-   * async sections that have none — because the chips beside the search box
-   * are the key to these colours and list both. Deriving it from one of the
-   * two would shift every colour between the grid and its own legend.
-   */
-  const myCourseColors = useMemo(() => {
-    if (!me) return undefined;
-    const timetabled = (state?.busyByMember[me.id] ?? [])
-      .filter((b) => b.classNumber !== undefined)
-      .map((b) => b.course);
-    const async_ = (state?.unscheduled[me.id] ?? []).map((sec) => sec.course);
-    return courseColors([...timetabled, ...async_]);
-  }, [me, state]);
-
-  /**
-   * The swatch beside each saved course, which is always whatever the grid
-   * below is actually drawing.
-   *
-   * On your own week that's one colour per course. In a group the grid draws
-   * every block of yours in your one member colour, so the chips say the same
-   * thing — the same swatch on all of them. Not redundant: it's the legend for
-   * "these five are the red blocks", which is the question the group grid
-   * makes you ask.
-   */
-  const myChipColors = useMemo(() => {
-    if (!myCourseColors || !me) return undefined;
-    if (view === "mine") return myCourseColors;
-    return Object.fromEntries(Object.keys(myCourseColors).map((code) => [code, me.color]));
-  }, [myCourseColors, me, view]);
 
   /**
    * The five dates the grid is currently showing. A status is about a date, not
@@ -475,15 +423,11 @@ function GroupSchedule({ code }: { code: string }) {
     return out;
   }, [state, dates, myUserId]);
 
-  if (wantsMine && authStatus === "loading") {
-    return <GroupPageSkeleton solo />;
-  }
-
   if (error && !state) {
     return <main className="mx-auto w-full max-w-lg p-6"><p className="text-red-600">{error}</p></main>;
   }
   if (!state) {
-    return <GroupPageSkeleton solo={view === "mine"} />;
+    return <GroupPageSkeleton />;
   }
 
   const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/g/${code}` : "";
@@ -557,40 +501,14 @@ function GroupSchedule({ code }: { code: string }) {
               </button>
             </form>
           ) : (
-            /* The group names the page in both views — the Group/Mine toggle
-               below says which of the two you're reading. The pencil that used
-               to sit beside it has gone into the ⋮ with the other three things
-               you can do to a group, where it is a word rather than an icon
-               nobody could name. */
+            /* The pencil that used to sit beside it has gone into the ⋮ with
+               the other three things you can do to a group, where it is a word
+               rather than an icon nobody could name. */
             <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
           )}
           <p className="text-sm text-neutral-500">
             {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
           </p>
-          {view === "mine" && (
-            <>
-              <p className="mt-1 text-sm text-neutral-500">Only your classes and free time are shown.</p>
-              {/* Your own week has no member list to hang the chips off, so
-                  they sit under the heading instead — one wrapped row, not the
-                  card this used to be. */}
-              {me && (
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <CourseChips
-                    term={state.group.term}
-                    classNumbers={me.classNumbers}
-                    courseColors={myChipColors}
-                    compact
-                  />
-                  <Link
-                    href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}?view=mine`)}`}
-                    className="text-xs text-blue-600 hover:underline dark:text-blue-400"
-                  >
-                    {me.classNumbers.length > 0 ? "Edit courses →" : "Add your courses →"}
-                  </Link>
-                </div>
-              )}
-            </>
-          )}
         </div>
         {/* The two things you do to a group rather than read from it, on one
             row. The invite used to be a labelled panel with the URL always on
@@ -744,26 +662,21 @@ function GroupSchedule({ code }: { code: string }) {
         </div>
       )}
 
-      {/* What you're reading: your own week, or one of your groups as a whole.
-          One pill is selected at a time, and switching is a real navigation, so
-          these are links — middle-click and Back both behave. */}
+      {/* Which group you're reading. One pill is selected at a time, and
+          switching is a real navigation, so these are links — middle-click and
+          Back both behave. Your own week isn't one of them: /courses draws it,
+          beside the list of sections it is made of. */}
       {signedIn && (
         <div className="-mt-2 flex flex-col gap-2">
         <h2 className="font-medium">Your groups</h2>
-        <nav aria-label="Schedule to show" className="flex flex-wrap items-center gap-2">
-          <Pill href={pillHref(code, "mine")} current={view === "mine"} title="Only your classes and free time">
-            <Avatar src={me?.image ?? null} name={me?.displayName ?? "You"} color={me?.color} size={18} />
-            <span className="truncate">My schedule</span>
-          </Pill>
-          {/* A hairline, so "mine" doesn't read as just another group. */}
-          <span aria-hidden className="mx-0.5 h-5 w-px bg-neutral-300 dark:bg-neutral-700" />
+        <nav aria-label="Group to show" className="flex flex-wrap items-center gap-2">
           {/* Until /api/me lands there's still the group you're on, so the row
               renders at once and fills in rather than popping into place. */}
           {(myGroups ?? [{ memberId: 0, color: me?.color ?? "#a3a3a3", group: state.group }]).map((g) => (
             <Pill
               key={g.group.code}
-              href={pillHref(g.group.code, "everyone")}
-              current={view === "everyone" && g.group.code === code}
+              href={pillHref(g.group.code)}
+              current={g.group.code === code}
               title={`${g.group.name} · ${fromTermCode(g.group.term)}`}
             >
               {/* Your colour in that group — the same key its grid uses. */}
@@ -881,7 +794,6 @@ function GroupSchedule({ code }: { code: string }) {
           room for this column, and collapsed it hands all of that back. The
           arrow stays put across both states — it is the edge of the list, so
           it is where you reach for the list whether it is open or not. */}
-      {view === "everyone" && (
       <aside
         className={`flex flex-col gap-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:shrink-0 ${
           listOpen ? "lg:w-56 xl:w-64" : "lg:w-auto"
@@ -1062,7 +974,6 @@ function GroupSchedule({ code }: { code: string }) {
         </>
         )}
       </aside>
-      )}
 
       <div className="@container flex min-w-0 flex-1 flex-col gap-6">
       {!weekInTerm(thisMonday) && (
@@ -1121,40 +1032,29 @@ function GroupSchedule({ code }: { code: string }) {
 
         <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:flex-nowrap @min-[68rem]:justify-self-end">
           {/* Two readings of the same week, and picking one here pins it —
-              otherwise `grid` above decides from how many schedules are in.
-              Absent on your own schedule, where there is only one reading. */}
-          {view !== "mine" && (
-            <div className="flex shrink-0 overflow-hidden rounded-lg border border-neutral-300 text-sm dark:border-neutral-700">
-              {(["heat", "detailed"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setGrid(mode)}
-                  aria-pressed={grid === mode}
-                  className={`px-3 py-1.5 transition-colors ${
-                    grid === mode
-                      ? "bg-neutral-900 font-medium text-white dark:bg-white dark:text-neutral-900"
-                      : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                  }`}
-                >
-                  {mode === "detailed" ? "Detailed" : "Availability"}
-                </button>
-              ))}
-            </div>
-          )}
+              otherwise `grid` above decides from how many schedules are in. */}
+          <div className="flex shrink-0 overflow-hidden rounded-lg border border-neutral-300 text-sm dark:border-neutral-700">
+            {(["heat", "detailed"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setGrid(mode)}
+                aria-pressed={grid === mode}
+                className={`px-3 py-1.5 transition-colors ${
+                  grid === mode
+                    ? "bg-neutral-900 font-medium text-white dark:bg-white dark:text-neutral-900"
+                    : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                }`}
+              >
+                {mode === "detailed" ? "Detailed" : "Availability"}
+              </button>
+            ))}
+          </div>
 
           {/* Same row as the view toggle: these all act on the week on screen,
               and "this week's free windows" means whichever week that is. */}
           <CalendarTools groupCode={code} memberId={me?.id ?? null} />
         </div>
       </div>
-
-      {view === "mine" && shown.length === 0 && (
-        <p className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-500 dark:border-neutral-800">
-          {me
-            ? "You haven't added a schedule yet. Add your courses above to see your week."
-            : "Join this group or claim your name above to see your schedule."}
-        </p>
-      )}
 
       {grid === "heat" ? (
         <HeatGrid
@@ -1172,11 +1072,7 @@ function GroupSchedule({ code }: { code: string }) {
           free={free}
           dayStart={DAY_START}
           dayEnd={DAY_END}
-          solo={view === "mine"}
           weekStart={week ?? undefined}
-          // Only on your own week: in a group the colour has to stay the
-          // person, which is what you scan a column for.
-          courseColors={view === "mine" ? myCourseColors : undefined}
           attendance={attendance}
         />
       )}
@@ -1227,7 +1123,7 @@ function GroupSchedule({ code }: { code: string }) {
           when closed. `join=1` is what the auto-join effect above acts on. */}
       <AccountGate
         open={gateOpen}
-        onClose={() => { setGateAsked(false); setMineHandled(true); }}
+        onClose={() => setGateAsked(false)}
         groupName={state.group.name}
         next={`/g/${code}?join=1`}
       />
@@ -1235,7 +1131,7 @@ function GroupSchedule({ code }: { code: string }) {
   );
 }
 
-/** One option in the schedule switcher. Selected reads as filled, like the nav. */
+/** One option in the group switcher. Selected reads as filled, like the nav. */
 function Pill({
   href,
   current,
