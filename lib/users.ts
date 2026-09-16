@@ -345,3 +345,27 @@ export function sfuDbErrorHint(err: unknown): string {
   }
   return "unknown";
 }
+
+/**
+ * The column Postgres named in the error, when it named one.
+ *
+ * `missing_column` on its own says a migration is behind but not which, and the
+ * sign-in page spent a day advising migration 010 while the column the code
+ * actually wanted was 011's `google_email`. The name is the one part of the
+ * message worth showing: it identifies the gap exactly and it is an identifier
+ * from our own schema, never a row value or a fragment of SQL.
+ *
+ * Matches both shapes 42703 comes in — bare, and qualified by its relation —
+ * then falls back to the `column` field Postgres fills in for 23502. Anything
+ * that isn't a plain lowercase identifier is dropped rather than repaired,
+ * because the result lands in a URL and then on a page.
+ */
+export function sfuDbErrorColumn(err: unknown): string | null {
+  if (typeof err !== "object" || err === null) return null;
+  const e = err as { message?: unknown; column?: unknown };
+  const message = typeof e.message === "string" ? e.message : "";
+
+  const named = /column "([^"]+)"/.exec(message)?.[1] ?? e.column;
+  if (typeof named !== "string") return null;
+  return /^[a-z0-9_]{1,63}$/.test(named) ? named : null;
+}

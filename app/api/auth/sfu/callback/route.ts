@@ -15,7 +15,7 @@ import {
   mintSessionToken,
 } from "@/lib/cas-session";
 import { safeNext } from "@/lib/safe-next";
-import { sfuDbErrorHint, upsertSfuUser } from "@/lib/users";
+import { sfuDbErrorColumn, sfuDbErrorHint, upsertSfuUser } from "@/lib/users";
 
 /**
  * The end of the SFU round trip. CAS has checked the password and sent the
@@ -73,9 +73,13 @@ export async function GET(req: Request) {
     ({ user: row, created } = await upsertSfuUser(cas));
   } catch (err) {
     const hint = sfuDbErrorHint(err);
-    console.error("sfu cas upsert failed", { dbError: hint, err });
-    // Non-sensitive hint only (PG code class / short tag, no SQL or secrets).
-    return done(`/signin?error=sfu&step=db&dbError=${encodeURIComponent(hint)}`);
+    const column = sfuDbErrorColumn(err);
+    console.error("sfu cas upsert failed", { dbError: hint, dbColumn: column, err });
+    // Non-sensitive hint only (PG code class / short tag and the identifier
+    // Postgres named, no SQL, row values or secrets).
+    const params = new URLSearchParams({ error: "sfu", step: "db", dbError: hint });
+    if (column) params.set("dbColumn", column);
+    return done(`/signin?${params}`);
   }
 
   // A brand new SFU account whose address already belongs to a Google row is
