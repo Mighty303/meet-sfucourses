@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClearSignInError } from "@/components/ClearSignInError";
 import { SignInPanel } from "@/components/SignInPanel";
 import { casEnabled } from "@/lib/cas";
 
@@ -53,9 +54,14 @@ export function AuthScreen({
       </div>
 
       {error && (
-        <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
+        <>
+          {/* Draws nothing — it scrubs the parameters that produced the
+              sentence beside it, so a reload doesn't replay a fixed failure. */}
+          <ClearSignInError />
+          <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </p>
+        </>
       )}
 
       <SignInPanel
