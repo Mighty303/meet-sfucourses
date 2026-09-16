@@ -13,6 +13,7 @@
     "test:watch": "vitest --project unit",
     "test:smoke": "vitest run --project smoke",
     "test:db": "vitest run --project db",
+    "test:migrations": "vitest run --project migrations",
     "test:all": "vitest run",
     "test:fixture": "node --experimental-strip-types tests/fixtures/refresh.ts"
   },
@@ -28,11 +29,13 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "pg": "^8.23.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.0"
