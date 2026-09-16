@@ -7,12 +7,17 @@ import {
 } from "@/lib/groups";
 import { authorizeMember } from "@/lib/member-access";
 
+/**
+ * Your own name and colour — or, for the group's admin, anybody's. A member who
+ * called themselves `asdf` could not be fixed by the person whose group it is,
+ * and the name on a row is what everyone else in the group has to read.
+ */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ code: string; memberId: string }> }
 ) {
   const { code, memberId } = await params;
-  const access = await authorizeMember(code, memberId);
+  const access = await authorizeMember(code, memberId, { adminToo: true });
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
   const body = await req.json().catch(() => ({}));
@@ -55,12 +60,21 @@ export async function PATCH(
   });
 }
 
+/**
+ * Leaving, and kicking — the same row deletion from either end, so the admin
+ * removing somebody else goes through the same path a member leaving does.
+ *
+ * Including the admin's own row: that is leaving, and removeMember hands the
+ * group to the earliest remaining signed-in member, so an admin who walks out
+ * doesn't lock the group. The last member out leaves it empty and ownerless,
+ * which is what has always happened and is recoverable — the code still opens.
+ */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ code: string; memberId: string }> }
 ) {
   const { code, memberId } = await params;
-  const access = await authorizeMember(code, memberId);
+  const access = await authorizeMember(code, memberId, { adminToo: true });
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
   await removeMember(access.id, access.groupId);
   return new NextResponse(null, { status: 204 });

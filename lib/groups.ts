@@ -68,6 +68,38 @@ export interface Member {
   sfuVerified: boolean;
 }
 
+/** A member as the roster reads them: who they are, not what they study. */
+export type RosterEntry = Omit<Member, "classNumbers">;
+
+/**
+ * The people in a group, without resolving anybody's timetable.
+ *
+ * getGroupState answers the same question on its way to drawing a week, but it
+ * needs the term's sections to do it and 502s when SFU hasn't published them.
+ * The settings page has to work in that case — leaving a group, or renaming
+ * someone, has nothing to do with whether the timetable exists yet.
+ */
+export async function listMembers(groupId: number): Promise<RosterEntry[]> {
+  const sql = getDb();
+  const rows = await sql`
+    SELECT m.id, m.display_name, m.color, m.user_id,
+           COALESCE(u.avatar, u.image) AS image,
+           (u.sfu_username IS NOT NULL) AS sfu_verified
+    FROM meetup.members m
+    LEFT JOIN meetup.users u ON u.id = m.user_id
+    WHERE m.group_id = ${groupId}
+    ORDER BY m.id
+  `;
+  return rows.map((r) => ({
+    id: r.id as number,
+    displayName: r.display_name as string,
+    color: r.color as string,
+    userId: (r.user_id as number | null) ?? null,
+    image: (r.image as string | null) ?? null,
+    sfuVerified: r.sfu_verified === true,
+  }));
+}
+
 export interface GroupState {
   group: Group;
   members: Member[];
@@ -273,6 +305,58 @@ export async function canEditMember(
   if (rows.length === 0) return false;
   const owner = rows[0].user_id as number | null;
   return owner === null || owner === appUserId;
+}
+
+/**
+ * Who may rename, recolour or remove a member row: its own owner, as above, or
+ * the group's admin.
+ *
+ * Wider than canEditMember on purpose, and only for the two edits everybody in
+ * the group reads — the name and the colour on the grid, and whether the row is
+ * there at all. A schedule is still nobody else's to touch, which is why the
+ * courses and calendar routes keep calling canEditMember instead.
+ */
+export async function canManageMember(
+  memberId: number,
+  groupId: number,
+  appUserId: number | null
+): Promise<boolean> {
+  if (await canEditMember(memberId, groupId, appUserId)) return true;
+  if (!(await isGroupOwner(groupId, appUserId))) return false;
+  return memberBelongsToGroup(memberId, groupId);
+}
+
+/**
+ * Hand the group to somebody else. One admin at a time — owner_user_id is a
+ * single column — so this is a transfer, and the outgoing admin becomes an
+ * ordinary member of a group they are still in.
+ *
+ * The new admin has to be a member with an account: an ownerless row predates
+ * sign-in and has no user to hand anything to, and an admin who isn't in the
+ * group would be one nobody in it could reach.
+ *
+ * `currentOwnerId` is in the UPDATE's WHERE rather than checked before it, so
+ * two admins-in-a-race can't both hand the group to their own candidate.
+ */
+export async function transferOwnership(
+  groupId: number,
+  memberId: number,
+  currentOwnerId: number
+): Promise<"ok" | "not-a-member" | "no-account" | "not-owner"> {
+  const sql = getDb();
+  const rows = await sql`
+    SELECT user_id FROM meetup.members WHERE id = ${memberId} AND group_id = ${groupId}
+  `;
+  if (rows.length === 0) return "not-a-member";
+  if (rows[0].user_id == null) return "no-account";
+
+  const updated = await sql`
+    UPDATE meetup.groups
+    SET owner_user_id = ${rows[0].user_id}
+    WHERE id = ${groupId} AND owner_user_id = ${currentOwnerId}
+    RETURNING id
+  `;
+  return updated.length > 0 ? "ok" : "not-owner";
 }
 
 /**
