@@ -1,20 +1,20 @@
 # meet.sfucourses.com
 
+![A group week on meet.sfucourses.com: three members, an availability heat map, and a window where all three are free](docs/screenshot.png)
+
 Everyone in a group drops their SFU schedule in; the grid shows when you're all
 free on campus at the same time.
 
 ## How it works
 
 Course data comes from the public [sfucourses API](https://api.sfucourses.com)
-(`/v1/rest/sections?term=2025-fall`) — no key, open CORS. **This repo does not
-fork sfucourses.com**, it only consumes that endpoint.
+(`/v1/rest/sections?term=2026-fall`) — no key, open CORS. This repo does not
+fork sfucourses.com, it only consumes that endpoint.
 
-Sections are added in-app at **`/courses`**: search the term's course list and
-add each one you're in. Tutorials and labs are their own class numbers, so each
-is added separately.
-
-Only class numbers are persisted. Meeting times are always resolved against the
-API at read time, so an upstream schedule change is picked up without a migration.
+Sections are added in-app at `/courses`. Tutorials and labs are their own class
+numbers, so each is added separately. Only class numbers are stored; meeting
+times are resolved against the API at read time, so an upstream schedule change
+is picked up without a migration.
 
 ### Finding the overlap
 
@@ -24,32 +24,120 @@ API at read time, so an upstream schedule change is picked up without a migratio
 3. Complement within the search window (default 08:00–22:00) to get free time.
 4. Intersect across members; keep windows at least `minMinutes` long.
 5. Tag each window with the campus each member's nearest adjacent class is on.
-   Different campuses means they can't actually meet — those render amber, not green.
+   Different campuses means they can't actually meet — those render amber.
 
-Members who haven't added a schedule yet are excluded from the intersection,
-otherwise they'd read as "free always" and silently widen everyone's overlap.
+Members with no schedule yet are excluded, otherwise they'd read as "free
+always" and silently widen everyone's overlap.
 
 ### Who's actually going
 
-The timetable says where you're enrolled, which is not the same as where you'll
-be. Any class on any date can be marked **skipping** or **online** — from the
-block itself, or for a whole day from the day's heading:
+Where you're enrolled is not where you'll be. Any class on any date can be
+marked **skipping** or **online**, from the block or from the day's heading:
 
-- **Skipping** drops that class out of step 1, so the hour stops being busy and
-  a real free window opens for the group. The block stays on the detailed grid,
-  hollowed out and dashed — and on the availability heatmap as a dashed outline
-  over the greener band — because seeing *why* a window opened is the point.
-- **Online** stops anchoring you to a campus. If it's your only class that day,
-  you drop out of availability entirely (same as having no campus day). If you
-  also have in-person classes, the online hour stays busy so it isn't offered as
-  a meetup slot. The heatmap uses a blue hatch (and a blue outline) so an
-  all-online hour doesn't read as the same "in a room" state as an on-campus
-  lecture.
+- Skipping drops the class out of step 1, so the hour stops being busy and a
+  real window opens. The block stays on the grid, hollow and dashed, because
+  seeing *why* a window opened is the point.
+- Online stops anchoring you to a campus. If it's your only class that day you
+  drop out of availability entirely; if you also have in-person classes the
+  hour stays busy, so it isn't offered as a meetup slot. The heat map draws it
+  with a blue hatch.
 
-Statuses are stored against the user and a date — not against a group — so
-marking Thursday's lecture skipped shows in every group you're in at once. Only
-deviations are stored: no row means you're going, so an ordinary week writes
-nothing, and a status expires on its own once the date has passed.
+Statuses are stored against the user and a date, not against a group, so
+marking Thursday's lecture skipped shows in every group you're in. Only
+deviations are stored — no row means you're going — and a status expires on its
+own once the date has passed.
+
+## Schema
+
+Everything lives in the `meetup` Postgres schema so it can share a database
+with another app without collisions.
+
+```mermaid
+erDiagram
+    users ||--o{ members : owns
+    users ||--o{ user_courses : "schedule, per term"
+    users ||--o{ attendance : "deviations only"
+    users ||--o{ groups : admins
+    users ||--o{ feedback : "may be anonymous"
+    groups ||--o{ members : has
+    members ||--o{ member_courses : "ownerless rows only"
+    members ||--o{ member_blocks : has
+
+    users {
+        int id PK
+        string google_sub UK "null unless a Google row"
+        string email
+        string password_hash "null unless a password row"
+        string sfu_username UK "null unless a CAS row"
+        string avatar "own picture, overrides Google's"
+        timestamptz last_seen_at
+    }
+    groups {
+        int id PK
+        string code UK "the invite link"
+        string name
+        string term "2026-fall"
+        int owner_user_id FK "nullable, ON DELETE SET NULL"
+    }
+    members {
+        int id PK
+        int group_id FK
+        int user_id FK "null = ownerless, editable by anyone with the link"
+        string display_name
+        string color
+    }
+    user_courses {
+        int user_id PK "FK to users"
+        string term PK
+        string class_number PK
+    }
+    member_courses {
+        int member_id PK "FK to members"
+        string class_number PK
+    }
+    member_blocks {
+        int id PK
+        int member_id FK
+        char day "Mo Tu We Th Fr Sa Su"
+        smallint start_min
+        smallint end_min
+        string label
+    }
+    attendance {
+        int id PK
+        int user_id FK
+        date on_date
+        string class_number "null = the whole day"
+        string status "going, skipping, remote"
+        string note
+    }
+    feedback {
+        int id PK
+        int user_id FK "nullable, ON DELETE SET NULL"
+        string email "what they typed, if anything"
+        string message
+        string path "which page it came from"
+    }
+    sections_cache {
+        string term PK
+        jsonb payload "one term dump, ~227 kB"
+        timestamptz fetched_at "24h TTL"
+    }
+```
+
+Three things the diagram can't draw:
+
+- `class_number` has no foreign key anywhere. Sections live in
+  `sections_cache`, which is one JSON blob per term with a 24h TTL, so every
+  member of every group shares a single upstream fetch.
+- Schedules belong to the person, not the group: join a second group in the
+  same term and your classes are already there. Terms are kept apart because a
+  class number is only unique inside one, and a flat list would resolve a fall
+  section against the spring catalogue and draw a different course.
+- `meetup.member_courses_effective` is a view over both course tables. Owned
+  member rows read `user_courses` for the group's term; ownerless rows —
+  the ones predating sign-in — keep reading `member_courses`. The view is the
+  one place that decides which.
 
 ## Setup
 
@@ -60,103 +148,48 @@ npm run migrate              # creates the `meetup` schema; safe to re-run
 npm run dev
 ```
 
-### Google sign-in
+### Sign-in
 
-Create a **Web application** OAuth client in the Google Cloud Console with these
-redirect URIs, one per origin you use:
+Three doors, each its own credential column on `meetup.users`, never merged
+with each other on a shared email address (see `db/migrations/007_password_auth.sql`
+for why merging silently is the wrong shape):
 
-```
-http://localhost:3000/api/auth/callback/google
-https://meet.sfucourses.com/api/auth/callback/google
-```
+- **Google.** Create a Web application OAuth client with a
+  `<origin>/api/auth/callback/google` redirect URI per origin you use, then run
+  `./scripts/set-google-oauth.sh` to write the credentials to `.env.local` and
+  all three Vercel environments without them appearing on screen.
+- **Email and password.** No mail infrastructure here, so the address is a
+  label rather than a verified identity.
+- **SFU CAS**, the only door that proves the person is at SFU. Off unless
+  `SFU_CAS_ENABLED=1`. The password is typed at `cas.sfu.ca` and never reaches
+  this site; what comes back is a one-time ticket validated server to server.
+  Rosters show a ✓ next to members who came in this way, and only that boolean
+  crosses the wire.
 
-Then, to write the credentials to `.env.local` and all three Vercel
-environments without them appearing on screen:
-
-```bash
-./scripts/set-google-oauth.sh
-```
-
-### SFU sign-in
-
-The third door, and the only one that proves the person is at SFU. SFU
-publishes no OIDC or public SAML for outside applications — only **CAS** — so
-the protocol lives in `lib/cas.ts` and a `sfu-cas` credentials provider in
-`auth.ts` redeems the ticket it brings back. The password is typed at
-`cas.sfu.ca` and never reaches this site; what comes back is a one-time ticket
-we validate server to server.
-
-It is off unless `SFU_CAS_ENABLED=1`. SFU does not normally register student
-apps, and that is fine: an unregistered service still gets a working login
-form, with a warning banner on `cas.sfu.ca`, and `serviceValidate` still
-releases the username — which is all this door needs. Formal registration is
-optional, not a gate.
-
-The service URL is `<origin>/api/auth/sfu/callback`. To walk the flow against a
-local stand-in instead of the real IdP:
+`SFU_CAS_BASE` is ignored in production unless it is https, because whoever
+answers `/serviceValidate` decides who you are signed in as. The service URL is
+built from `AUTH_URL` (set it to `https://meet.sfucourses.com` in Vercel) rather
+than a request header, for the same reason. To walk the flow locally:
 
 ```bash
 node scripts/fake-cas.mjs    # stands in for cas.sfu.ca, on :8099
 SFU_CAS_ENABLED=1 SFU_CAS_BASE=http://localhost:8099/cas npm run dev
 ```
 
-`SFU_CAS_BASE` is ignored in production unless it is https, because whoever
-answers `/serviceValidate` decides who you are signed in as. The service URL is
-built from `AUTH_URL` (set this to `https://meet.sfucourses.com` in Vercel —
-without it, production would hand CAS a per-deploy `*.vercel.app` host and the
-round trip would lose its state cookie), never from a request header, for the
-same reason — and it carries no query string, so the string CAS binds the
-ticket to can't drift between the redirect out and the validation. Where the
-visitor was headed rides in a short-lived `sfu-cas-next` cookie instead.
+Sign-in is required to join a group, edit a schedule, or set a status; anyone
+with the invite link can still view one. Ownerless member rows stay editable by
+anyone with the link, and a signed-in user can claim one to take it over along
+with its saved schedule.
 
-A CAS account is its own `meetup.users` row, keyed on the computing ID and
-never merged with a Google or password row that happens to share the address —
-see `db/migrations/007_password_auth.sql` for why two doors meeting silently is
-the wrong shape. Group rosters show a ✓ next to members who came in this way;
-only that boolean crosses the wire, never the computing ID.
+### Admin portal
 
-Sign-in is required to join a group, edit a schedule, or set an attendance
-status; anyone with the invite link can still view one. A member row is owned by the user who created it, so
-only they can change their schedule or name.
-
-Members added before sign-in existed have no owner. They stay editable by
-anyone with the link, and a signed-in user can **claim** one to take it over
-along with its saved schedule, rather than starting a duplicate row.
-
-Your schedule is stored per person, per term, in `meetup.user_courses` — not
-per group, and not behind one. `/courses` edits it directly through
-`/api/me/courses`, so you can say what you're enrolled in before you've joined
-anything; signing up lands there, with a way past it for people who'd rather
-not. Join a second group in the same term and your classes are already
-there; edit them anywhere and every group in that term follows. Terms are kept
-apart because a class number is only unique inside one, so a flat list would
-resolve a fall section against the spring catalogue and quietly draw the wrong
-course. Ownerless rows have no profile to read from and keep their own courses
-in `meetup.member_courses`; `meetup.member_courses_effective` is the view that
-decides which of the two a member row shows.
-
-A group page therefore shows your saved sections but doesn't edit them — the
-search box lives at `/courses`, because when everyone is free and which classes
-you're in are two different questions and only one of them needs a week grid
-on screen to answer.
-
-## Admin portal
-
-`/admin` shows every group, every user, what's in the database and how much
-space it takes. It's server-gated: the session id on the JWT is resolved to a
-`meetup.users` row and that row's email must be on `ADMIN_EMAILS` — which is
-only ever written from Google's verified profile at sign-in, never from
-anything the browser sends. A signed-in visitor who isn't on the list gets a
-404, so the portal doesn't confirm it exists.
-
-`ADMIN_EMAILS` has no default. This repository is public, so a baked-in address
-would become the allowlist of every clone of it; leave it unset and the portal
-is closed to everyone, including you.
-
-Set `ADMIN_GOOGLE_SUB` to your `meetup.users.google_sub` to pin access to one
-Google account rather than an address. The nav link is driven by
-`session.isAdmin`, so the allowlist never reaches the client bundle.
-`/api/admin/metrics` returns the same figures as JSON, gated identically.
+`/admin` shows every group, every user, and what's in the database. The session
+id on the JWT is resolved to a `meetup.users` row and that row's email must be
+on `ADMIN_EMAILS`, which is only ever written from Google's verified profile.
+Anyone else gets a 404, so the portal doesn't confirm it exists.
+`ADMIN_EMAILS` has no default: this repository is public, and a baked-in
+address would become the allowlist of every clone. `ADMIN_GOOGLE_SUB` pins
+access to one Google account instead of an address.
 
 ## Scripts
 
@@ -169,22 +202,29 @@ Google account rather than an address. The nav link is driven by
 
 ## Tests
 
-Vitest, in `tests/`. Three suites, split by what they need rather than by what
-they cover — so the default one needs nothing at all.
+Vitest, in `tests/`, split by what each suite needs rather than by what it
+covers — so the default one needs nothing at all.
 
 | command | does | needs |
 |---|---|---|
-| `npm test` | the unit suite: interval maths, the heat map, attendance, the sfucourses parsers | nothing |
+| `npm test` | interval maths, the heat map, attendance, the sfucourses parsers | nothing |
 | `npm run test:watch` | the same, in watch mode | nothing |
-| `npm run test:smoke` | checks the live sfucourses API still has the shape `lib/sfu.ts` expects | the network |
-| `npm run test:db` | group, membership and attendance SQL against a throwaway Neon branch | `NEON_API_KEY` |
+| `npm run test:smoke` | checks the live API still has the shape `lib/sfu.ts` expects | the network |
+| `npm run test:db` | group, membership and attendance SQL on a throwaway Neon branch | `NEON_API_KEY` |
 | `npm run test:all` | all three | both |
-| `npm run test:fixture` | regenerates `tests/fixtures/term-sample.json` from the live API | the network |
+| `npm run test:fixture` | regenerates `tests/fixtures/term-sample.json` | the network |
 
-`npm test` is offline and deterministic: the parsers are checked against a
-committed slice of a real term dump rather than invented data, so the awkward
-shapes SFU actually publishes — sections with no campus, sections with no
-meeting days at all — stay covered without a network call.
+`npm test` is offline and deterministic: the parsers run against a committed
+slice of a real term dump, so the awkward shapes SFU actually publishes —
+sections with no campus, sections with no meeting days — stay covered without a
+network call. `npm run test:db` creates its own branch, migrates it, and
+deletes it afterwards; it never touches the `DATABASE_URL` in `.env.local`, and
+it skips with a message when `NEON_API_KEY` is unset.
+
+The rule that online is not on campus — a lecture attended from home is busy
+time but puts nobody in a building — is pinned in `tests/unit/on-campus.test.ts`
+and again in `tests/db/attendance.test.ts`. Reverting any one of `onCampus`,
+`busyForMeetup` or `anchorCampus` in `lib/overlap.ts` turns that suite red.
 
 ### A note on `package-lock.json`
 
@@ -197,42 +237,19 @@ docker run --rm -v "$PWD":/w -w /w node:22-bookworm npm install --package-lock-o
 `sharp` and `@tailwindcss/oxide` ship wasm builds whose own dependencies npm
 prunes from the lockfile when it resolves on macOS. The result installs fine
 there and then fails `npm ci` on every Linux runner with two `@emnapi` packages
-"missing from lock file". A lockfile written on Linux covers both.
-
-`npm run test:db` creates its own Neon branch, migrates it, and deletes it
-afterwards; it never touches the `DATABASE_URL` in `.env.local`, and it skips
-with a message rather than failing when `NEON_API_KEY` is unset. Without a key
-the branch is never created, so there is nothing to clean up.
-
-The rule that online is not on campus — a lecture attended from home is busy
-time but puts nobody in a building — is pinned in `tests/unit/on-campus.test.ts`
-and again end-to-end in `tests/db/attendance.test.ts`. Reverting any one of
-`onCampus`, `busyForMeetup` or `anchorCampus` in `lib/overlap.ts` turns that
-suite red.
-
-## Schema
-
-Everything lives in the `meetup` Postgres schema so it can share a database with
-another app without collisions. `meetup.sections_cache` holds one term dump
-(~227 kB for Fall 2025) with a 24h TTL, so every member of every group shares a
-single upstream fetch.
+"missing from lock file".
 
 ## Scope
 
-A group is still a secret invite code — anyone with the link can view it. What
-sign-in adds is ownership: your schedule and name are yours to edit, and your
-identity follows you across devices instead of living in `localStorage`.
+A group is a secret invite code — anyone with the link can view it. Sign-in
+adds ownership: your schedule and name are yours to edit, and your identity
+follows you across devices instead of living in `localStorage`.
 
-After signing in, **Schedule** in the navigation opens just your saved classes
-and free time in the current group. The `?view=mine` link keeps this view selected
-when refreshed or bookmarked; **Schedule** switches back to the group. From home,
-it opens your newest group.
+**Schedule** in the navigation opens your own classes and free time in the
+current group; `?view=mine` keeps that view on a refresh. With no group at all
+it draws your week on its own, from `meetup.user_courses` — same grid, same
+colours, same going/skipping/online controls, with nobody else's column beside
+yours.
 
-With no group at all it draws your week on its own, from `meetup.user_courses`
-through `/api/me/schedule` — the same grid, the same per-course colours and the
-same going/skipping/online controls, with nobody else's column beside yours. A
-schedule saved at `/courses` is worth looking at before there is anyone to
-compare it with.
-
-Not built yet: custom busy blocks (the `meetup.member_blocks` table exists and is
-read, but there's no UI to add them), calendar export, meeting-spot suggestions.
+Not built yet: custom busy blocks (`meetup.member_blocks` exists and is read,
+but there's no UI to add them), calendar export, meeting-spot suggestions.
