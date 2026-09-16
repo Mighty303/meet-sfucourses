@@ -45,8 +45,13 @@ export async function adminFor(appUserId: number | null | undefined): Promise<Ad
   if (!appUserId) return null;
 
   const sql = getDb();
+  // Through merged_into, so an id from a session minted before a merge lands
+  // on the account rather than on its tombstone.
   const rows = await sql`
-    SELECT id, email, name, google_sub FROM meetup.users WHERE id = ${appUserId}
+    SELECT a.id, a.email, a.name, a.google_sub, a.google_email
+    FROM meetup.users u
+    JOIN meetup.users a ON a.id = COALESCE(u.merged_into, u.id)
+    WHERE u.id = ${appUserId}
   `;
   const row = rows[0];
   if (!row) return null;
@@ -57,7 +62,10 @@ export async function adminFor(appUserId: number | null | undefined): Promise<Ad
   // line the allowlist would be a registration form.
   if (!row.google_sub) return null;
 
-  const email = String(row.email ?? "").toLowerCase();
+  // google_email rather than email: a linked account wears its verified
+  // @sfu.ca address, and this list is a list of Google addresses. Falling back
+  // to email covers rows that predate 011's backfill.
+  const email = String(row.google_email ?? row.email ?? "").toLowerCase();
   if (!ADMIN_EMAILS.includes(email)) return null;
   if (ADMIN_GOOGLE_SUB && row.google_sub !== ADMIN_GOOGLE_SUB) return null;
 

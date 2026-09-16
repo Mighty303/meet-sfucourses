@@ -35,8 +35,16 @@ export function casSessionCookieName(secure = casSessionSecure()): string {
  * going through Auth.js's signIn() helper: that helper is built for Server
  * Actions, and a rejected or half-applied cookie write there collapses every
  * failure mode into the same ?error=sfu.
+ *
+ * Not CAS-only any more, despite where it lives: a merge deletes nothing but
+ * it does change which account the browser is holding, so the confirm route
+ * mints a fresh session for the survivor on its own response the same way.
+ *
+ * `hasGoogle` comes off the row rather than being hard-coded false. It records
+ * whether the account has a Google credential, which after linking is a
+ * different question from which door minted the session.
  */
-export async function mintCasSessionToken(user: AppUser): Promise<string> {
+export async function mintSessionToken(user: AppUser): Promise<string> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error("AUTH_SECRET is not set");
 
@@ -48,7 +56,8 @@ export async function mintCasSessionToken(user: AppUser): Promise<string> {
       picture: user.avatar ?? user.image,
       sub: String(user.id),
       appUserId: user.id,
-      hasGoogle: false,
+      hasGoogle: user.hasGoogle,
+      googleEmail: user.googleEmail,
       avatar: user.avatar,
     },
     secret,

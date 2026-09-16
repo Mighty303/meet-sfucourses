@@ -3,12 +3,46 @@ import { getDb } from "./db";
 
 export interface AppUser {
   id: number;
+  /**
+   * The account's own address. After a merge this is the @sfu.ca one whenever
+   * an SFU credential is involved — CAS derived it from a computing ID, which
+   * makes it the only address here anybody has vouched for.
+   */
   email: string;
   name: string | null;
   /** Google's picture, refreshed on every sign-in. */
   image: string | null;
   /** A picture they chose instead. Null means Google's is the one to show. */
   avatar: string | null;
+  /**
+   * Whether this row has a Google credential at all — which, after a merge, is
+   * no longer the same question as which door the session came through. The
+   * admin allowlist turns on it; see lib/admin.ts.
+   */
+  hasGoogle: boolean;
+  /**
+   * The address Google vouched for, kept apart from `email` so that linking an
+   * SFU account doesn't take the admin allowlist's key away with it.
+   */
+  googleEmail: string | null;
+}
+
+/**
+ * Every query below RETURNs the same seven columns — `id, email, name, image,
+ * avatar, google_email, (google_sub IS NOT NULL) AS has_google` — spelled out
+ * each time rather than shared as a constant, because a tagged template turns
+ * an interpolated string into a bind parameter rather than into SQL.
+ */
+function toAppUser(row: Record<string, unknown>): AppUser {
+  return {
+    id: row.id as number,
+    email: row.email as string,
+    name: (row.name as string | null) ?? null,
+    image: (row.image as string | null) ?? null,
+    avatar: (row.avatar as string | null) ?? null,
+    hasGoogle: Boolean(row.has_google),
+    googleEmail: (row.google_email as string | null) ?? null,
+  };
 }
 
 /** What to actually render for a user: their own picture, else Google's. */
@@ -35,33 +69,82 @@ export function isValidAvatar(value: unknown): value is string {
  * Keyed on Google's `sub`, not the email — an email can be reassigned within a
  * workspace, the subject id can't. Name and picture are refreshed on each
  * sign-in so a changed Google avatar follows through.
+ *
+ * Two things it does not do, both of them consequences of merging (011).
+ *
+ * It does not overwrite `email` on a row that holds an SFU credential. The
+ * verified @sfu.ca address is the merged account's address, and refreshing it
+ * from the Google profile on every sign-in would quietly undo that. Google's
+ * own address goes to `google_email`, where lib/admin.ts reads it.
+ *
+ * And the row it conflicts onto may be a tombstone that kept this `sub` — the
+ * merge only moves a credential into a gap — so the account it belongs to is
+ * resolved before returning. Without that, signing in through the second of
+ * two linked Google accounts would hand back a dead id and an empty schedule.
  */
 export async function upsertUser(input: {
   googleSub: string;
   email: string;
   name: string | null;
   image: string | null;
+  /** Google's `email_verified` claim. Unknown is not verified. */
+  emailVerified?: boolean | null;
+  /** Google's `hd` claim: the Workspace tenant, absent on personal accounts. */
+  hd?: string | null;
 }): Promise<AppUser> {
   const sql = getDb();
   const rows = await sql`
-    INSERT INTO meetup.users (google_sub, email, name, image)
-    VALUES (${input.googleSub}, ${input.email}, ${input.name}, ${input.image})
+    INSERT INTO meetup.users
+      (google_sub, email, name, image, google_email, google_email_verified, google_hd)
+    VALUES (
+      ${input.googleSub}, ${input.email}, ${input.name}, ${input.image},
+      ${input.email}, ${input.emailVerified ?? null}, ${input.hd ?? null}
+    )
     ON CONFLICT (google_sub) DO UPDATE
-      SET email = EXCLUDED.email,
+      SET email = CASE
+            WHEN meetup.users.sfu_username IS NULL THEN EXCLUDED.email
+            ELSE meetup.users.email
+          END,
           name = EXCLUDED.name,
           image = EXCLUDED.image,
+          google_email = EXCLUDED.google_email,
+          google_email_verified = EXCLUDED.google_email_verified,
+          google_hd = EXCLUDED.google_hd,
           updated_at = NOW()
-    RETURNING id, email, name, image, avatar
+    RETURNING id, email, name, image, avatar, google_email, merged_into,
+              (google_sub IS NOT NULL) AS has_google
   `;
-  return rows[0] as AppUser;
+  return resolveAccount(rows[0] as Record<string, unknown>);
 }
 
+/**
+ * The account a row belongs to: itself, or — if it is a tombstone — the row it
+ * was merged into. One hop and no loop: merge_accounts() re-points any
+ * tombstone aimed at the row it absorbs, so merged_into is always terminal.
+ */
+async function resolveAccount(row: Record<string, unknown>): Promise<AppUser> {
+  const mergedInto = (row.merged_into as number | null) ?? null;
+  if (mergedInto === null) return toAppUser(row);
+  const account = await getUser(mergedInto);
+  if (!account) throw new Error(`user ${row.id} points at missing account ${mergedInto}`);
+  return account;
+}
+
+/**
+ * Follows a tombstone, which is what keeps a session cookie minted before a
+ * merge working on somebody's other device: the id in it is still a row, and
+ * that row still says which account it is.
+ */
 export async function getUser(id: number): Promise<AppUser | null> {
   const sql = getDb();
   const rows = await sql`
-    SELECT id, email, name, image, avatar FROM meetup.users WHERE id = ${id}
+    SELECT a.id, a.email, a.name, a.image, a.avatar, a.google_email,
+           (a.google_sub IS NOT NULL) AS has_google
+    FROM meetup.users u
+    JOIN meetup.users a ON a.id = COALESCE(u.merged_into, u.id)
+    WHERE u.id = ${id}
   `;
-  return (rows[0] as AppUser) ?? null;
+  return rows[0] ? toAppUser(rows[0] as Record<string, unknown>) : null;
 }
 
 /** Pass null to drop back to the Google picture. */
@@ -98,24 +181,26 @@ export interface PasswordUser extends AppUser {
   passwordHash: string | null;
 }
 
-/** Password accounts only — a Google row with the same address is not this one. */
+/**
+ * Password accounts only — a Google row with the same address is not this one.
+ *
+ * The hash and the identity can come from two different rows. A merge leaves a
+ * password credential on the tombstone whenever the surviving account already
+ * had one of its own, so the row that holds the hash to check may not be the
+ * row to sign anybody in as. Verify against the match, return the account.
+ */
 export async function getPasswordUserByEmail(email: string): Promise<PasswordUser | null> {
   const sql = getDb();
   const rows = await sql`
-    SELECT id, email, name, image, avatar, password_hash
+    SELECT id, email, name, image, avatar, google_email, password_hash, merged_into,
+           (google_sub IS NOT NULL) AS has_google
     FROM meetup.users
     WHERE LOWER(email) = ${normalizeEmail(email)} AND password_hash IS NOT NULL
   `;
-  const row = rows[0];
+  const row = rows[0] as Record<string, unknown> | undefined;
   if (!row) return null;
-  return {
-    id: row.id as number,
-    email: row.email as string,
-    name: (row.name as string | null) ?? null,
-    image: (row.image as string | null) ?? null,
-    avatar: (row.avatar as string | null) ?? null,
-    passwordHash: (row.password_hash as string | null) ?? null,
-  };
+  const account = await resolveAccount(row);
+  return { ...account, passwordHash: (row.password_hash as string | null) ?? null };
 }
 
 /**
@@ -134,9 +219,10 @@ export async function createPasswordUser(input: {
     INSERT INTO meetup.users (email, name, password_hash)
     VALUES (${normalizeEmail(input.email)}, ${input.name}, ${input.passwordHash})
     ON CONFLICT (LOWER(email)) WHERE password_hash IS NOT NULL DO NOTHING
-    RETURNING id, email, name, image, avatar
+    RETURNING id, email, name, image, avatar, google_email,
+              (google_sub IS NOT NULL) AS has_google
   `;
-  return (rows[0] as AppUser) ?? null;
+  return rows[0] ? toAppUser(rows[0] as Record<string, unknown>) : null;
 }
 
 /**
@@ -158,11 +244,17 @@ export async function createPasswordUser(input: {
  * quirks), and a missed match is exactly `step=db` after CAS succeeded. Two
  * statements plus a unique-violation retry cover the concurrent-create race
  * without needing the conflict target to name the index expression.
+ *
+ * `created` says whether this was the computing ID's first ever sign-in, which
+ * is the only moment worth offering a link: a brand new, empty SFU account
+ * whose address already belongs to somebody's Google row is exactly the split
+ * issue #31 describes, and the callback offers to fold it before they have
+ * built anything on top of it.
  */
 export async function upsertSfuUser(input: {
   username: string;
   authtype: string | null;
-}): Promise<AppUser> {
+}): Promise<{ user: AppUser; created: boolean }> {
   const sql = getDb();
   const username = input.username.toLowerCase();
   const email = casEmail(username);
@@ -172,19 +264,26 @@ export async function upsertSfuUser(input: {
     SET sfu_authtype = ${input.authtype},
         updated_at = NOW()
     WHERE LOWER(sfu_username) = ${username}
-    RETURNING id, email, name, image, avatar
+    RETURNING id, email, name, image, avatar, google_email, merged_into,
+              (google_sub IS NOT NULL) AS has_google
   `;
-  if (updated[0]) return updated[0] as AppUser;
+  // Resolved like the other two doors even though a merge always moves an SFU
+  // credential rather than leaving it on a tombstone — a later change to that
+  // rule should not quietly turn into a signed-in-as-nobody bug.
+  if (updated[0]) {
+    return { user: await resolveAccount(updated[0] as Record<string, unknown>), created: false };
+  }
 
   try {
     const inserted = await sql`
       INSERT INTO meetup.users (sfu_username, sfu_authtype, email, name)
       VALUES (${username}, ${input.authtype}, ${email}, ${username})
-      RETURNING id, email, name, image, avatar
+      RETURNING id, email, name, image, avatar, google_email,
+                (google_sub IS NOT NULL) AS has_google
     `;
-    const row = inserted[0] as AppUser | undefined;
+    const row = inserted[0] as Record<string, unknown> | undefined;
     if (!row) throw new Error("upsertSfuUser returned no row");
-    return row;
+    return { user: toAppUser(row), created: true };
   } catch (err) {
     // Concurrent first sign-in: the other writer won the partial unique index.
     if (!isUniqueViolation(err)) throw err;
@@ -193,11 +292,12 @@ export async function upsertSfuUser(input: {
       SET sfu_authtype = ${input.authtype},
           updated_at = NOW()
       WHERE LOWER(sfu_username) = ${username}
-      RETURNING id, email, name, image, avatar
+      RETURNING id, email, name, image, avatar, google_email, merged_into,
+                (google_sub IS NOT NULL) AS has_google
     `;
-    const row = raced[0] as AppUser | undefined;
+    const row = raced[0] as Record<string, unknown> | undefined;
     if (!row) throw err;
-    return row;
+    return { user: await resolveAccount(row), created: false };
   }
 }
 

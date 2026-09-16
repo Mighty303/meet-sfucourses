@@ -159,7 +159,10 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
       sql`
         SELECT
           (SELECT COUNT(*) FROM meetup.groups) AS groups,
-          (SELECT COUNT(*) FROM meetup.users) AS users,
+          -- merged_into IS NULL throughout: a tombstone is half of somebody's
+          -- linked account, not a person. The byte counts below deliberately
+          -- skip the filter, because a tombstone's avatar is still stored.
+          (SELECT COUNT(*) FROM meetup.users WHERE merged_into IS NULL) AS users,
           (SELECT COUNT(*) FROM meetup.members) AS members,
           (SELECT COUNT(*) FROM meetup.members WHERE user_id IS NULL) AS ownerless_members,
           -- Sections actually stored, not the fan-out: counting the effective
@@ -173,9 +176,9 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
           ) AS course_rows,
           (SELECT COUNT(*) FROM meetup.member_blocks) AS block_rows,
           (SELECT COUNT(*) FROM meetup.sections_cache) AS cached_terms,
-          (SELECT COUNT(*) FROM meetup.users WHERE avatar IS NOT NULL) AS custom_avatars,
-          (SELECT COUNT(*) FROM meetup.users WHERE created_at > NOW() - INTERVAL '7 days') AS new_users_7d,
-          (SELECT COUNT(*) FROM meetup.users WHERE last_seen_at > NOW() - INTERVAL '7 days') AS active_users_7d,
+          (SELECT COUNT(*) FROM meetup.users WHERE avatar IS NOT NULL AND merged_into IS NULL) AS custom_avatars,
+          (SELECT COUNT(*) FROM meetup.users WHERE created_at > NOW() - INTERVAL '7 days' AND merged_into IS NULL) AS new_users_7d,
+          (SELECT COUNT(*) FROM meetup.users WHERE last_seen_at > NOW() - INTERVAL '7 days' AND merged_into IS NULL) AS active_users_7d,
           (SELECT COUNT(*) FROM meetup.groups WHERE created_at > NOW() - INTERVAL '7 days') AS new_groups_7d,
           (SELECT COUNT(DISTINCT member_id) FROM meetup.member_courses_effective) AS members_with_courses,
           (SELECT COUNT(DISTINCT user_id) FROM meetup.members WHERE user_id IS NOT NULL) AS users_in_groups
@@ -246,6 +249,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
                (SELECT COUNT(*) FROM meetup.members m WHERE m.user_id = u.id) AS groups,
                (SELECT COUNT(*) FROM meetup.user_courses uc WHERE uc.user_id = u.id) AS course_rows
         FROM meetup.users u
+        WHERE u.merged_into IS NULL
         ORDER BY u.last_seen_at DESC NULLS LAST, u.created_at DESC
       `,
 
@@ -254,7 +258,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
       sql`
         SELECT d::date AS day,
                (SELECT COUNT(*) FROM meetup.groups g WHERE g.created_at::date = d::date) AS groups,
-               (SELECT COUNT(*) FROM meetup.users u WHERE u.created_at::date = d::date) AS users
+               (SELECT COUNT(*) FROM meetup.users u WHERE u.created_at::date = d::date AND u.merged_into IS NULL) AS users
         FROM generate_series(
           (NOW() AT TIME ZONE 'UTC')::date - make_interval(days => ${HISTORY_DAYS - 1}),
           (NOW() AT TIME ZONE 'UTC')::date,
