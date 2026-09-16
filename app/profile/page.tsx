@@ -341,6 +341,18 @@ export default function ProfilePage() {
                 The name above is the one on your account. The per-group names
                 below are the ones you can change.
               </p>
+              {/* Every door is its own row until somebody links them, so a
+                  second sign-in is a second account with its own groups. */}
+              <p className="mt-2 text-xs text-neutral-500">
+                Signed in here another way before?{" "}
+                <Link
+                  href="/profile/link"
+                  className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                >
+                  Fold your accounts into one
+                </Link>
+                .
+              </p>
             </div>
           </section>
 

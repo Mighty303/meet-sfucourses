@@ -1,10 +1,12 @@
 import NextAuth from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { isAdminEmail } from "@/lib/admin";
 import { casEnabled, casServiceUrl, validateTicket } from "@/lib/cas";
 import { touchLastSeen } from "@/lib/last-seen";
 import { verifyPassword } from "@/lib/password";
+import type { AppUser } from "@/lib/users";
 import { getPasswordUserByEmail, getUser, upsertSfuUser, upsertUser } from "@/lib/users";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -64,12 +66,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const cas = await validateTicket(ticket, casServiceUrl());
         if (!cas) return null;
 
-        const row = await upsertSfuUser(cas);
+        const { user } = await upsertSfuUser(cas);
         return {
-          id: String(row.id),
-          email: row.email,
-          name: row.name,
-          image: row.avatar ?? row.image,
+          id: String(user.id),
+          email: user.email,
+          name: user.name,
+          image: user.avatar ?? user.image,
         };
       },
     }),
@@ -88,17 +90,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: profile.email ?? "",
           name: profile.name ?? null,
           image: typeof profile.picture === "string" ? profile.picture : null,
+          emailVerified: typeof profile.email_verified === "boolean" ? profile.email_verified : null,
+          hd: typeof profile.hd === "string" ? profile.hd : null,
         });
-        token.appUserId = row.id;
-        token.avatar = row.avatar;
-        token.hasGoogle = true;
+        stampAccount(token, row);
       } else if ((account?.provider === "password" || account?.provider === "sfu-cas") && user?.id) {
-        // authorize() already did the checking; its id is our users row. Both
-        // of these are non-Google doors, which is all hasGoogle records — see
-        // the session callback for what that flag is actually for.
+        // authorize() already did the checking; its id is our users row. The
+        // read is for the flags below, which are facts about the row rather
+        // than about the door — a linked account can hold all three.
+        const row = await getUser(Number(user.id));
         token.appUserId = Number(user.id);
-        token.avatar = (await getUser(Number(user.id)))?.avatar ?? null;
-        token.hasGoogle = false;
+        if (row) stampAccount(token, row);
       } else if (trigger === "update" && typeof token.appUserId === "number") {
         // The client asks for this after changing its picture. Re-reading here
         // rather than on every session lookup keeps the common path free of a
@@ -121,16 +123,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // again. It only decides whether the nav shows the link — the portal
       // itself re-checks against the database.
       //
-      // Gated on the account being a Google one, because a password account's
-      // address is self-asserted: without this, registering an admin's email
-      // would light up the Admin link. adminFor() refuses the same way, so this
-      // is the cosmetic half of one rule.
+      // Gated on the account holding a Google credential, because a password
+      // account's address is self-asserted: without this, registering an
+      // admin's email would light up the Admin link. adminFor() refuses the
+      // same way, so this is the cosmetic half of one rule.
+      //
+      // Against googleEmail, not token.email. Once accounts can be linked, the
+      // session's address is the verified @sfu.ca one while the allowlist is a
+      // list of Google addresses — comparing the wrong one would take the
+      // portal away from an admin for linking their own two accounts.
       //
       // `!== false` rather than `=== true`, because tokens issued before the
       // password provider existed carry no flag at all — and Google was the
-      // only way in when they were signed, so undefined means Google. Only the
-      // password branch above ever writes false.
-      session.isAdmin = token.hasGoogle !== false && isAdminEmail(token.email);
+      // only way in when they were signed, so undefined means Google.
+      session.isAdmin =
+        token.hasGoogle !== false && isAdminEmail(token.googleEmail ?? token.email);
       // A chosen picture wins over Google's everywhere the session is read.
       if (session.user && typeof token.avatar === "string") {
         session.user.image = token.avatar;
@@ -139,3 +146,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
+
+/**
+ * Copy onto the token what a session needs to know about an account and cannot
+ * work out for itself.
+ *
+ * `hasGoogle` used to record which door was used, which stopped being the same
+ * question the moment accounts could be linked: one row can hold all three
+ * credentials, and the admin rule turns on whether a *Google* one is among
+ * them. Reading it off the row keeps this flag and adminFor() answering
+ * alike.
+ */
+function stampAccount(token: JWT, row: AppUser): void {
+  token.appUserId = row.id;
+  token.avatar = row.avatar;
+  token.hasGoogle = row.hasGoogle;
+  token.googleEmail = row.googleEmail;
+}

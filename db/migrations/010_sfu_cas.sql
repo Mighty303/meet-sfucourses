@@ -28,13 +28,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_meetup_users_sfu_username
 
 -- A row still has to be reachable through some door; now there are three.
 --
--- This is the file that changes the constraint, so it is the one that states
--- it unconditionally — 007, which introduced it, stands down as soon as the
--- column below exists, so a re-run from the top cannot undo this line.
 -- Widening is always safe to re-run: every row that satisfied the narrower
 -- version satisfies this one, and a database left without the constraint by an
 -- earlier failed run gets it back here.
-ALTER TABLE meetup.users DROP CONSTRAINT IF EXISTS users_has_credential;
+--
+-- Guarded the way 007 guards its own version of this, and for the same reason.
+-- Migrations re-run from the top, so a database that has already gone past
+-- this file arrives carrying 011's wider constraint — one that also accepts a
+-- tombstone, a row whose credentials have moved to the account it was merged
+-- into. Re-adding the version below on such a database fails on the first
+-- tombstone, and leaves the table with no credential constraint at all,
+-- because the DROP has already gone through by the time the ADD is refused.
+--
+-- The test is the merged_into column rather than the constraint, because the
+-- constraint may be missing precisely because that is the damage being
+-- repaired.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'meetup' AND table_name = 'users' AND column_name = 'merged_into'
+  ) THEN
+    -- Dropped first because ADD CONSTRAINT has no IF NOT EXISTS.
+    ALTER TABLE meetup.users DROP CONSTRAINT IF EXISTS users_has_credential;
 
-ALTER TABLE meetup.users ADD CONSTRAINT users_has_credential
-  CHECK (google_sub IS NOT NULL OR password_hash IS NOT NULL OR sfu_username IS NOT NULL);
+    ALTER TABLE meetup.users ADD CONSTRAINT users_has_credential
+      CHECK (google_sub IS NOT NULL OR password_hash IS NOT NULL OR sfu_username IS NOT NULL);
+  END IF;
+END $$;

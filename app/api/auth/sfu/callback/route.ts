@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { findVerifiedGoogleAccount } from "@/lib/account-link";
 import {
   SFU_NEXT_COOKIE,
   SFU_STATE_COOKIE,
@@ -11,7 +12,7 @@ import {
   SFU_SESSION_MAX_AGE,
   casSessionCookieName,
   casSessionSecure,
-  mintCasSessionToken,
+  mintSessionToken,
 } from "@/lib/cas-session";
 import { safeNext } from "@/lib/safe-next";
 import { sfuDbErrorHint, upsertSfuUser } from "@/lib/users";
@@ -67,8 +68,9 @@ export async function GET(req: Request) {
   if (!cas) return done("/signin?error=sfu&step=ticket");
 
   let row;
+  let created = false;
   try {
-    row = await upsertSfuUser(cas);
+    ({ user: row, created } = await upsertSfuUser(cas));
   } catch (err) {
     const hint = sfuDbErrorHint(err);
     console.error("sfu cas upsert failed", { dbError: hint, err });
@@ -76,9 +78,23 @@ export async function GET(req: Request) {
     return done(`/signin?error=sfu&step=db&dbError=${encodeURIComponent(hint)}`);
   }
 
+  // A brand new SFU account whose address already belongs to a Google row is
+  // the split issue #31 is about, caught at the one moment nothing has been
+  // built on top of it yet. An offer, not a merge: they still have to sign in
+  // to the Google account before anything folds.
+  let landing = next;
+  if (created) {
+    try {
+      if (await findVerifiedGoogleAccount(cas.username)) landing = "/profile/link?found=google";
+    } catch (err) {
+      // Not worth failing a sign-in over; they can still link from /profile.
+      console.error("sfu cas link check failed", err);
+    }
+  }
+
   try {
-    const sessionToken = await mintCasSessionToken(row);
-    return done(next, sessionToken);
+    const sessionToken = await mintSessionToken(row);
+    return done(landing, sessionToken);
   } catch (err) {
     console.error("sfu cas session mint failed", err);
     return done("/signin?error=sfu&step=jwt");
