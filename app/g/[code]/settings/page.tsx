@@ -189,12 +189,16 @@ export default function GroupSettingsPage({
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-lg">{state.group.name}</span>
+            {/* The same pencil the roster puts on a member row — renaming is
+                renaming, whether the name belongs to a person or a group. */}
             {isAdmin && (
               <button
                 onClick={() => setDraftName(state.group.name)}
-                className="text-sm text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
+                aria-label="Rename group"
+                title="Rename group"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
               >
-                Rename
+                <PencilIcon />
               </button>
             )}
           </div>
@@ -243,9 +247,14 @@ export default function GroupSettingsPage({
 
       {(me || isAdmin) && (
         <section className="flex flex-col gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
-          <h2 className="font-medium">Leaving and ending</h2>
+          <h2 className="font-medium">Danger Zone</h2>
 
-          {me && (
+          {/* One way out each, and never both. A member leaves. The admin
+              ends the group, or hands it to somebody in the roster above and
+              leaves as an ordinary member afterwards — an admin who could
+              simply walk out would be passing the group to whoever joined
+              earliest without ever being asked. */}
+          {me && !isAdmin && (
             confirmLeave ? (
               <Confirm
                 question={`Leave ${state.group.name}? Your sections come off this grid.`}
@@ -259,7 +268,7 @@ export default function GroupSettingsPage({
               <button
                 onClick={() => { setConfirmDelete(false); setConfirmLeave(true); }}
                 disabled={saving}
-                className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                className="flex w-fit items-center gap-2 rounded-lg border border-red-600 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
               >
                 <LeaveIcon />
                 Leave group
@@ -281,18 +290,17 @@ export default function GroupSettingsPage({
               <button
                 onClick={() => { setConfirmLeave(false); setConfirmDelete(true); }}
                 disabled={saving}
-                className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                className="flex w-fit items-center gap-2 rounded-lg border border-red-600 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
               >
                 <TrashIcon />
                 Delete group
               </button>
             )
           )}
-          {/* Leaving hands the group to whoever has been here longest, so the
-              admin walking out doesn't lock it behind them. */}
-          {isAdmin && me && (
+          {isAdmin && (
             <p className="text-xs text-neutral-500">
-              If you leave, the group passes to the member who joined earliest.
+              Deleting takes everyone&apos;s schedules in this group with it. To
+              leave without ending it, make somebody else the admin above first.
             </p>
           )}
         </section>
@@ -300,6 +308,14 @@ export default function GroupSettingsPage({
 
       {error && <p className="text-sm text-amber-600">{error}</p>}
     </main>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13.5 3.5l3 3L7 16H4v-3z" />
+    </svg>
   );
 }
 
