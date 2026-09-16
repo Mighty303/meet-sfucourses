@@ -259,8 +259,9 @@ export default function GroupSettingsPage({
               <button
                 onClick={() => { setConfirmDelete(false); setConfirmLeave(true); }}
                 disabled={saving}
-                className="w-fit rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
               >
+                <LeaveIcon />
                 Leave group
               </button>
             )
@@ -280,8 +281,9 @@ export default function GroupSettingsPage({
               <button
                 onClick={() => { setConfirmLeave(false); setConfirmDelete(true); }}
                 disabled={saving}
-                className="w-fit rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-red-950/30 dark:hover:text-red-400"
               >
+                <TrashIcon />
                 Delete group
               </button>
             )
@@ -298,5 +300,50 @@ export default function GroupSettingsPage({
 
       {error && <p className="text-sm text-amber-600">{error}</p>}
     </main>
+  );
+}
+
+/** The two icons that came off the ⋮ with the actions they belong to. */
+function LeaveIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      {/* Door, then an arrow stepping out of it. */}
+      <path d="M11.5 3.25h4.25v13.5H11.5" />
+      <path d="M8.75 10h-6" />
+      <path d="M5.5 7l-2.75 3 2.75 3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d="M3.5 6h13" />
+      <path d="M8 3.5h4" />
+      <path d="M5.25 6l.75 10.25h8l.75-10.25" />
+      <path d="M8.5 9v4.75M11.5 9v4.75" />
+    </svg>
   );
 }

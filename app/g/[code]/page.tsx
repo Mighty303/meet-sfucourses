@@ -464,7 +464,7 @@ function GroupSchedule({ code }: { code: string }) {
             href={`/g/${code}/settings`}
             aria-label="Group settings"
             title="Group settings"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
           >
             <GearIcon />
           </Link>
