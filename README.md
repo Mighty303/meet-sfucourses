@@ -245,11 +245,12 @@ A group is a secret invite code — anyone with the link can view it. Sign-in
 adds ownership: your schedule and name are yours to edit, and your identity
 follows you across devices instead of living in `localStorage`.
 
-**Schedule** in the navigation opens your own classes and free time in the
-current group; `?view=mine` keeps that view on a refresh. With no group at all
-it draws your week on its own, from `meetup.user_courses` — same grid, same
-colours, same going/skipping/online controls, with nobody else's column beside
-yours.
+**Courses** in the navigation is where your own week lives: the sections you're
+in, and the grid they add up to, on one page, drawn from `meetup.user_courses`
+with nobody else's column beside yours. **Calendar** goes back to the group
+calendar you last had open — remembered per browser in `localStorage`, so it
+survives a trip through Courses or Profile — and the pills above a group's grid
+switch between the groups you're in.
 
 Not built yet: custom busy blocks (`meetup.member_blocks` exists and is read,
 but there's no UI to add them), calendar export, meeting-spot suggestions.
