@@ -6,6 +6,10 @@ import {
   STATUS_EFFECT,
   type AttendanceStatus,
 } from "@/lib/attendance-status";
+import {
+  readRepeatPreference,
+  rememberRepeatPreference,
+} from "@/lib/repeat-preference";
 
 /**
  * A row on the card. A plain string is a sentence and reads as one; the
@@ -175,11 +179,16 @@ function Spinner() {
  * other: what is this class, and am I going to it.
  *
  * The checkbox is the Google Calendar move: one decision, applied to this
- * meeting and every later one in the series, without a second dialog.
+ * meeting and every later one in the series, without a second dialog. It keeps
+ * whatever it was last set to (see lib/repeat-preference.ts) — the card
+ * remounts per block, and dropping a term's worth of classes is five hovers.
  */
 function StatusRow({ status }: { status: HoverStatus }) {
   const [note, setNote] = useState(status.note ?? "");
-  const [repeat, setRepeat] = useState(false);
+  // Read during render rather than in an effect: a card only ever exists after
+  // a hover, so there is no server pass to disagree with, and an effect would
+  // show the box unchecked for a frame after it was left checked.
+  const [repeat, setRepeat] = useState(readRepeatPreference);
   const [pending, setPending] = useState<AttendanceStatus | null>(null);
 
   async function pick(next: AttendanceStatus) {
@@ -229,7 +238,10 @@ function StatusRow({ status }: { status: HoverStatus }) {
             type="checkbox"
             checked={repeat}
             disabled={pending !== null}
-            onChange={(e) => setRepeat(e.target.checked)}
+            onChange={(e) => {
+              setRepeat(e.target.checked);
+              rememberRepeatPreference(e.target.checked);
+            }}
             className="mt-0.5 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"
           />
           <span>
