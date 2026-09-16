@@ -276,6 +276,58 @@ export async function canEditMember(
 }
 
 /**
+ * Who may rename, recolour or remove a member row: its own owner, as above, or
+ * the group's admin.
+ *
+ * Wider than canEditMember on purpose, and only for the two edits everybody in
+ * the group reads — the name and the colour on the grid, and whether the row is
+ * there at all. A schedule is still nobody else's to touch, which is why the
+ * courses and calendar routes keep calling canEditMember instead.
+ */
+export async function canManageMember(
+  memberId: number,
+  groupId: number,
+  appUserId: number | null
+): Promise<boolean> {
+  if (await canEditMember(memberId, groupId, appUserId)) return true;
+  if (!(await isGroupOwner(groupId, appUserId))) return false;
+  return memberBelongsToGroup(memberId, groupId);
+}
+
+/**
+ * Hand the group to somebody else. One admin at a time — owner_user_id is a
+ * single column — so this is a transfer, and the outgoing admin becomes an
+ * ordinary member of a group they are still in.
+ *
+ * The new admin has to be a member with an account: an ownerless row predates
+ * sign-in and has no user to hand anything to, and an admin who isn't in the
+ * group would be one nobody in it could reach.
+ *
+ * `currentOwnerId` is in the UPDATE's WHERE rather than checked before it, so
+ * two admins-in-a-race can't both hand the group to their own candidate.
+ */
+export async function transferOwnership(
+  groupId: number,
+  memberId: number,
+  currentOwnerId: number
+): Promise<"ok" | "not-a-member" | "no-account" | "not-owner"> {
+  const sql = getDb();
+  const rows = await sql`
+    SELECT user_id FROM meetup.members WHERE id = ${memberId} AND group_id = ${groupId}
+  `;
+  if (rows.length === 0) return "not-a-member";
+  if (rows[0].user_id == null) return "no-account";
+
+  const updated = await sql`
+    UPDATE meetup.groups
+    SET owner_user_id = ${rows[0].user_id}
+    WHERE id = ${groupId} AND owner_user_id = ${currentOwnerId}
+    RETURNING id
+  `;
+  return updated.length > 0 ? "ok" : "not-owner";
+}
+
+/**
  * Leaving hands the group over. An admin who isn't in the group any more can
  * still delete it, and nobody left inside could — so ownership follows the
  * earliest remaining signed-in member, and only falls to null if there is none.

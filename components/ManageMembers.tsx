@@ -1,0 +1,349 @@
+"use client";
+
+import Image from "next/image";
+import { useState } from "react";
+import { Modal } from "@/components/Modal";
+
+interface ManagedMember {
+  id: number;
+  displayName: string;
+  color: string;
+  userId: number | null;
+  image: string | null;
+}
+
+/**
+ * The group admin's roster: rename anyone, hand the group over, remove anyone.
+ *
+ * A modal rather than controls on the member list itself. That list is a filter
+ * — every row is a checkbox you press to take someone out of the overlap — and
+ * hanging three buttons off each row would put "remove them from the group"
+ * half an inch from "hide them from this week" in a 14rem column. These are
+ * done once and rarely; the list is read constantly.
+ *
+ * Every action reloads through `onChanged` instead of patching a local copy:
+ * removing a member moves the admin badge (the server hands the group on), and
+ * a roster that disagreed with the grid beside it would be worse than a blink.
+ */
+export function ManageMembers({
+  open,
+  onClose,
+  code,
+  groupName,
+  members,
+  ownerUserId,
+  myMemberId,
+  onChanged,
+}: {
+  open: boolean;
+  onClose: () => void;
+  code: string;
+  groupName: string;
+  members: ManagedMember[];
+  ownerUserId: number | null;
+  /** Your own row, which gets "You" and no kick button — leaving is in the ⋮. */
+  myMemberId: number | null;
+  onChanged: () => void;
+}) {
+  return (
+    <Modal open={open} onClose={onClose} title="Manage members" width="30rem">
+      <Roster
+        code={code}
+        groupName={groupName}
+        members={members}
+        ownerUserId={ownerUserId}
+        myMemberId={myMemberId}
+        onChanged={onChanged}
+      />
+    </Modal>
+  );
+}
+
+function Roster({
+  code,
+  groupName,
+  members,
+  ownerUserId,
+  myMemberId,
+  onChanged,
+}: {
+  code: string;
+  groupName: string;
+  members: ManagedMember[];
+  ownerUserId: number | null;
+  myMemberId: number | null;
+  onChanged: () => void;
+}) {
+  // The row being renamed and what has been typed into it, so "" is a real
+  // state rather than "nobody is editing".
+  const [draft, setDraft] = useState<{ id: number; value: string } | null>(null);
+  // Both of these take something away — a place in the group, or your own
+  // admin — so each arms in place, the way Leave and Delete do in the ⋮.
+  const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
+  const [confirmAdmin, setConfirmAdmin] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setDraft(null);
+    setConfirmRemove(null);
+    setConfirmAdmin(null);
+  }
+
+  async function send(url: string, init: RequestInit, fallback: string) {
+    setBusy(true);
+    const res = await fetch(url, init);
+    setBusy(false);
+    if (!res.ok) {
+      setError((await res.json().catch(() => ({}))).error ?? fallback);
+      return false;
+    }
+    setError(null);
+    reset();
+    onChanged();
+    return true;
+  }
+
+  async function rename(e: React.FormEvent) {
+    e.preventDefault();
+    if (!draft || !draft.value.trim()) return;
+    await send(
+      `/api/groups/${code}/members/${draft.id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: draft.value }),
+      },
+      "could not rename them"
+    );
+  }
+
+  async function remove(id: number) {
+    await send(`/api/groups/${code}/members/${id}`, { method: "DELETE" }, "could not remove them");
+  }
+
+  async function makeAdmin(id: number) {
+    await send(
+      `/api/groups/${code}/owner`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: id }),
+      },
+      "could not hand the group over"
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 px-5 py-5">
+      <p className="text-xs text-neutral-500">
+        You&apos;re the admin of {groupName}. Renaming somebody changes the name
+        everyone in the group sees; removing them takes their schedule off this
+        grid, not off their account.
+      </p>
+
+      <ul className="flex max-h-[min(60vh,26rem)] flex-col gap-1 overflow-y-auto">
+        {members.map((m) => {
+          const isOwner = m.userId !== null && m.userId === ownerUserId;
+          const isMe = m.id === myMemberId;
+          return (
+            <li
+              key={m.id}
+              className="flex flex-col gap-2 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800"
+            >
+              <div className="flex items-center gap-2">
+                {m.image ? (
+                  <Image src={m.image} alt="" width={18} height={18} className="shrink-0 rounded-full" />
+                ) : (
+                  <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: m.color }} />
+                )}
+
+                {draft?.id === m.id ? (
+                  <form onSubmit={rename} className="flex min-w-0 flex-1 items-center gap-2">
+                    <input
+                      value={draft.value}
+                      onChange={(e) => setDraft({ id: m.id, value: e.target.value })}
+                      autoFocus
+                      maxLength={60}
+                      className="min-w-0 flex-1 rounded-md border border-neutral-300 px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+                    />
+                    <button
+                      type="submit"
+                      disabled={busy || !draft.value.trim()}
+                      className="shrink-0 rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft(null)}
+                      className="shrink-0 text-xs text-neutral-500"
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <span className="truncate text-sm font-medium" style={{ color: m.color }}>
+                      {m.displayName}
+                    </span>
+                    {isMe && <span className="shrink-0 text-xs text-neutral-500">you</span>}
+                    {isOwner && (
+                      <span className="shrink-0 rounded border border-neutral-300 px-1 text-[10px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
+                        Admin
+                      </span>
+                    )}
+
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <IconButton
+                        label={`Rename ${m.displayName}`}
+                        onClick={() => { reset(); setDraft({ id: m.id, value: m.displayName }); }}
+                        disabled={busy}
+                      >
+                        <PencilIcon />
+                      </IconButton>
+                      {/* An ownerless row has no account to hand a group to,
+                          and there is nothing to hand yourself. */}
+                      {!isOwner && m.userId !== null && (
+                        <IconButton
+                          label={`Make ${m.displayName} the admin`}
+                          onClick={() => { reset(); setConfirmAdmin(m.id); }}
+                          disabled={busy}
+                        >
+                          <CrownIcon />
+                        </IconButton>
+                      )}
+                      {!isMe && (
+                        <IconButton
+                          label={`Remove ${m.displayName}`}
+                          danger
+                          onClick={() => { reset(); setConfirmRemove(m.id); }}
+                          disabled={busy}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {confirmRemove === m.id && (
+                <Confirm
+                  question={`Remove ${m.displayName} from ${groupName}?`}
+                  action="Remove"
+                  pending="Removing…"
+                  busy={busy}
+                  onConfirm={() => remove(m.id)}
+                  onCancel={() => setConfirmRemove(null)}
+                />
+              )}
+              {confirmAdmin === m.id && (
+                <Confirm
+                  question={`Make ${m.displayName} the admin? You stop being it.`}
+                  action="Hand it over"
+                  pending="Handing over…"
+                  busy={busy}
+                  onConfirm={() => makeAdmin(m.id)}
+                  onCancel={() => setConfirmAdmin(null)}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+/** The two-press pattern the group menu uses, in the one place a row needs it. */
+function Confirm({
+  question,
+  action,
+  pending,
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  question: string;
+  action: string;
+  pending: string;
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md bg-neutral-100 p-2 text-xs dark:bg-neutral-800">
+      <span className="text-neutral-600 dark:text-neutral-300">{question}</span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onConfirm}
+          disabled={busy}
+          className="rounded-md bg-red-600 px-2 py-1 font-medium text-white disabled:opacity-50"
+        >
+          {busy ? pending : action}
+        </button>
+        <button onClick={onCancel} className="text-neutral-500">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  disabled,
+  danger = false,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className={`flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 transition-colors disabled:opacity-40 ${
+        danger
+          ? "hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+          : "hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M13.5 3.5l3 3L7 16H4v-3z" />
+    </svg>
+  );
+}
+
+function CrownIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 6l3.5 3L10 4l3.5 5L17 6l-1.5 9h-11z" />
+    </svg>
+  );
+}
+
+function RemoveIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 5l10 10M15 5L5 15" />
+    </svg>
+  );
+}

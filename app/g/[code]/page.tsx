@@ -8,6 +8,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { HeatGrid } from "@/components/HeatGrid";
+import { ManageMembers } from "@/components/ManageMembers";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
@@ -113,6 +114,9 @@ function GroupSchedule({ code }: { code: string }) {
   // The group's own name, which only its admin can change. Null when nobody is
   // editing it; the string being edited otherwise, so "" is a real state.
   const [draftName, setDraftName] = useState<string | null>(null);
+  // The admin's roster — renaming, kicking, handing the group over. Its own
+  // modal, because none of it belongs beside a checkbox that only hides people.
+  const [managing, setManaging] = useState(false);
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
   // The account modal, asked for by the guest bar.
@@ -580,6 +584,16 @@ function GroupSchedule({ code }: { code: string }) {
                     </button>
                   )}
 
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setManaging(true); setMenuOpen(false); }}
+                      className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    >
+                      <PeopleIcon />
+                      Manage members
+                    </button>
+                  )}
+
                   {confirmLeave ? (
                     /* Armed in place rather than in a dialog: the second click
                        is differently worded and differently coloured, which is
@@ -648,6 +662,21 @@ function GroupSchedule({ code }: { code: string }) {
           )}
         </div>
       </header>
+
+      {/* Mounted for the admin only, and Modal unmounts its body when closed,
+          so nothing here costs a non-admin anything. */}
+      {isAdmin && (
+        <ManageMembers
+          open={managing}
+          onClose={() => setManaging(false)}
+          code={code}
+          groupName={state.group.name}
+          members={state.members}
+          ownerUserId={state.group.ownerUserId}
+          myMemberId={me?.id ?? null}
+          onChanged={load}
+        />
+      )}
 
       {copyState === "failed" && (
         <div className="-mt-4 flex items-center gap-2">
@@ -1233,6 +1262,29 @@ function LeaveIcon() {
       <path d="M11.5 3.25h4.25v13.5H11.5" />
       <path d="M8.75 10h-6" />
       <path d="M5.5 7l-2.75 3 2.75 3" />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      {/* One person in front, the shoulder of a second behind them. */}
+      <circle cx="8" cy="7" r="2.75" />
+      <path d="M3.25 16.25c0-2.35 2.13-4.25 4.75-4.25s4.75 1.9 4.75 4.25" />
+      <path d="M13.5 5.1a2.75 2.75 0 010 5.3" />
+      <path d="M15 12.4c1.5.66 2.5 1.98 2.5 3.5" />
     </svg>
   );
 }

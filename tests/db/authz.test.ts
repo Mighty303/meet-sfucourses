@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import {
   addMember,
   canEditMember,
+  canManageMember,
   claimMember,
   createGroup,
   deleteGroup,
@@ -17,6 +18,7 @@ import {
   findMemberForUser,
   isGroupOwner,
   removeMember,
+  transferOwnership,
 } from "@/lib/groups";
 import { getDb } from "@/lib/db";
 import { upsertUser } from "@/lib/users";
@@ -78,6 +80,108 @@ describe.skipIf(!hasKey)("member edit authorization", () => {
     const member = await addMember(a.id, "Ada", ada.id);
 
     expect(await canEditMember(member.id, b.id, ada.id)).toBe(false);
+
+    await deleteGroup(a.id);
+    await deleteGroup(b.id);
+  });
+});
+
+describe.skipIf(!hasKey)("what the group admin may do to a member row", () => {
+  requireTestBranch();
+
+  it("lets the admin manage anyone's row, and nobody else's group", async () => {
+    const [ada, bo, cy] = [await user("ada"), await user("bo"), await user("cy")];
+    const group = await createGroup(TEST_GROUP.name, TEST_GROUP.term, null);
+    await addMember(group.id, "Ada", ada.id); // first in, so the admin
+    const boMember = await addMember(group.id, "Bo", bo.id);
+
+    expect(await canManageMember(boMember.id, group.id, ada.id)).toBe(true);
+    expect(await canManageMember(boMember.id, group.id, bo.id)).toBe(true);
+    expect(await canManageMember(boMember.id, group.id, cy.id)).toBe(false);
+    expect(await canManageMember(boMember.id, group.id, null)).toBe(false);
+
+    await deleteGroup(group.id);
+  });
+
+  it("does not widen the schedule rule the courses routes still use", async () => {
+    const [ada, bo] = [await user("ada"), await user("bo")];
+    const group = await createGroup(TEST_GROUP.name, TEST_GROUP.term, null);
+    await addMember(group.id, "Ada", ada.id);
+    const boMember = await addMember(group.id, "Bo", bo.id);
+
+    expect(await canEditMember(boMember.id, group.id, ada.id)).toBe(false);
+
+    await deleteGroup(group.id);
+  });
+
+  it("refuses a member id from another group even to an admin", async () => {
+    const [ada, bo] = [await user("ada"), await user("bo")];
+    const [a, b] = [
+      await createGroup("Group A", TEST_GROUP.term, null),
+      await createGroup("Group B", TEST_GROUP.term, null),
+    ];
+    await addMember(a.id, "Ada", ada.id);
+    const elsewhere = await addMember(b.id, "Bo", bo.id);
+
+    expect(await canManageMember(elsewhere.id, a.id, ada.id)).toBe(false);
+
+    await deleteGroup(a.id);
+    await deleteGroup(b.id);
+  });
+});
+
+describe.skipIf(!hasKey)("handing the group over", () => {
+  requireTestBranch();
+
+  it("moves the admin to the named member and takes it off the old one", async () => {
+    const [ada, bo] = [await user("ada"), await user("bo")];
+    const group = await createGroup(TEST_GROUP.name, TEST_GROUP.term, null);
+    await addMember(group.id, "Ada", ada.id);
+    const boMember = await addMember(group.id, "Bo", bo.id);
+
+    expect(await transferOwnership(group.id, boMember.id, ada.id)).toBe("ok");
+    expect(await isGroupOwner(group.id, bo.id)).toBe(true);
+    expect(await isGroupOwner(group.id, ada.id)).toBe(false);
+
+    await deleteGroup(group.id);
+  });
+
+  it("refuses anyone who isn't the admin, including the one just handed it", async () => {
+    const [ada, bo] = [await user("ada"), await user("bo")];
+    const group = await createGroup(TEST_GROUP.name, TEST_GROUP.term, null);
+    const adaMember = await addMember(group.id, "Ada", ada.id);
+    const boMember = await addMember(group.id, "Bo", bo.id);
+
+    expect(await transferOwnership(group.id, adaMember.id, bo.id)).toBe("not-owner");
+    await transferOwnership(group.id, boMember.id, ada.id);
+    // The losing half of two admins racing: ada is not the admin any more.
+    expect(await transferOwnership(group.id, adaMember.id, ada.id)).toBe("not-owner");
+
+    await deleteGroup(group.id);
+  });
+
+  it("refuses a row with no account behind it", async () => {
+    const ada = await user("ada");
+    const group = await createGroup(TEST_GROUP.name, TEST_GROUP.term, null);
+    await addMember(group.id, "Ada", ada.id);
+    const legacy = await ownerlessMember(group.id, "Legacy");
+
+    expect(await transferOwnership(group.id, legacy, ada.id)).toBe("no-account");
+    expect(await isGroupOwner(group.id, ada.id)).toBe(true);
+
+    await deleteGroup(group.id);
+  });
+
+  it("refuses a member of a different group", async () => {
+    const [ada, bo] = [await user("ada"), await user("bo")];
+    const [a, b] = [
+      await createGroup("Group A", TEST_GROUP.term, null),
+      await createGroup("Group B", TEST_GROUP.term, null),
+    ];
+    await addMember(a.id, "Ada", ada.id);
+    const elsewhere = await addMember(b.id, "Bo", bo.id);
+
+    expect(await transferOwnership(a.id, elsewhere.id, ada.id)).toBe("not-a-member");
 
     await deleteGroup(a.id);
     await deleteGroup(b.id);

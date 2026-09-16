@@ -1,9 +1,19 @@
 import { auth } from "@/auth";
-import { canEditMember, findGroup } from "./groups";
+import { canEditMember, canManageMember, findGroup } from "./groups";
 
 export type MemberAccess =
   | { id: number; groupId: number; term: string }
   | { error: string; status: 403 | 404 };
+
+export interface MemberAccessOptions {
+  /**
+   * Let the group's admin through as well. Only for the edits the whole group
+   * reads — the name and colour on the grid, and whether the row is there at
+   * all. A schedule stays its member's own, so the courses and calendar routes
+   * leave this off and keep the your-row-only rule.
+   */
+  adminToo?: boolean;
+}
 
 /**
  * Resolves a member inside a group and checks the caller may edit it. Owned
@@ -12,7 +22,8 @@ export type MemberAccess =
  */
 export async function authorizeMember(
   code: string,
-  memberId: string
+  memberId: string,
+  opts: MemberAccessOptions = {}
 ): Promise<MemberAccess> {
   const group = await findGroup(code.toUpperCase());
   if (!group) return { error: "group not found", status: 404 };
@@ -23,7 +34,10 @@ export async function authorizeMember(
   }
 
   const session = await auth();
-  const allowed = await canEditMember(id, group.id, session?.appUserId ?? null);
+  const appUserId = session?.appUserId ?? null;
+  const allowed = opts.adminToo
+    ? await canManageMember(id, group.id, appUserId)
+    : await canEditMember(id, group.id, appUserId);
   if (!allowed) return { error: "that's not your schedule to edit", status: 403 };
 
   return { id, groupId: group.id, term: group.term };
