@@ -29,9 +29,13 @@ body {
  * Sections easing in on the home page, staggered by an inline animation-delay
  * at each call site.
  *
- * `both` so the element holds the "from" state before its delay elapses —
+ * `backwards` so the element holds the "from" state before its delay elapses —
  * without it a staggered section flashes at full opacity, then disappears to
  * animate in, which is worse than no animation at all.
+ *
+ * `backwards`, not `both`: a forwards fill leaves `transform: none` computed as
+ * the identity matrix, and a transformed ancestor is a containing block — which
+ * put the grid's fixed hover card somewhere other than the viewport.
  *
  * Slow enough to be read as an arrival rather than a repaint: at half this
  * duration the whole page had settled before the eye reached the second
@@ -51,7 +55,7 @@ body {
 }
 
 .fade-up {
-  animation: fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /*
