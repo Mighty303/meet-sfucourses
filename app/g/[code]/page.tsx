@@ -847,6 +847,20 @@ function GroupSchedule({ code }: { code: string }) {
                   Include everyone
                 </button>
               )}
+              {/* The other door into the same modal, and the one people will
+                  actually find: a name that needs fixing is read here, not in
+                  a menu of things you do to the group as a whole. Neutral
+                  rather than blue — the link above it undoes a filter, which
+                  is this list's own business, and two blue words side by side
+                  would read as a pair. */}
+              {isAdmin && (
+                <button
+                  onClick={() => setManaging(true)}
+                  className="text-xs text-neutral-500 underline-offset-2 transition-colors hover:text-neutral-900 hover:underline dark:hover:text-neutral-100"
+                >
+                  Manage
+                </button>
+              )}
             </div>
           )}
           {/* The heading stays when it's folded away, so the rail says what
