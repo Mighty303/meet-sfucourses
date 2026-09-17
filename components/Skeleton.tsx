@@ -269,6 +269,15 @@ export function ProfileBodySkeleton() {
           </article>
         ))}
       </section>
+
+      <section
+        className="flex flex-col gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800"
+        aria-hidden
+      >
+        <Bar className="h-4 w-28" />
+        <Bar className="h-9 w-36" />
+        <Bar className="h-3 w-64" />
+      </section>
     </div>
   );
 }
