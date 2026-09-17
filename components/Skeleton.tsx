@@ -158,6 +158,70 @@ export function GroupPageSkeleton() {
   );
 }
 
+/**
+ * A group's settings page while the group is in flight: the name and term it
+ * opens with, the member rows the admin acts on, and the destructive pair at
+ * the bottom. The member count is fixed at three: a placeholder that guessed
+ * the real one would need the fetch it is standing in for.
+ */
+export function GroupSettingsSkeleton() {
+  return (
+    <div className="flex animate-pulse flex-col gap-6" aria-busy>
+      <span className="sr-only">Loading group settings…</span>
+
+      <header className="flex flex-col gap-2" aria-hidden>
+        <Bar className="h-7 w-44" />
+        <Bar className="h-4 w-56" />
+      </header>
+
+      {/* Name, then term: two labelled fields in one card, the way the create
+          form stacks them. */}
+      <section
+        className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+        aria-hidden
+      >
+        {["w-20", "w-12"].map((label) => (
+          <div key={label} className="flex flex-col gap-1.5">
+            <Bar className={`h-3.5 ${label}`} />
+            <Bar className="h-9 w-full sm:w-80" />
+          </div>
+        ))}
+        <Bar className="h-9 w-28" />
+      </section>
+
+      <section className="flex flex-col gap-3" aria-hidden>
+        <Bar className="h-4 w-24" />
+        <ul className="flex flex-col gap-1.5">
+          {["w-28", "w-20", "w-24"].map((w, i) => (
+            <li
+              key={i}
+              className="flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800"
+            >
+              <Dot className="h-3 w-3 shrink-0" />
+              <Dot className="h-[18px] w-[18px] shrink-0" />
+              <Bar className={`h-3.5 ${w}`} />
+              <Bar className="ml-auto h-7 w-16 shrink-0" />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Leave and delete, boxed in red the way the armed buttons in the ⋮
+          menu are. */}
+      <section
+        className="flex flex-col gap-3 rounded-lg border border-red-200 p-4 dark:border-red-900/50"
+        aria-hidden
+      >
+        <Bar className="h-4 w-32" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Bar className="h-9 w-28" />
+          <Bar className="h-9 w-32" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /** Everything below the "Your profile" heading, while /api/me is in flight. */
 export function ProfileBodySkeleton() {
   return (
