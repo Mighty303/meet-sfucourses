@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { Confirm, MemberRoster, type RosterMember } from "@/components/MemberRoster";
+import { GroupSettingsSkeleton } from "@/components/Skeleton";
 import { forgetLastGroup } from "@/lib/last-group";
 import { fromTermCode } from "@/lib/sfu";
 
@@ -135,8 +136,8 @@ export default function GroupSettingsPage({
 
   if (!state) {
     return (
-      <main className="mx-auto w-full max-w-2xl p-5 sm:p-8">
-        <p className="text-sm text-neutral-500">Loading…</p>
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 p-5 sm:p-8">
+        <GroupSettingsSkeleton />
       </main>
     );
   }
