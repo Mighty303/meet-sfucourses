@@ -58,7 +58,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_PASSWORD: postgres
+          # trust, not a password: the container holds nothing, lives for the
+          # length of one job, and is reachable only from that job.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         # Without this the job can connect before the server is accepting
@@ -78,7 +80,7 @@ jobs:
       # Set here, so tests/migrations/setup.ts knows not to reach for Docker.
       - run: npm run test:migrations
         env:
-          MIGRATIONS_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          MIGRATIONS_DATABASE_URL: postgresql://postgres@localhost:5432/postgres
 
   database:
     name: database (Neon branch)

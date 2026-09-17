@@ -58,17 +58,19 @@ export default async function setup() {
   // A leftover from a killed run answers on the port but may hold an old
   // schema, so it goes rather than being reused.
   docker(["rm", "-f", CONTAINER], true);
+  // trust rather than a password: this container holds nothing, lives for the
+  // length of one run, and listens only on loopback. A password here would be
+  // a literal credential in the repository protecting nothing.
   docker([
     "run", "-d", "--rm",
     "--name", CONTAINER,
-    "-e", "POSTGRES_PASSWORD=postgres",
+    "-e", "POSTGRES_HOST_AUTH_METHOD=trust",
     "-p", `${PORT}:5432`,
     IMAGE,
   ]);
 
   await waitForReady();
-  process.env.MIGRATIONS_DATABASE_URL =
-    `postgresql://postgres:postgres@localhost:${PORT}/postgres`;
+  process.env.MIGRATIONS_DATABASE_URL = `postgresql://postgres@localhost:${PORT}/postgres`;
 
   return async () => {
     docker(["stop", CONTAINER], true);
