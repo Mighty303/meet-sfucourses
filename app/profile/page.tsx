@@ -1,10 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/Avatar";
+import { Confirm } from "@/components/MemberRoster";
 import { ProfileBodySkeleton } from "@/components/Skeleton";
 import { ColorPicker } from "@/components/ColorPicker";
 import { fileToAvatar } from "@/lib/avatar-file";
@@ -69,9 +70,11 @@ export default function ProfilePage() {
   const [errors, setErrors] = useState<Record<number, string>>({});
   const [names, setNames] = useState<Record<number, string>>({});
   const [confirmLeave, setConfirmLeave] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [everywhereName, setEverywhereName] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/me");
@@ -249,6 +252,20 @@ export default function ProfilePage() {
     setConfirmLeave(null);
     setNotice(`Left ${m.group.name}.`);
     load();
+  }
+
+  async function deleteProfile() {
+    setSaving(true);
+    setDeleteError(null);
+    const res = await fetch("/api/me", { method: "DELETE" });
+    if (!res.ok) {
+      setSaving(false);
+      setDeleteError((await res.json().catch(() => ({}))).error ?? "could not delete your profile");
+      return;
+    }
+    // The row is gone; the cookie is not. Sign out so the next request does not
+    // try to load a user that no longer exists.
+    await signOut({ callbackUrl: "/" });
   }
 
   if (authStatus === "loading") {
@@ -528,8 +545,57 @@ export default function ProfilePage() {
               ))
             )}
           </section>
+
+          <section className="flex flex-col gap-3 border-t border-neutral-200 pt-6 dark:border-neutral-800">
+            <h2 className="font-medium">Danger Zone</h2>
+            {confirmDelete ? (
+              <Confirm
+                question="Delete your profile? Your schedule, group memberships, and sign-in go with it. Groups you admined are handed to somebody else still in them."
+                action="Delete my profile"
+                pending="Deleting…"
+                busy={saving}
+                onConfirm={deleteProfile}
+                onCancel={() => setConfirmDelete(false)}
+              />
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                disabled={saving}
+                className="flex w-fit items-center gap-2 rounded-lg border border-red-600 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
+              >
+                <TrashIcon />
+                Delete profile
+              </button>
+            )}
+            <p className="text-xs text-neutral-500">
+              This cannot be undone. You can always make a new account later.
+            </p>
+            {deleteError && <p className="text-sm text-amber-600">{deleteError}</p>}
+          </section>
         </>
       )}
     </main>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d="M3.5 6h13" />
+      <path d="M8 3.5h4" />
+      <path d="M5.25 6l.75 10.25h8l.75-10.25" />
+      <path d="M8.5 9v4.75M11.5 9v4.75" />
+    </svg>
   );
 }

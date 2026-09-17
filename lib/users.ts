@@ -158,6 +158,30 @@ export async function setAvatar(id: number, avatar: string | null): Promise<void
 }
 
 /**
+ * Wipe the account. Memberships, courses, attendance and any tombstones that
+ * pointed here go with the row (FK cascade). Groups they admined are handed to
+ * the earliest remaining signed-in member first — the same rule as leaving —
+ * because ON DELETE SET NULL alone would leave those groups ownerless even when
+ * somebody else is still in them.
+ */
+export async function deleteAccount(userId: number): Promise<void> {
+  const sql = getDb();
+  await sql`
+    UPDATE meetup.groups g
+    SET owner_user_id = (
+      SELECT m.user_id FROM meetup.members m
+      WHERE m.group_id = g.id
+        AND m.user_id IS NOT NULL
+        AND m.user_id <> ${userId}
+      ORDER BY m.id
+      LIMIT 1
+    )
+    WHERE g.owner_user_id = ${userId}
+  `;
+  await sql`DELETE FROM meetup.users WHERE id = ${userId}`;
+}
+
+/**
  * The password half of sign-in. Separate from upsertUser because the two doors
  * are deliberately separate rows — see 007_password_auth.sql for why an
  * unverified address is never allowed to meet a Google one.

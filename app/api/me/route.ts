@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { listMembershipsForUser } from "@/lib/groups";
 import { listUserCourseTerms } from "@/lib/user-courses";
-import { MAX_AVATAR_CHARS, getUser, isValidAvatar, setAvatar } from "@/lib/users";
+import { MAX_AVATAR_CHARS, deleteAccount, getUser, isValidAvatar, setAvatar } from "@/lib/users";
 
 /**
  * Everything the profile page needs: the identity, every group row, and every
@@ -59,4 +59,19 @@ export async function PATCH(req: Request) {
 
   await setAvatar(session.appUserId, avatar);
   return NextResponse.json({ avatar });
+}
+
+/**
+ * Delete the signed-in account. Irreversible: groups they were in lose their
+ * row, schedules and attendance go with them, and any group they admined is
+ * handed off first so it isn't left ownerless.
+ */
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.appUserId) {
+    return NextResponse.json({ error: "sign in first" }, { status: 401 });
+  }
+
+  await deleteAccount(session.appUserId);
+  return NextResponse.json({ ok: true });
 }
