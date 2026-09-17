@@ -13,6 +13,7 @@ import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
+import { copyText } from "@/lib/copy-text";
 import { rememberLastGroup } from "@/lib/last-group";
 import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
@@ -426,10 +427,14 @@ function GroupSchedule({ code }: { code: string }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              // Optimistic — the promise may never settle, so don't wait on it.
-              setCopyState("copied");
-              setTimeout(() => setCopyState("idle"), 2000);
-              navigator.clipboard?.writeText(shareUrl).catch(() => setCopyState("failed"));
+              void copyText(shareUrl).then((ok) => {
+                if (!ok) {
+                  setCopyState("failed");
+                  return;
+                }
+                setCopyState("copied");
+                setTimeout(() => setCopyState("idle"), 2000);
+              });
             }}
             className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 active:scale-[0.98] dark:border-neutral-700 dark:hover:bg-neutral-800"
           >

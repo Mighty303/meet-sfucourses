@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { Confirm, MemberRoster, type RosterMember } from "@/components/MemberRoster";
 import { GroupSettingsSkeleton } from "@/components/Skeleton";
+import { copyText } from "@/lib/copy-text";
 import { forgetLastGroup } from "@/lib/last-group";
 import { fromTermCode } from "@/lib/sfu";
 
@@ -222,10 +223,14 @@ export default function GroupSettingsPage({
           />
           <button
             onClick={() => {
-              // Optimistic — the promise may never settle, so don't wait on it.
-              setCopyState("copied");
-              setTimeout(() => setCopyState("idle"), 2000);
-              navigator.clipboard?.writeText(shareUrl).catch(() => setCopyState("failed"));
+              void copyText(shareUrl).then((ok) => {
+                if (!ok) {
+                  setCopyState("failed");
+                  return;
+                }
+                setCopyState("copied");
+                setTimeout(() => setCopyState("idle"), 2000);
+              });
             }}
             className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
           >
