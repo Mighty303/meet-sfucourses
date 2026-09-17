@@ -426,6 +426,7 @@ function GroupSchedule({ code }: { code: string }) {
             failed. Everything rarer than that is behind the ⋮. */}
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => {
               void copyText(shareUrl).then((ok) => {
                 if (!ok) {
