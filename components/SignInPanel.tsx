@@ -46,14 +46,40 @@ export function SignInPanel({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
+  /**
+   * Which door is mid-round-trip, or null.
+   *
+   * One flag for both, because two sign-ins at once is the bug this closes
+   * rather than a thing to support. A second tap on the Google button while
+   * the first is still in flight starts a second Auth.js sign-in, and each one
+   * mints a fresh PKCE verifier into the same cookie — so the browser can
+   * leave carrying challenge A and come back to a cookie holding verifier B.
+   * Google calls that `invalid_grant: Invalid code verifier`, and both it and
+   * the missing-cookie error showed up in production on phones, where a double
+   * tap is what a slow button feels like it wants.
+   */
+  const [busy, setBusy] = useState<"password" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const register = mode === "register";
 
+  async function google() {
+    if (busy) return;
+    setBusy("google");
+    setError(null);
+    try {
+      // Resolves only if the redirect never happens; the happy path leaves.
+      await signIn("google", { callbackUrl: next });
+    } catch {
+      setError("Couldn't reach Google. Try again.");
+      setBusy(null);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    if (busy) return;
+    setBusy("password");
     setError(null);
 
     if (register) {
@@ -64,7 +90,7 @@ export function SignInPanel({
       });
       if (!res.ok) {
         setError((await res.json().catch(() => ({})))?.error ?? "Could not create that account.");
-        setBusy(false);
+        setBusy(null);
         return;
       }
     }
@@ -78,7 +104,7 @@ export function SignInPanel({
           ? "Account created, but signing in failed. Try signing in below."
           : "That email and password don't match an account."
       );
-      setBusy(false);
+      setBusy(null);
       return;
     }
     window.location.assign(next);
@@ -107,11 +133,12 @@ export function SignInPanel({
 
       <button
         type="button"
-        onClick={() => signIn("google", { callbackUrl: next })}
-        className="flex items-center justify-center gap-2.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        onClick={google}
+        disabled={busy !== null}
+        className="flex items-center justify-center gap-2.5 rounded-lg border border-neutral-300 px-4 py-2.5 font-medium transition-colors hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
       >
         <GoogleMark />
-        Continue with Google
+        {busy === "google" ? "Continuing to Google…" : "Continue with Google"}
       </button>
 
       <div className="flex items-center gap-3 text-xs text-neutral-500">
@@ -159,10 +186,10 @@ export function SignInPanel({
         )}
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy !== null}
           className="rounded-lg bg-neutral-900 px-3 py-2 font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
         >
-          {busy
+          {busy === "password"
             ? register ? "Creating account…" : "Signing in…"
             : register ? "Create account" : "Sign in"}
         </button>

@@ -78,6 +78,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   // Vercel serves this under a few hostnames (alias + per-deployment URLs).
   trustHost: true,
+  /**
+   * Failures land on our own sign-in page, not Auth.js's.
+   *
+   * The built-in one is a dead end: it says "Try signing in with a different
+   * account", has no button that starts another attempt, and when a Google
+   * round trip came back without its PKCE cookie it was answering /api/auth
+   * /error with a 500. The same failure now renders the page that has the
+   * three doors on it, with a line saying what to do — and retrying is one
+   * tap, which is the whole of the fix for a check that only ever fails
+   * transiently. `error` only: the sign-in and sign-out pages Auth.js serves
+   * are never reached, because nothing here links to them.
+   */
+  pages: { error: "/signin" },
   session: { strategy: "jwt" },
   callbacks: {
     // Runs only on sign-in, when `profile` (Google) or `user` (password) is
