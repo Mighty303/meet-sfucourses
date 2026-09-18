@@ -12,6 +12,25 @@ import { attending, blocksFromSection } from "@/lib/overlap";
 import { compareTerms, currentTermCode, fromTermCode, termOptions, type SectionHit } from "@/lib/sfu";
 
 /**
+ * The line under the week after the first section lands.
+ *
+ * Solo free-time is something you already knew; the product is inviting people
+ * into a group. Said here so the next press isn't "look at my gaps" — it's
+ * "bring someone else in". Split out so the copy can be asserted without
+ * driving the picker.
+ */
+export function FirstSaveInviteNudge({ toGroup }: { toGroup: boolean }) {
+  return (
+    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+      Nice — now invite the people you want to meet.
+      {toGroup
+        ? " Share the invite link from your group."
+        : " Create a group and send them the link."}
+    </p>
+  );
+}
+
+/**
  * The body of /courses: a term, a search box, and the week the two of them add
  * up to.
  *
@@ -295,12 +314,7 @@ export function CoursesPanel({
                 the list stops being empty, but only for someone who arrived
                 with nothing, so a return visit doesn't re-cheer. */}
             {saved > 0 && startCourses.length === 0 && (
-              <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                Nice — now invite the people you want to meet.
-                {toGroup
-                  ? " Share the invite link from your group."
-                  : " Create a group and send them the link."}
-              </p>
+              <FirstSaveInviteNudge toGroup={toGroup} />
             )}
             <div className="flex flex-wrap items-center gap-4">
               <Link
