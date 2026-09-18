@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GroupActions } from "@/components/GroupActions";
+import { CoursesIcon, PersonIcon, ScheduleIcon } from "@/components/RowIcons";
+import { readLastGroup } from "@/lib/last-group";
 import { fromTermCode } from "@/lib/sfu";
 
 interface Membership {
@@ -34,19 +36,38 @@ export function GroupsHome() {
   // Null until the fetch lands, which is the difference between "still
   // loading" and "you aren't in any".
   const [memberships, setMemberships] = useState<Membership[] | null>(null);
+  const [lastGroupCode, setLastGroupCode] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
     fetch("/api/me")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (live && data) setMemberships(data.memberships); })
+      .then((data) => {
+        if (live && data) {
+          setLastGroupCode(readLastGroup());
+          setMemberships(data.memberships);
+        }
+      })
       .catch(() => {});
     return () => { live = false; };
   }, []);
 
+  const calendarGroup = memberships?.find((m) => m.group.code === lastGroupCode) ?? memberships?.[0];
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 pb-20 sm:pb-24">
-      <section className="fade-up mx-auto w-full max-w-lg flex flex-col gap-2">
+      <section className="fade-up grid gap-3 sm:grid-cols-3" aria-label="Your pages">
+        <HomeCard href="/courses" title="Courses" description="View and edit your schedule" icon={<CoursesIcon />} />
+        <HomeCard
+          href={calendarGroup ? `/g/${calendarGroup.group.code}` : "#group-actions"}
+          title="Calendar"
+          description={calendarGroup ? "See your group calendar" : "Create or join a group"}
+          icon={<ScheduleIcon />}
+        />
+        <HomeCard href="/profile" title="Profile" description="Manage your account" icon={<PersonIcon />} />
+      </section>
+
+      <section id="your-groups" className="fade-up mx-auto w-full max-w-lg flex flex-col gap-2">
         <h2 className="text-sm font-medium">Your groups</h2>
 
         {memberships === null ? (
@@ -147,8 +168,22 @@ export function GroupsHome() {
         )}
       </section>
 
-      <GroupActions startDelay={120} />
+      <div id="group-actions">
+        <GroupActions startDelay={120} />
+      </div>
     </main>
+  );
+}
+
+function HomeCard({ href, title, description, icon }: { href: string; title: string; description: string; icon: React.ReactNode }) {
+  return (
+    <Link href={href} className="flex min-h-32 flex-col gap-3 rounded-xl border border-neutral-200 p-5 transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-900 dark:focus-visible:outline-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">{icon}</span>
+      <span className="flex flex-col gap-1">
+        <span className="font-medium">{title}</span>
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">{description}</span>
+      </span>
+    </Link>
   );
 }
 
