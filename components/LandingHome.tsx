@@ -43,15 +43,18 @@ export function LandingHome() {
           Everyone drops their SFU schedule in. The grid shows when you&apos;re all free
           on campus at the same time.
         </p>
-        <ol className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="How it works">
+        <h2 className="mt-5 text-sm font-semibold">Get started</h2>
+        <ol className="mt-3 flex flex-col gap-2 text-sm">
           {[
-            "Search & add",
-            "Create group",
-            "Sign in",
-            "Invite friends",
+            "Search for your SFU courses and add each lecture, tutorial, or lab section you're in.",
+            "Create a group so you and your friends can compare schedules.",
+            "Sign in to keep your place in the group.",
+            "Copy the invite link and send it to friends so they can add their schedules.",
           ].map((step, index) => (
-            <li key={step} className="flex items-start gap-2 text-neutral-500 dark:text-neutral-400">
-              <span className="font-semibold text-neutral-900 dark:text-neutral-100">{index + 1}.</span>
+            <li key={step} className="flex items-start gap-3 text-neutral-600 dark:text-neutral-400">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-xs font-semibold text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+                {index + 1}
+              </span>
               <span>{step}</span>
             </li>
           ))}
