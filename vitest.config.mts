@@ -1,9 +1,17 @@
 import { defineConfig } from "vitest/config";
 
-// Three suites, split by what they need to run rather than by what they cover.
+// Four suites, split by what they need to run rather than by what they cover.
 // `unit` is the default because it needs nothing: no network, no database, no
-// credentials. The other two are opt-in so a plain `npm test` can never fail
+// credentials. The other three are opt-in so a plain `npm test` can never fail
 // for a reason that has nothing to do with the code.
+//
+// `migrations` and `db` both talk to Postgres and are still separate, because
+// they answer different questions. `db` branches from production and re-runs
+// the migrations over a copy of the real schema: does this upgrade a database
+// that already exists. `migrations` starts from nothing on a throwaway
+// Postgres: does this build one. Neither substitutes for the other, and only
+// `migrations` runs without a Neon key — which is what makes it the one that
+// covers pull requests from forks.
 //
 // `resolve.tsconfigPaths` is what makes the `@/*` alias work, so a test file
 // imports exactly the way app code does. The `unit` project takes .tsx as
@@ -41,6 +49,19 @@ export default defineConfig({
           globalSetup: ["tests/db/setup.ts"],
           fileParallelism: false,
           testTimeout: 30_000,
+        },
+      },
+      {
+        // One Postgres, and these tests drop the schema out from under each
+        // other on purpose, so the same no-parallelism rule applies. Pulling
+        // the image on a cold machine is the slow part, not the SQL.
+        test: {
+          name: "migrations",
+          include: ["tests/migrations/**/*.test.ts"],
+          environment: "node",
+          globalSetup: ["tests/migrations/setup.ts"],
+          fileParallelism: false,
+          testTimeout: 60_000,
         },
       },
     ],
