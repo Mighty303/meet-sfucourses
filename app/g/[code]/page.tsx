@@ -588,7 +588,7 @@ function GroupSchedule({ code }: { code: string }) {
         {listOpen && (
         <>
         {/* Keep the heading visible while member cards scroll. */}
-        <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
+        <ul id="group-list" className="member-list-scroll grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
           {state.members.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
             const on = hasSchedule && !hidden.has(m.id);
