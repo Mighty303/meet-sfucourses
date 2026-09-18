@@ -8,7 +8,9 @@ import { Avatar } from "@/components/Avatar";
 import { Confirm } from "@/components/MemberRoster";
 import { ProfileBodySkeleton } from "@/components/Skeleton";
 import { ColorPicker } from "@/components/ColorPicker";
+import { useSfuDoor } from "@/components/SfuDoor";
 import { fileToAvatar } from "@/lib/avatar-file";
+import { linkSfuOffer } from "@/lib/link-sfu-offer";
 import { CoursePicker } from "@/components/CoursePicker";
 import { fromTermCode } from "@/lib/sfu";
 
@@ -39,6 +41,8 @@ interface Me {
    * hang it on.
    */
   terms: { term: string; classNumbers: string[] }[];
+  /** Which sign-in doors open this account (includes linked tombstones). */
+  doors: { google: boolean; password: boolean; sfu: boolean };
 }
 
 /**
@@ -62,6 +66,7 @@ export default function ProfilePage() {
   // `update()` re-runs the JWT callback, which is how the picture in the header
   // catches up without a sign-out.
   const { status: authStatus, update: refreshSession } = useSession();
+  const sfuOpen = useSfuDoor();
 
   const [data, setData] = useState<Me | null>(null);
   const [saving, setSaving] = useState(false);
@@ -75,6 +80,8 @@ export default function ProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const offer = linkSfuOffer(data?.doors, sfuOpen);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/me");
@@ -358,18 +365,36 @@ export default function ProfilePage() {
                 The name above is the one on your account. The per-group names
                 below are the ones you can change.
               </p>
-              {/* Every door is its own row until somebody links them, so a
-                  second sign-in is a second account with its own groups. */}
-              <p className="mt-2 text-xs text-neutral-500">
-                Signed in here another way before?{" "}
-                <Link
-                  href="/profile/link"
-                  className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
-                >
-                  Fold your accounts into one
-                </Link>
-                .
-              </p>
+              {/* Personal Gmail + Computing ID never share an address, so the
+                  first-SFU collision offer never fires — this is the path. */}
+              {offer === "link" && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Sign in with your SFU ID and keep the groups on this account.
+                  </p>
+                  <Link
+                    href="/profile/link?intent=sfu"
+                    className="self-start rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                  >
+                    Link your SFU ID
+                  </Link>
+                </div>
+              )}
+              {offer === "linked" && (
+                <p className="mt-2 text-xs text-neutral-500">SFU ID linked.</p>
+              )}
+              {offer === "fold" && (
+                <p className="mt-2 text-xs text-neutral-500">
+                  Signed in here another way before?{" "}
+                  <Link
+                    href="/profile/link"
+                    className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                  >
+                    Fold your accounts into one
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
           </section>
 

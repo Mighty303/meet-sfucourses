@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { countDoors } from "@/lib/account-link";
 import { listMembershipsForUser } from "@/lib/groups";
 import { listUserCourseTerms } from "@/lib/user-courses";
 import { MAX_AVATAR_CHARS, deleteAccount, getUser, isValidAvatar, setAvatar } from "@/lib/users";
@@ -11,6 +12,9 @@ import { MAX_AVATAR_CHARS, deleteAccount, getUser, isValidAvatar, setAvatar } fr
  * `terms` is not derivable from `memberships` any more. Courses can be added at
  * /courses before joining anything, so a term can have a schedule and no group
  * — and bucketing the profile page by memberships alone would hide it.
+ *
+ * `doors` counts credentials across this account and its tombstones, so a linked
+ * SFU on a folded-in row still hides the “Link your SFU ID” CTA.
  */
 export async function GET() {
   const session = await auth();
@@ -18,15 +22,21 @@ export async function GET() {
     return NextResponse.json({ error: "sign in first" }, { status: 401 });
   }
 
-  const [user, memberships, terms] = await Promise.all([
+  const [user, memberships, terms, doorCounts] = await Promise.all([
     getUser(session.appUserId),
     listMembershipsForUser(session.appUserId),
     listUserCourseTerms(session.appUserId),
+    countDoors(session.appUserId),
   ]);
   if (!user) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
   }
-  return NextResponse.json({ user, memberships, terms });
+  const doors = {
+    google: doorCounts.google > 0,
+    password: doorCounts.password > 0,
+    sfu: doorCounts.sfu > 0,
+  };
+  return NextResponse.json({ user, memberships, terms, doors });
 }
 
 /**
