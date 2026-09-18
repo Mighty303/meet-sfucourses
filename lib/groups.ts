@@ -393,6 +393,36 @@ export async function renameGroup(groupId: number, name: string): Promise<void> 
   await sql`UPDATE meetup.groups SET name = ${name} WHERE id = ${groupId}`;
 }
 
+/**
+ * Mint a fresh invite code for an existing group.
+ *
+ * The code *is* the invite link — `/g/{code}` — so rotating it is how an admin
+ * kills a leaked URL without deleting the group. Members, schedules, and the
+ * admin stay put; only the path changes. Old links 404 the moment this
+ * returns, which is the point.
+ *
+ * Same collision retry as createGroup: 31^7 is enough that a conflict is a
+ * freak, and retrying is cheaper than explaining a 500.
+ */
+export async function regenerateGroupCode(groupId: number): Promise<string> {
+  const sql = getDb();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateCode();
+    const rows = await sql`
+      UPDATE meetup.groups AS g
+      SET code = ${code}
+      WHERE g.id = ${groupId}
+        AND NOT EXISTS (
+          SELECT 1 FROM meetup.groups AS other
+          WHERE other.code = ${code} AND other.id <> ${groupId}
+        )
+      RETURNING g.code
+    `;
+    if (rows.length > 0) return rows[0].code as string;
+  }
+  throw new Error("could not allocate a unique group code");
+}
+
 /** The permissions a group admin has that a member doesn't. */
 export async function isGroupOwner(groupId: number, userId: number | null): Promise<boolean> {
   if (!userId) return false;
