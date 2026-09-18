@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Confirm } from "@/components/MemberRoster";
 import { copyText } from "@/lib/copy-text";
 import { forgetLastGroup, rememberLastGroup } from "@/lib/last-group";
@@ -27,6 +27,7 @@ export function InviteLink({
   afterPath?: (nextCode: string) => string;
 }) {
   const router = useRouter();
+  const regenerateTooltipId = useId();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -87,10 +88,17 @@ export function InviteLink({
             onClick={() => setConfirmRegen(true)}
             disabled={busy}
             aria-label="Regenerate invite link"
-            title="Regenerate invite link"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            aria-describedby={regenerateTooltipId}
+            className="group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
           >
             <RegenerateIcon />
+            <span
+              id={regenerateTooltipId}
+              role="tooltip"
+              className="pointer-events-none absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              Regenerate invite link
+            </span>
           </button>
         )}
       </div>
