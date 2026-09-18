@@ -9,6 +9,7 @@ import { Confirm } from "@/components/MemberRoster";
 import { ProfileBodySkeleton } from "@/components/Skeleton";
 import { ColorPicker } from "@/components/ColorPicker";
 import { useSfuDoor } from "@/components/SfuDoor";
+import { LinkSfuCta } from "@/components/LinkSfuCta";
 import { fileToAvatar } from "@/lib/avatar-file";
 import { linkSfuOffer } from "@/lib/link-sfu-offer";
 import { CoursePicker } from "@/components/CoursePicker";
@@ -367,34 +368,7 @@ export default function ProfilePage() {
               </p>
               {/* Personal Gmail + Computing ID never share an address, so the
                   first-SFU collision offer never fires — this is the path. */}
-              {offer === "link" && (
-                <div className="mt-3 flex flex-col gap-2">
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    Sign in with your SFU ID and keep the groups on this account.
-                  </p>
-                  <Link
-                    href="/profile/link?intent=sfu"
-                    className="self-start rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-                  >
-                    Link your SFU ID
-                  </Link>
-                </div>
-              )}
-              {offer === "linked" && (
-                <p className="mt-2 text-xs text-neutral-500">SFU ID linked.</p>
-              )}
-              {offer === "fold" && (
-                <p className="mt-2 text-xs text-neutral-500">
-                  Signed in here another way before?{" "}
-                  <Link
-                    href="/profile/link"
-                    className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
-                  >
-                    Fold your accounts into one
-                  </Link>
-                  .
-                </p>
-              )}
+              <LinkSfuCta offer={offer} />
             </div>
           </section>
 
