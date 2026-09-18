@@ -3,9 +3,10 @@ import { LinkSfuCta } from "@/components/LinkSfuCta";
 import type { LinkSfuOffer } from "@/lib/link-sfu-offer";
 
 /**
- * Static fixture for the profile Link-SFU CTA and the intent=sfu link page.
- * Not linked from the app — open /dev/link-sfu. Preview deployments cannot
- * complete Google/CAS sign-in, so this is how to review the copy and layout.
+ * Static fixture for the profile Link-SFU CTA states. Not linked from the app —
+ * open /dev/link-sfu. Preview deployments cannot complete Google/CAS sign-in,
+ * so this is how to review the copy and layout. The real button starts the
+ * challenge and goes straight to CAS (no middle explainer page).
  */
 
 const CASES: { title: string; email: string; offer: LinkSfuOffer; note: string }[] = [
@@ -13,7 +14,7 @@ const CASES: { title: string; email: string; offer: LinkSfuOffer; note: string }
     title: "Google account, no SFU yet (CAS on)",
     email: "martinwong303@gmail.com",
     offer: "link",
-    note: "The CTA this PR ships. Personal Gmail never hits the first-SFU collision offer.",
+    note: "Clicking Link your SFU ID starts the challenge and sends you to CAS — then /profile/link only for the confirm screen.",
   },
   {
     title: "Already linked",
@@ -58,8 +59,8 @@ export default function LinkSfuPreviewPage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Link SFU preview</h1>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          No sign-in. Fixture of the profile CTA states and the{" "}
-          <code className="text-xs">/profile/link?intent=sfu</code> start screen.
+          No sign-in. Fixture of the profile CTA states. Buttons here are inert
+          (no session to start a challenge from).
         </p>
       </header>
 
@@ -74,45 +75,6 @@ export default function LinkSfuPreviewPage() {
             <ProfileCard email={c.email} offer={c.offer} />
           </div>
         ))}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="font-medium">On /profile/link?intent=sfu</h2>
-          <p className="text-xs text-neutral-500">
-            Start screen before the challenge round-trip. Button is inert here.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
-          <h3 className="text-xl font-semibold tracking-tight">
-            One account, several sign-ins
-          </h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Sign in with your SFU ID to fold it into this account. Your groups
-            stay; afterwards either sign-in opens them, and the account wears
-            your @sfu.ca address.
-          </p>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
-            Nothing happens on an address alone. You&apos;ll be signed out, sign
-            in as the other account, and come back here to see exactly what
-            would move before anything does.
-          </p>
-          <button
-            type="button"
-            disabled
-            className="flex items-center justify-center gap-2.5 self-start rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white opacity-50"
-          >
-            <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
-              <path
-                d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Continue with your SFU ID
-          </button>
-        </div>
       </section>
     </main>
   );

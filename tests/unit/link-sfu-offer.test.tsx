@@ -27,9 +27,10 @@ describe("LinkSfuCta", () => {
   it("renders the Link SFU button for the link offer", () => {
     const html = renderToStaticMarkup(<LinkSfuCta offer="link" />);
     expect(html).toContain("Link your SFU ID");
-    expect(html).toContain("/profile/link?intent=sfu");
     expect(html).toContain("keep the groups on this account");
     expect(html).toContain("bg-[#a6192e]");
+    // Starts CAS from the profile button — no middle /profile/link?intent=sfu hop.
+    expect(html).not.toContain("/profile/link?intent=sfu");
     expect(html).not.toContain("SFU ID linked");
   });
 

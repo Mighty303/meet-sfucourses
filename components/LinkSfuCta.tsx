@@ -1,26 +1,54 @@
+"use client";
+
+import { signOut } from "next-auth/react";
 import Link from "next/link";
+import { useState } from "react";
 import type { LinkSfuOffer } from "@/lib/link-sfu-offer";
 
 /** Same chrome as SignInPanel's SFU door — crimson, mark, full-width feel. */
 const SFU_BUTTON =
-  "flex items-center justify-center gap-2.5 rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90";
+  "flex items-center justify-center gap-2.5 rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50";
 
 /**
  * Profile copy for attaching an SFU Computing ID (or the generic fold blurb
  * when CAS is off). Visibility is decided by `linkSfuOffer` so the page and
  * the unit tests share one rule.
+ *
+ * The link button starts the challenge and sends them straight to CAS — no
+ * intermediate /profile/link explainer. They only see that page afterwards,
+ * when both halves are proved and the confirm screen has something to say.
  */
 export function LinkSfuCta({ offer }: { offer: LinkSfuOffer }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function linkSfu() {
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/me/link/start", { method: "POST" });
+    if (!res.ok) {
+      setBusy(false);
+      setError("could not start that. Try again.");
+      return;
+    }
+    // Challenge cookie survives sign-out. Land back on /profile/link after CAS
+    // so the confirm screen can show what would move.
+    await signOut({
+      callbackUrl: `/api/auth/sfu/start?next=${encodeURIComponent("/profile/link")}`,
+    });
+  }
+
   if (offer === "link") {
     return (
       <div className="mt-3 flex flex-col gap-2">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Sign in with your SFU ID and keep the groups on this account.
         </p>
-        <Link href="/profile/link?intent=sfu" className={`self-start ${SFU_BUTTON}`}>
+        <button type="button" onClick={linkSfu} disabled={busy} className={`self-start ${SFU_BUTTON}`}>
           <SfuMark />
-          Link your SFU ID
-        </Link>
+          {busy ? "Starting…" : "Link your SFU ID"}
+        </button>
+        {error && <p className="text-xs text-amber-600">{error}</p>}
       </div>
     );
   }

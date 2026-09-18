@@ -54,7 +54,6 @@ function doorList(a: Account): string {
 function LinkBody() {
   const { status: authStatus } = useSession();
   const found = useSearchParams().get("found");
-  const intent = useSearchParams().get("intent");
 
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -82,14 +81,9 @@ function LinkBody() {
     }
     // Signed out first, because /signin redirects anyone who still holds a
     // session. The challenge cookie is untouched by this and is what carries
-    // the first half of the proof across. Intent=sfu skips the sign-in picker
-    // and sends them straight to CAS — the door they asked to add.
-    const back = intent === "sfu" ? "/profile/link?intent=sfu" : "/profile/link";
-    const after =
-      intent === "sfu"
-        ? `/api/auth/sfu/start?next=${encodeURIComponent(back)}`
-        : `/signin?next=${encodeURIComponent(back)}`;
-    await signOut({ callbackUrl: after });
+    // the first half of the proof across. Linking SFU from profile skips this
+    // page and goes straight to CAS; this start is for the generic fold path.
+    await signOut({ callbackUrl: `/signin?next=${encodeURIComponent("/profile/link")}` });
   }
 
   async function confirm() {
@@ -148,9 +142,7 @@ function LinkBody() {
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           {found === "google"
             ? "There's already an account here under your @sfu.ca address, signed in with Google. It's probably yours — it has your groups and your timetable on it."
-            : intent === "sfu"
-              ? "Sign in with your SFU ID to fold it into this account. Your groups stay; afterwards either sign-in opens them, and the account wears your @sfu.ca address."
-              : "If you've signed in here another way before — with Google, with a password, or with your SFU ID — that's a separate account with its own groups and timetable. This folds them into one."}
+            : "If you've signed in here another way before — with Google, with a password, or with your SFU ID — that's a separate account with its own groups and timetable. This folds them into one."}
         </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Nothing happens on an address alone. You&apos;ll be signed out, sign in as
@@ -160,22 +152,9 @@ function LinkBody() {
         <button
           onClick={start}
           disabled={busy}
-          className={
-            intent === "sfu"
-              ? "flex items-center justify-center gap-2.5 self-start rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              : "self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-          }
+          className="self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
         >
-          {busy ? (
-            "Starting…"
-          ) : intent === "sfu" ? (
-            <>
-              <SfuDoorMark />
-              Continue with your SFU ID
-            </>
-          ) : (
-            "Sign in as the other account"
-          )}
+          {busy ? "Starting…" : "Sign in as the other account"}
         </button>
         {error && <p className="text-sm text-amber-600">{error}</p>}
       </div>
@@ -267,19 +246,5 @@ export default function LinkAccountsPage() {
         <LinkBody />
       </Suspense>
     </main>
-  );
-}
-
-/** Same mark as SignInPanel's SFU door. */
-function SfuDoorMark() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
-      <path
-        d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
