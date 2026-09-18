@@ -55,14 +55,14 @@ export function InviteLink({
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <input
           readOnly
           value={shareUrl}
           onFocus={(e) => e.currentTarget.select()}
           aria-label="Invite link"
-          className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+          className="w-64 max-w-full rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 sm:w-96 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
         />
         <button
           type="button"
