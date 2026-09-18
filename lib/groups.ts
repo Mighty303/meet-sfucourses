@@ -104,6 +104,8 @@ export interface GroupState {
   group: Group;
   members: Member[];
   busyByMember: Record<number, BusyBlock[]>;
+  /** Resolved course and section labels for every member's saved classes. */
+  classesByMember: Record<number, { classNumber: string; course: string; section: string }[]>;
   free: FreeWindow[];
   /** Class numbers we couldn't resolve — usually saved under a different term. */
   unresolved: Record<number, string[]>;
@@ -515,10 +517,17 @@ export async function getGroupState(
   const attendance = await listAttendance(userIds, dates.Mo, dates.Su);
 
   const busyByMember: Record<number, BusyBlock[]> = {};
+  const classesByMember: GroupState["classesByMember"] = {};
   const unresolved: Record<number, string[]> = {};
   const unscheduled: Record<number, UnscheduledSection[]> = {};
 
   for (const member of members) {
+    classesByMember[member.id] = member.classNumbers.flatMap((classNumber) => {
+      const hit = index.get(classNumber);
+      return hit
+        ? [{ classNumber, course: `${hit.course.dept} ${hit.course.number}`, section: hit.section.section }]
+        : [];
+    });
     const courseBlocks = busyFromCourses(index, member.classNumbers, dates);
     const custom: BusyBlock[] = blocks
       .filter((b) => b.member_id === member.id)
@@ -569,6 +578,7 @@ export async function getGroupState(
     group,
     members,
     busyByMember,
+    classesByMember,
     free,
     unresolved,
     unscheduled,

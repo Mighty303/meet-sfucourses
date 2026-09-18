@@ -55,6 +55,7 @@ interface GroupState {
   };
   members: Member[];
   busyByMember: Record<number, BusyBlock[]>;
+  classesByMember: Record<number, { classNumber: string; course: string; section: string }[]>;
   free: FreeWindow[];
   unresolved: Record<number, string[]>;
   unscheduled: Record<number, UnscheduledSection[]>;
@@ -541,41 +542,20 @@ function GroupSchedule({ code }: { code: string }) {
           </div>
         </div>
       ) : (
-        /* Nothing. Being in the group used to be a card here: your saved
-           sections, a link to change them, and the two buttons for getting out.
-           It sat between the heading and the week, which meant the thing the
-           page is named after started below the fold.
-
-           The sections moved into the member list, onto your own row, where
-           they cost no vertical space at all and sit beside the grid they
-           describe. Leaving and deleting moved into the ⋮ — both are done once
-           and never read. What is left here is the error line, because a failed
-           join or rename has to land somewhere you are already looking. */
+        /* The member list beside the grid holds your classes and edit link.
+           This error stays above both, where a failed action is visible. */
         error && <p className="-mt-4 text-sm text-amber-600">{error}</p>
       )}
 
       {!signedIn && <InviteLink code={code} isAdmin={false} />}
 
-      {/* The people and the week they add up to, side by side from `lg`. Ticking
-          someone off is a question asked *of* the grid, and with the list a
-          screen above it you had to scroll back and forth to see the answer.
-          Below `lg` there is no room for a second column, so they stack in the
-          old order and the list keeps its own multi-column layout. */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-      {/* The handle on its right edge folds it away sideways, which is the
-          point on a laptop: the detailed grid truncates course codes to make
-          room for this column, and collapsed it hands all of that back. The
-          arrow stays put across both states — it is the edge of the list, so
-          it is where you reach for the list whether it is open or not. */}
+      {/* The grid sets the desktop row height; the member list scrolls within it. */}
+      <div className={`flex flex-col gap-6 lg:grid lg:items-stretch ${listOpen ? "lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]" : "lg:grid-cols-[9rem_minmax(0,1fr)]"}`}>
       <aside
-        className={`flex flex-col gap-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:shrink-0 ${
-          listOpen ? "lg:w-56 xl:w-64" : "lg:w-auto"
-        }`}
+        className="relative min-h-0"
       >
-        {/* justify-end plus mr-auto on the headings, rather than absolute
-            positioning: collapsed there is nothing else in this row, and the
-            arrow still lands on the right edge without the aside needing a
-            height of its own. */}
+        <div className="flex flex-col gap-2 lg:absolute lg:inset-0 lg:min-h-0">
+        {/* Keep the collapse handle at the list's right edge. */}
         <div className="flex items-start justify-end gap-x-3">
           {listOpen && (
             <div className="mr-auto flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -591,11 +571,7 @@ function GroupSchedule({ code }: { code: string }) {
                   Include everyone
                 </button>
               )}
-              {/* The second door to the settings page, and the one people will
-                  actually find: a name that needs fixing is read here, not up
-                  in the header. Neutral rather than blue — the link above it
-                  undoes a filter, which is this list's own business, and two
-                  blue words side by side would read as a pair. */}
+              {/* Settings are available beside the names they manage. */}
               {isAdmin && (
                 <Link
                   href={`/g/${code}/settings`}
@@ -606,34 +582,31 @@ function GroupSchedule({ code }: { code: string }) {
               )}
             </div>
           )}
-          {/* The heading stays when it's folded away, so the rail says what
-              it is rather than leaving a bare arrow to be guessed at. It costs
-              some of the width the collapse was buying back, which is the
-              right trade — an unlabelled control nobody presses saves nothing. */}
-          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Group Member List</span>}
+          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Members</span>}
           <CollapseHandle open={listOpen} onToggle={() => setListOpen((v) => !v)} />
         </div>
         {listOpen && (
         <>
-        {/* The scroll lives on the list alone, so a long group scrolls under a
-            heading and a note that stay put. `min-h-0` because a flex child
-            defaults to its content's height and would push the column past the
-            viewport instead of scrolling inside it. */}
-        <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
+        {/* Keep the heading visible while member cards scroll. */}
+        <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
           {state.members.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
             const on = hasSchedule && !hidden.has(m.id);
             const unresolved = state.unresolved[m.id]?.length ?? 0;
+            const classes = state.classesByMember[m.id] ?? [];
             return (
-              <li key={m.id}>
+              <li
+                key={m.id}
+                className={`rounded-lg border transition-colors ${
+                  hasSchedule
+                    ? on
+                      ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                      : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
+                    : "border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
+                }`}
+              >
                 <label
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                    hasSchedule
-                      ? on
-                        ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                        : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
-                      : "cursor-not-allowed border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
-                  }`}
+                  className={`flex items-center gap-2 px-3 pt-2.5 text-sm ${hasSchedule ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   <input
                     type="checkbox"
@@ -647,14 +620,8 @@ function GroupSchedule({ code }: { code: string }) {
                         return next;
                       })
                     }
-                    className="peer sr-only"
-                  />
-                  {/* A hairline ring that fills when they're counted — the row
-                      already carries the state in its border and opacity, so
-                      the toggle only has to hint, not shout. */}
-                  <span
-                    aria-hidden
-                    className="h-3 w-3 shrink-0 rounded-full border border-neutral-400 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-400 dark:border-neutral-600 dark:peer-checked:border-white dark:peer-checked:bg-white"
+                    aria-label={`Include ${m.displayName} in the schedule`}
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-blue-600 disabled:cursor-not-allowed"
                   />
                   {m.image ? (
                     <Image src={m.image} alt="" width={18} height={18} className="shrink-0 rounded-full" />
@@ -687,33 +654,6 @@ function GroupSchedule({ code }: { code: string }) {
                       </span>
                     );
                   })()}
-                  {/* On your own row the count is the way to change it.
-                      A list of the sections themselves used to sit under here,
-                      and it was a stack of identical chips restating the blocks
-                      three inches to the right — in a group every course of
-                      yours is drawn in your one member colour, so the swatches
-                      were five copies of the same dot. The count is the part
-                      that was telling you something.
-
-                      A link, not a button inside the label: interactive content
-                      inside a <label> doesn't forward its click to the control,
-                      so following it doesn't also tick you off the grid. */}
-                  {me && m.id === me.id ? (
-                    <Link
-                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
-                      className="ml-auto shrink-0 text-xs text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {hasSchedule
-                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
-                        : "add your courses →"}
-                    </Link>
-                  ) : (
-                    <span className="ml-auto shrink-0 text-xs text-neutral-500">
-                      {!hasSchedule
-                        ? "no schedule yet"
-                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
-                    </span>
-                  )}
                   {unresolved > 0 && (
                     <span
                       className="shrink-0 text-xs text-amber-600"
@@ -723,6 +663,27 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
+                <div className="px-3 pb-2.5 pl-9">
+                  {classes.length > 0 && (
+                    <ul className="flex flex-wrap gap-1.5" aria-label={`${m.displayName}'s classes`}>
+                      {classes.map((section) => (
+                        <li key={section.classNumber} className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs dark:border-neutral-700">
+                          <span className="font-medium">{section.course}</span> <span className="text-neutral-500">{section.section}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {me && m.id === me.id ? (
+                    <Link
+                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+                      className="mt-1 inline-block text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {hasSchedule ? "Edit your classes →" : "Add your courses →"}
+                    </Link>
+                  ) : !hasSchedule ? (
+                    <span className="text-xs text-neutral-500">no schedule yet</span>
+                  ) : null}
+                </div>
               </li>
             );
           })}
@@ -741,6 +702,7 @@ function GroupSchedule({ code }: { code: string }) {
         )}
         </>
         )}
+        </div>
       </aside>
 
       <div className="@container flex min-w-0 flex-1 flex-col gap-6">
