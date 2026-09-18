@@ -29,6 +29,7 @@ describe("LinkSfuCta", () => {
     expect(html).toContain("Link your SFU ID");
     expect(html).toContain("/profile/link?intent=sfu");
     expect(html).toContain("keep the groups on this account");
+    expect(html).toContain("bg-[#a6192e]");
     expect(html).not.toContain("SFU ID linked");
   });
 

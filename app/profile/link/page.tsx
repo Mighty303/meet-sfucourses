@@ -160,9 +160,22 @@ function LinkBody() {
         <button
           onClick={start}
           disabled={busy}
-          className="self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          className={
+            intent === "sfu"
+              ? "flex items-center justify-center gap-2.5 self-start rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              : "self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          }
         >
-          {busy ? "Starting…" : intent === "sfu" ? "Continue with your SFU ID" : "Sign in as the other account"}
+          {busy ? (
+            "Starting…"
+          ) : intent === "sfu" ? (
+            <>
+              <SfuDoorMark />
+              Continue with your SFU ID
+            </>
+          ) : (
+            "Sign in as the other account"
+          )}
         </button>
         {error && <p className="text-sm text-amber-600">{error}</p>}
       </div>
@@ -254,5 +267,19 @@ export default function LinkAccountsPage() {
         <LinkBody />
       </Suspense>
     </main>
+  );
+}
+
+/** Same mark as SignInPanel's SFU door. */
+function SfuDoorMark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

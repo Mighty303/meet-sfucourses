@@ -100,8 +100,16 @@ export default function LinkSfuPreviewPage() {
           <button
             type="button"
             disabled
-            className="self-start rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+            className="flex items-center justify-center gap-2.5 self-start rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white opacity-50"
           >
+            <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+              <path
+                d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
             Continue with your SFU ID
           </button>
         </div>

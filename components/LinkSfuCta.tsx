@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { LinkSfuOffer } from "@/lib/link-sfu-offer";
 
+/** Same chrome as SignInPanel's SFU door — crimson, mark, full-width feel. */
+const SFU_BUTTON =
+  "flex items-center justify-center gap-2.5 rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90";
+
 /**
  * Profile copy for attaching an SFU Computing ID (or the generic fold blurb
  * when CAS is off). Visibility is decided by `linkSfuOffer` so the page and
@@ -13,10 +17,8 @@ export function LinkSfuCta({ offer }: { offer: LinkSfuOffer }) {
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Sign in with your SFU ID and keep the groups on this account.
         </p>
-        <Link
-          href="/profile/link?intent=sfu"
-          className="self-start rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-        >
+        <Link href="/profile/link?intent=sfu" className={`self-start ${SFU_BUTTON}`}>
+          <SfuMark />
           Link your SFU ID
         </Link>
       </div>
@@ -40,4 +42,18 @@ export function LinkSfuCta({ offer }: { offer: LinkSfuOffer }) {
     );
   }
   return null;
+}
+
+/** SFU's own red mark — same glyph as the sign-in panel, not an official logo. */
+function SfuMark() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
