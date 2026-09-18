@@ -29,6 +29,7 @@ export function InviteLink({
   const router = useRouter();
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [confirmRegen, setConfirmRegen] = useState(false);
+  const [regenHint, setRegenHint] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,21 +83,29 @@ export function InviteLink({
           {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy link"}
         </button>
         {isAdmin && !confirmRegen && (
-          <span className="group relative inline-flex">
+          <span
+            className="relative inline-flex"
+            onMouseEnter={() => setRegenHint(true)}
+            onMouseLeave={() => setRegenHint(false)}
+          >
             <button
               type="button"
               onClick={() => setConfirmRegen(true)}
+              onFocus={() => setRegenHint(true)}
+              onBlur={() => setRegenHint(false)}
               disabled={busy}
               aria-label="Regenerate link"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             >
               <RegenerateIcon />
             </button>
-            {/* Label under the icon on hover/focus — the control used to be a
-                text button, and a native title alone is easy to miss. */}
+            {/* State-driven so the label actually shows — CSS :hover alone was
+                easy to miss and flaky under automation. */}
             <span
               role="tooltip"
-              className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-neutral-100 dark:text-neutral-900"
+              className={`pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-sm transition-opacity dark:bg-neutral-100 dark:text-neutral-900 ${
+                regenHint ? "opacity-100" : "opacity-0"
+              }`}
             >
               Regenerate link
             </span>
