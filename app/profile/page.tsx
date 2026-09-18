@@ -357,15 +357,6 @@ export default function ProfilePage() {
                 )}
               </div>
               {avatarError && <p className="mt-1 text-xs text-amber-600">{avatarError}</p>}
-              {/* A Google name is refreshed from the profile on every sign-in,
-                  so editing it here would be undone the next time you signed
-                  in. A password account's is whatever it was registered with,
-                  and has no edit control yet — either way the per-group names
-                  are the ones to change, so the copy doesn't split hairs. */}
-              <p className="mt-2 text-xs text-neutral-500">
-                The name above is the one on your account. The per-group names
-                below are the ones you can change.
-              </p>
               {/* Personal Gmail + Computing ID never share an address, so the
                   first-SFU collision offer never fires — this is the path. */}
               <LinkSfuCta offer={offer} />

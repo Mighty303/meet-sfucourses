@@ -43,10 +43,6 @@ function ProfileCard({
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{email}</p>
         <p className="truncate text-sm text-neutral-500">{email}</p>
-        <p className="mt-2 text-xs text-neutral-500">
-          The name above is the one on your account. The per-group names below
-          are the ones you can change.
-        </p>
         <LinkSfuCta offer={offer} />
       </div>
     </section>
