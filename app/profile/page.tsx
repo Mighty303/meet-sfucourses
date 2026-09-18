@@ -318,7 +318,7 @@ export default function ProfilePage() {
         <ProfileBodySkeleton />
       ) : (
         <>
-          <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
             <Avatar
               src={data.user.avatar ?? data.user.image}
               name={data.user.name ?? data.user.email}

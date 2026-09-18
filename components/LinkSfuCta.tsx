@@ -41,24 +41,24 @@ export function LinkSfuCta({ offer }: { offer: LinkSfuOffer }) {
 
   if (offer === "link") {
     return (
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-4 flex flex-col gap-3">
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Sign in with your SFU ID and keep the groups on this account.
+          Link your SFU email to this account.
         </p>
         <button type="button" onClick={linkSfu} disabled={busy} className={`self-start ${SFU_BUTTON}`}>
           <SfuMark />
-          {busy ? "Starting…" : "Link your SFU ID"}
+          {busy ? "Starting…" : "Link your SFU email"}
         </button>
         {error && <p className="text-xs text-amber-600">{error}</p>}
       </div>
     );
   }
   if (offer === "linked") {
-    return <p className="mt-2 text-xs text-neutral-500">SFU ID linked.</p>;
+    return <p className="mt-3 text-xs text-neutral-500">SFU email linked.</p>;
   }
   if (offer === "fold") {
     return (
-      <p className="mt-2 text-xs text-neutral-500">
+      <p className="mt-3 text-xs text-neutral-500">
         Signed in here another way before?{" "}
         <Link
           href="/profile/link"
@@ -76,7 +76,7 @@ export function LinkSfuCta({ offer }: { offer: LinkSfuOffer }) {
 /** SFU's own red mark — same glyph as the sign-in panel, not an official logo. */
 function SfuMark() {
   return (
-    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden>
       <path
         d="M9 1.5 16 5v8L9 16.5 2 13V5l7-3.5Z"
         stroke="currentColor"

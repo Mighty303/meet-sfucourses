@@ -14,7 +14,7 @@ const CASES: { title: string; email: string; offer: LinkSfuOffer; note: string }
     title: "Google account, no SFU yet (CAS on)",
     email: "martinwong303@gmail.com",
     offer: "link",
-    note: "Clicking Link your SFU ID starts the challenge and sends you to CAS — then /profile/link only for the confirm screen.",
+    note: "Clicking Link your SFU email starts the challenge and sends you to CAS — then /profile/link only for the confirm screen.",
   },
   {
     title: "Already linked",
@@ -38,7 +38,7 @@ function ProfileCard({
   offer: LinkSfuOffer;
 }) {
   return (
-    <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+    <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
       <Avatar src={null} name={email} size={56} />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{email}</p>

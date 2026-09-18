@@ -26,18 +26,18 @@ describe("linkSfuOffer", () => {
 describe("LinkSfuCta", () => {
   it("renders the Link SFU button for the link offer", () => {
     const html = renderToStaticMarkup(<LinkSfuCta offer="link" />);
-    expect(html).toContain("Link your SFU ID");
-    expect(html).toContain("keep the groups on this account");
+    expect(html).toContain("Link your SFU email");
+    expect(html).toContain("Link your SFU email to this account.");
     expect(html).toContain("bg-[#a6192e]");
     // Starts CAS from the profile button — no middle /profile/link?intent=sfu hop.
     expect(html).not.toContain("/profile/link?intent=sfu");
-    expect(html).not.toContain("SFU ID linked");
+    expect(html).not.toContain("SFU email linked.");
   });
 
   it("hides the button once SFU is linked", () => {
     const html = renderToStaticMarkup(<LinkSfuCta offer="linked" />);
-    expect(html).toContain("SFU ID linked");
-    expect(html).not.toContain("Link your SFU ID");
+    expect(html).toContain("SFU email linked.");
+    expect(html).not.toContain("to this account.");
   });
 
   it("renders nothing for none", () => {
