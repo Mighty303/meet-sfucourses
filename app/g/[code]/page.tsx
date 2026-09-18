@@ -429,7 +429,7 @@ function GroupSchedule({ code }: { code: string }) {
           </Link>
         </header>
 
-        <InviteLink code={code} isAdmin={isAdmin === true} />
+        {signedIn && <InviteLink code={code} isAdmin={isAdmin === true} />}
       </div>
 
       {/* Which group you're reading. One pill is selected at a time, and
@@ -465,7 +465,7 @@ function GroupSchedule({ code }: { code: string }) {
            Reading the week is the default and needs no account, so the page
            gets on with drawing it and puts the ask on the press that needs
            one. */
-        <p className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
+        <p className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-neutral-500">
           {/* Two guests, two different sentences. Whoever started this group
               signed out is already on the grid and has nothing to add — what
               they have is a row only this browser knows is theirs. */}
@@ -474,14 +474,14 @@ function GroupSchedule({ code }: { code: string }) {
               <span>
                 You&apos;re on this grid as{" "}
                 <span className="font-medium text-neutral-700 dark:text-neutral-300">{mine.displayName}</span>,
-                saved in this browser only.
+                saved in this browser only. Sign in to keep your place, then send the invite link below.
               </span>
               <button
                 type="button"
                 onClick={() => setGateAsked(true)}
-                className="font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+                className="rounded-lg bg-neutral-900 px-3 py-2 font-medium text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
               >
-                Sign in to keep it →
+                Sign in to keep your place
               </button>
             </>
           ) : (
@@ -552,6 +552,8 @@ function GroupSchedule({ code }: { code: string }) {
            join or rename has to land somewhere you are already looking. */
         error && <p className="-mt-4 text-sm text-amber-600">{error}</p>
       )}
+
+      {!signedIn && <InviteLink code={code} isAdmin={false} />}
 
       {/* The people and the week they add up to, side by side from `lg`. Ticking
           someone off is a question asked *of* the grid, and with the list a
@@ -997,4 +999,3 @@ function GearIcon() {
     </svg>
   );
 }
-

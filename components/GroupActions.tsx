@@ -28,6 +28,7 @@ export function GroupActions({ startDelay = 0 }: { startDelay?: number }) {
 
   return (
     <div
+      id="group-actions"
       className="fade-up mx-auto flex w-full max-w-lg flex-wrap items-center justify-center gap-x-5 gap-y-3"
       style={{ animationDelay: `${startDelay}ms` }}
     >
