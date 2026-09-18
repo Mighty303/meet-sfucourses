@@ -64,7 +64,7 @@ export function GroupActions({ startDelay = 0 }: { startDelay?: number }) {
 function CreateGroupForm() {
   const router = useRouter();
   const { status } = useSession();
-  const [name, setName] = useState("");
+  const [name, setName] = useState("Study group");
   const [who, setWho] = useState("");
   const [term, setTerm] = useState(currentTermCode());
   const [busy, setBusy] = useState(false);
