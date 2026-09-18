@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
 import { Confirm, MemberRoster, type RosterMember } from "@/components/MemberRoster";
+import { InviteLink } from "@/components/InviteLink";
 import { GroupSettingsSkeleton } from "@/components/Skeleton";
-import { copyText } from "@/lib/copy-text";
-import { forgetLastGroup, rememberLastGroup } from "@/lib/last-group";
+import { forgetLastGroup } from "@/lib/last-group";
 import { fromTermCode } from "@/lib/sfu";
 
 interface Roster {
@@ -51,8 +51,6 @@ export default function GroupSettingsPage({
   const [draftName, setDraftName] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmRegen, setConfirmRegen] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/groups/${code}?view=roster`);
@@ -75,8 +73,6 @@ export default function GroupSettingsPage({
     signedIn &&
     state?.group.ownerUserId != null &&
     state.group.ownerUserId === session?.appUserId;
-
-  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/g/${code}` : "";
 
   async function saveGroupName(e: React.FormEvent) {
     e.preventDefault();
@@ -123,30 +119,6 @@ export default function GroupSettingsPage({
     }
     forgetLastGroup(code);
     router.push("/");
-  }
-
-  /**
-   * Mint a new invite code and land on the settings URL that uses it. The old
-   * path 404s after this — anyone still holding the leaked link is locked out,
-   * which is why it confirms first.
-   */
-  async function regenerateInvite() {
-    setSaving(true);
-    const res = await fetch(`/api/groups/${code}/code`, { method: "POST" });
-    setSaving(false);
-    if (!res.ok) {
-      setConfirmRegen(false);
-      setError(
-        (await res.json().catch(() => ({}))).error ?? "could not regenerate the invite link"
-      );
-      return;
-    }
-    const { code: nextCode } = (await res.json()) as { code: string };
-    setConfirmRegen(false);
-    setError(null);
-    forgetLastGroup(code);
-    rememberLastGroup(nextCode);
-    router.replace(`/g/${nextCode}/settings`);
   }
 
   if (error && !state) {
@@ -239,56 +211,11 @@ export default function GroupSettingsPage({
             Anyone with this link can open the group and join it.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            readOnly
-            value={shareUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
-          />
-          <button
-            onClick={() => {
-              void copyText(shareUrl).then((ok) => {
-                if (!ok) {
-                  setCopyState("failed");
-                  return;
-                }
-                setCopyState("copied");
-                setTimeout(() => setCopyState("idle"), 2000);
-              });
-            }}
-            className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-          >
-            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy link"}
-          </button>
-        </div>
-        {/* Admin-only: rotating the code is how you kill a leaked invite without
-            deleting the group. Confirmed first — the old URL dies permanently. */}
-        {isAdmin && (
-          confirmRegen ? (
-            <Confirm
-              question="Regenerate the invite link? The current one stops working."
-              action="Regenerate"
-              pending="Regenerating…"
-              busy={saving}
-              onConfirm={regenerateInvite}
-              onCancel={() => setConfirmRegen(false)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setConfirmLeave(false);
-                setConfirmDelete(false);
-                setConfirmRegen(true);
-              }}
-              disabled={saving}
-              className="w-fit text-sm text-neutral-500 transition-colors hover:text-neutral-900 disabled:opacity-50 dark:hover:text-neutral-100"
-            >
-              Regenerate link
-            </button>
-          )
-        )}
+        <InviteLink
+          code={code}
+          isAdmin={isAdmin === true}
+          afterPath={(next) => `/g/${next}/settings`}
+        />
       </section>
 
       <section>
@@ -324,7 +251,7 @@ export default function GroupSettingsPage({
               />
             ) : (
               <button
-                onClick={() => { setConfirmDelete(false); setConfirmRegen(false); setConfirmLeave(true); }}
+                onClick={() => { setConfirmDelete(false); setConfirmLeave(true); }}
                 disabled={saving}
                 className="flex w-fit items-center gap-2 rounded-lg border border-red-600 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
               >
@@ -346,7 +273,7 @@ export default function GroupSettingsPage({
               />
             ) : (
               <button
-                onClick={() => { setConfirmLeave(false); setConfirmRegen(false); setConfirmDelete(true); }}
+                onClick={() => { setConfirmLeave(false); setConfirmDelete(true); }}
                 disabled={saving}
                 className="flex w-fit items-center gap-2 rounded-lg border border-red-600 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:opacity-50 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white"
               >
