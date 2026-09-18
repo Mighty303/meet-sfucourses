@@ -8,12 +8,12 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { HeatGrid } from "@/components/HeatGrid";
+import { InviteLink } from "@/components/InviteLink";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
-import { copyText } from "@/lib/copy-text";
 import { rememberLastGroup } from "@/lib/last-group";
 import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
@@ -101,7 +101,6 @@ function GroupSchedule({ code }: { code: string }) {
   // rather than in the URL the way `grid` does. A shared link shouldn't decide
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
   // The account modal, asked for by the guest bar.
@@ -365,7 +364,6 @@ function GroupSchedule({ code }: { code: string }) {
     return <GroupPageSkeleton />;
   }
 
-  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/g/${code}` : "";
   const thisMonday = mondayOf(new Date());
   // "Who's around today" is the question the member list gets opened for, so it
   // only answers it when today is actually the week on screen.
@@ -411,60 +409,16 @@ function GroupSchedule({ code }: { code: string }) {
 
   return (
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8">
-      <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
-          <p className="text-sm text-neutral-500">
-            {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
-          </p>
-        </div>
-        {/* The two things you do to a group rather than read from it, on one
-            row. The invite used to be a labelled panel with the URL always on
-            screen — a paragraph and a text field permanently occupying the top
-            of a page you opened to look at a week. It is a one-time action, so
-            it is a button, and the field only appears if the copy actually
-            failed. Everything rarer than that is behind the ⋮. */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              void copyText(shareUrl).then((ok) => {
-                if (!ok) {
-                  setCopyState("failed");
-                  return;
-                }
-                setCopyState("copied");
-                setTimeout(() => setCopyState("idle"), 2000);
-              });
-            }}
-            className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 active:scale-[0.98] dark:border-neutral-700 dark:hover:bg-neutral-800"
-          >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-              className="shrink-0 text-neutral-500 dark:text-neutral-400"
-            >
-              {copyState === "copied" ? (
-                <path d="M4.5 10.5l3.5 3.5 7.5-8" />
-              ) : (
-                <>
-                  <rect x="7.25" y="7.25" width="9" height="9" rx="2" />
-                  <path d="M12.75 4.75a2 2 0 00-2-2h-6a2 2 0 00-2 2v6a2 2 0 002 2" />
-                </>
-              )}
-            </svg>
-            {copyState === "copied" ? "Copied" : "Copy invite link"}
-          </button>
-
-          {/* Everything you do to a group rather than read from it lives on
-              one page now — its name, its people, and the two ways out. The ⋮
-              this replaces held four items and could not hold a fifth. */}
+      <div className="flex flex-col gap-3">
+        <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
+            <p className="text-sm text-neutral-500">
+              {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
+            </p>
+          </div>
+          {/* Name and settings stay on this row; the invite URL is a full-width
+              field below so it matches group settings and stays readable. */}
           <Link
             href={`/g/${code}/settings`}
             aria-label="Group settings"
@@ -473,21 +427,10 @@ function GroupSchedule({ code }: { code: string }) {
           >
             <GearIcon />
           </Link>
-        </div>
-      </header>
+        </header>
 
-      {copyState === "failed" && (
-        <div className="-mt-4 flex items-center gap-2">
-          <p className="text-sm text-neutral-500">Copying didn&apos;t work. Take it from here:</p>
-          <input
-            readOnly
-            autoFocus
-            value={shareUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="w-64 rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-600 sm:w-96 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
-          />
-        </div>
-      )}
+        <InviteLink code={code} isAdmin={isAdmin === true} />
+      </div>
 
       {/* Which group you're reading. One pill is selected at a time, and
           switching is a real navigation, so these are links — middle-click and
