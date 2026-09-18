@@ -81,8 +81,9 @@ function LinkBody() {
     }
     // Signed out first, because /signin redirects anyone who still holds a
     // session. The challenge cookie is untouched by this and is what carries
-    // the first half of the proof across.
-    await signOut({ callbackUrl: "/signin?next=%2Fprofile%2Flink" });
+    // the first half of the proof across. Linking SFU from profile skips this
+    // page and goes straight to CAS; this start is for the generic fold path.
+    await signOut({ callbackUrl: `/signin?next=${encodeURIComponent("/profile/link")}` });
   }
 
   async function confirm() {

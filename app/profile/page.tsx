@@ -8,7 +8,10 @@ import { Avatar } from "@/components/Avatar";
 import { Confirm } from "@/components/MemberRoster";
 import { ProfileBodySkeleton } from "@/components/Skeleton";
 import { ColorPicker } from "@/components/ColorPicker";
+import { useSfuDoor } from "@/components/SfuDoor";
+import { LinkSfuCta } from "@/components/LinkSfuCta";
 import { fileToAvatar } from "@/lib/avatar-file";
+import { linkSfuOffer } from "@/lib/link-sfu-offer";
 import { CoursePicker } from "@/components/CoursePicker";
 import { fromTermCode } from "@/lib/sfu";
 
@@ -39,6 +42,8 @@ interface Me {
    * hang it on.
    */
   terms: { term: string; classNumbers: string[] }[];
+  /** Which sign-in doors open this account (includes linked tombstones). */
+  doors: { google: boolean; password: boolean; sfu: boolean };
 }
 
 /**
@@ -62,6 +67,7 @@ export default function ProfilePage() {
   // `update()` re-runs the JWT callback, which is how the picture in the header
   // catches up without a sign-out.
   const { status: authStatus, update: refreshSession } = useSession();
+  const sfuOpen = useSfuDoor();
 
   const [data, setData] = useState<Me | null>(null);
   const [saving, setSaving] = useState(false);
@@ -75,6 +81,8 @@ export default function ProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const offer = linkSfuOffer(data?.doors, sfuOpen);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/me");
@@ -310,7 +318,7 @@ export default function ProfilePage() {
         <ProfileBodySkeleton />
       ) : (
         <>
-          <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+          <section className="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
             <Avatar
               src={data.user.avatar ?? data.user.image}
               name={data.user.name ?? data.user.email}
@@ -349,27 +357,9 @@ export default function ProfilePage() {
                 )}
               </div>
               {avatarError && <p className="mt-1 text-xs text-amber-600">{avatarError}</p>}
-              {/* A Google name is refreshed from the profile on every sign-in,
-                  so editing it here would be undone the next time you signed
-                  in. A password account's is whatever it was registered with,
-                  and has no edit control yet — either way the per-group names
-                  are the ones to change, so the copy doesn't split hairs. */}
-              <p className="mt-2 text-xs text-neutral-500">
-                The name above is the one on your account. The per-group names
-                below are the ones you can change.
-              </p>
-              {/* Every door is its own row until somebody links them, so a
-                  second sign-in is a second account with its own groups. */}
-              <p className="mt-2 text-xs text-neutral-500">
-                Signed in here another way before?{" "}
-                <Link
-                  href="/profile/link"
-                  className="text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
-                >
-                  Fold your accounts into one
-                </Link>
-                .
-              </p>
+              {/* Personal Gmail + Computing ID never share an address, so the
+                  first-SFU collision offer never fires — this is the path. */}
+              <LinkSfuCta offer={offer} />
             </div>
           </section>
 
