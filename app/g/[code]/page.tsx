@@ -9,9 +9,10 @@ import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { HeatGrid } from "@/components/HeatGrid";
 import { InviteLink } from "@/components/InviteLink";
+import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
-import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
+import { resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { rememberLastGroup } from "@/lib/last-group";
@@ -663,20 +664,7 @@ function GroupSchedule({ code }: { code: string }) {
                   <span className="truncate font-medium" style={{ color: m.color }}>
                     {m.displayName}
                   </span>
-                  {m.sfuVerified && (
-                    /* An invite code is the only lock on this page, so a
-                       roster can fill up with names you half-recognise. This
-                       says one narrow, checkable thing: CAS let them in, so
-                       they're at SFU. It deliberately doesn't say who — the
-                       computing ID never leaves the server. */
-                    <span
-                      title="Signed in with an SFU computing ID"
-                      aria-label="SFU verified"
-                      className="shrink-0 text-xs leading-none text-[#a6192e] dark:text-red-400"
-                    >
-                      ✓
-                    </span>
-                  )}
+                  {m.sfuVerified && <SfuVerifiedBadge />}
                   {m.userId !== null && m.userId === state.group.ownerUserId && (
                     <span
                       title="Created this group"
@@ -685,22 +673,17 @@ function GroupSchedule({ code }: { code: string }) {
                       Admin
                     </span>
                   )}
-                  {/* Their word on the whole of today. Nothing shows for the
-                      ordinary case, so a badge here always means a deviation —
-                      which is the only reason to look. */}
+                  {/* Online today changes campus availability; skipped classes
+                      are already marked by dashed blocks in the grid. */}
                   {todayShown && m.userId !== null && (() => {
                     const { status, note } = resolveStatus(state.attendance, m.userId, today, null);
-                    if (status === "going") return null;
+                    if (status !== "remote") return null;
                     return (
                       <span
-                        title={note ?? `${STATUS_EFFECT[status].label} today`}
-                        className={`shrink-0 rounded border px-1 text-[10px] uppercase tracking-wide ${
-                          status === "remote"
-                            ? "border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400"
-                            : "border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-600"
-                        }`}
+                        title={note ?? "Online today"}
+                        className="shrink-0 rounded border border-blue-300 px-1 text-[10px] uppercase tracking-wide text-blue-600 dark:border-blue-800 dark:text-blue-400"
                       >
-                        {status === "remote" ? "Online" : "Not in"}
+                        Online
                       </span>
                     );
                   })()}
