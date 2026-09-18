@@ -82,16 +82,25 @@ export function InviteLink({
           {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy link"}
         </button>
         {isAdmin && !confirmRegen && (
-          <button
-            type="button"
-            onClick={() => setConfirmRegen(true)}
-            disabled={busy}
-            aria-label="Regenerate invite link"
-            title="Regenerate invite link"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
-          >
-            <RegenerateIcon />
-          </button>
+          <span className="relative inline-flex">
+            <button
+              type="button"
+              onClick={() => setConfirmRegen(true)}
+              disabled={busy}
+              aria-label="Regenerate link"
+              className="peer flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            >
+              <RegenerateIcon />
+            </button>
+            {/* Visible hover label — native title is too easy to miss on an
+                icon-only control that used to be a text button. */}
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100 dark:bg-neutral-100 dark:text-neutral-900"
+            >
+              Regenerate link
+            </span>
+          </span>
         )}
       </div>
       {isAdmin && confirmRegen && (
