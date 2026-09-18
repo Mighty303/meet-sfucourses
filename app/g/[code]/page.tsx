@@ -12,7 +12,7 @@ import { InviteLink } from "@/components/InviteLink";
 import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
-import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
+import { resolveStatus } from "@/lib/attendance-status";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { rememberLastGroup } from "@/lib/last-group";
@@ -671,22 +671,17 @@ function GroupSchedule({ code }: { code: string }) {
                       Admin
                     </span>
                   )}
-                  {/* Their word on the whole of today. Nothing shows for the
-                      ordinary case, so a badge here always means a deviation —
-                      which is the only reason to look. */}
+                  {/* Online today changes campus availability; skipped classes
+                      are already marked by dashed blocks in the grid. */}
                   {todayShown && m.userId !== null && (() => {
                     const { status, note } = resolveStatus(state.attendance, m.userId, today, null);
-                    if (status === "going") return null;
+                    if (status !== "remote") return null;
                     return (
                       <span
-                        title={note ?? `${STATUS_EFFECT[status].label} today`}
-                        className={`shrink-0 rounded border px-1 text-[10px] uppercase tracking-wide ${
-                          status === "remote"
-                            ? "border-blue-300 text-blue-600 dark:border-blue-800 dark:text-blue-400"
-                            : "border-dashed border-neutral-400 text-neutral-500 dark:border-neutral-600"
-                        }`}
+                        title={note ?? "Online today"}
+                        className="shrink-0 rounded border border-blue-300 px-1 text-[10px] uppercase tracking-wide text-blue-600 dark:border-blue-800 dark:text-blue-400"
                       >
-                        {status === "remote" ? "Online" : "Not in"}
+                        Online
                       </span>
                     );
                   })()}
@@ -985,4 +980,3 @@ function GearIcon() {
     </svg>
   );
 }
-
