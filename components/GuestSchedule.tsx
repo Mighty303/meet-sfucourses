@@ -110,6 +110,14 @@ export function GuestSchedule() {
           onChange={load}
           onPreview={setPreview}
         />
+        {classNumbers !== null && classNumbers.length > 0 && (
+          <a
+            href="#group-actions"
+            className="w-fit text-sm font-medium text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+          >
+            Next: create a group →
+          </a>
+        )}
       </div>
 
       <WeekPreview

@@ -22,7 +22,7 @@ import { GuestSchedule } from "@/components/GuestSchedule";
  */
 export function LandingHome() {
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 p-6 pb-20 sm:pb-24">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 p-6 pb-20 sm:pb-24">
       {/* Staggered a couple of hundred milliseconds apart: the page is a few
           blocks stacked down the middle, and arriving together makes them read
           as one wall. Inline delays rather than nth-child utilities, because
@@ -43,6 +43,19 @@ export function LandingHome() {
           Everyone drops their SFU schedule in. The grid shows when you&apos;re all free
           on campus at the same time.
         </p>
+        <ol className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="How it works">
+          {[
+            "Search & add",
+            "Create group",
+            "Sign in",
+            "Invite friends",
+          ].map((step, index) => (
+            <li key={step} className="flex items-start gap-2 text-neutral-500 dark:text-neutral-400">
+              <span className="font-semibold text-neutral-900 dark:text-neutral-100">{index + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="fade-up" style={{ animationDelay: "120ms" }}>
