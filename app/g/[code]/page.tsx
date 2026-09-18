@@ -55,7 +55,6 @@ interface GroupState {
   };
   members: Member[];
   busyByMember: Record<number, BusyBlock[]>;
-  classesByMember: Record<number, { classNumber: string; course: string; section: string }[]>;
   free: FreeWindow[];
   unresolved: Record<number, string[]>;
   unscheduled: Record<number, UnscheduledSection[]>;
@@ -542,20 +541,21 @@ function GroupSchedule({ code }: { code: string }) {
           </div>
         </div>
       ) : (
-        /* The member list beside the grid holds your classes and edit link.
-           This error stays above both, where a failed action is visible. */
+        /* Keep action errors above the member list and schedule. */
         error && <p className="-mt-4 text-sm text-amber-600">{error}</p>
       )}
 
       {!signedIn && <InviteLink code={code} isAdmin={false} />}
 
-      {/* The grid sets the desktop row height; the member list scrolls within it. */}
-      <div className={`flex flex-col gap-6 lg:grid lg:items-stretch ${listOpen ? "lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]" : "lg:grid-cols-[9rem_minmax(0,1fr)]"}`}>
+      {/* Keep members beside the schedule on desktop. */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {/* The handle stays on the list's right edge when collapsed. */}
       <aside
-        className="relative min-h-0"
+        className={`flex flex-col gap-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:shrink-0 ${
+          listOpen ? "lg:w-56 xl:w-64" : "lg:w-auto"
+        }`}
       >
-        <div className="flex flex-col gap-2 lg:absolute lg:inset-0 lg:min-h-0">
-        {/* Keep the collapse handle at the list's right edge. */}
+        {/* Keep the heading and handle aligned across both list states. */}
         <div className="flex items-start justify-end gap-x-3">
           {listOpen && (
             <div className="mr-auto flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -571,7 +571,7 @@ function GroupSchedule({ code }: { code: string }) {
                   Include everyone
                 </button>
               )}
-              {/* Settings are available beside the names they manage. */}
+              {/* Put group settings beside the member names. */}
               {isAdmin && (
                 <Link
                   href={`/g/${code}/settings`}
@@ -582,31 +582,28 @@ function GroupSchedule({ code }: { code: string }) {
               )}
             </div>
           )}
-          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Members</span>}
+          {/* Label the collapsed member list. */}
+          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Group Member List</span>}
           <CollapseHandle open={listOpen} onToggle={() => setListOpen((v) => !v)} />
         </div>
         {listOpen && (
         <>
-        {/* Keep the heading visible while member cards scroll. */}
-        <ul id="group-list" className="member-list-scroll grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
+        {/* Scroll member rows while the heading stays visible. */}
+        <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
           {state.members.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
             const on = hasSchedule && !hidden.has(m.id);
             const unresolved = state.unresolved[m.id]?.length ?? 0;
-            const classes = state.classesByMember[m.id] ?? [];
             return (
-              <li
-                key={m.id}
-                className={`rounded-lg border transition-colors ${
-                  hasSchedule
-                    ? on
-                      ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                      : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
-                    : "border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
-                }`}
-              >
+              <li key={m.id}>
                 <label
-                  className={`flex items-center gap-2 px-3 pt-2.5 text-sm ${hasSchedule ? "cursor-pointer" : "cursor-not-allowed"}`}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                    hasSchedule
+                      ? on
+                        ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                        : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
+                      : "cursor-not-allowed border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
+                  }`}
                 >
                   <input
                     type="checkbox"
@@ -620,8 +617,14 @@ function GroupSchedule({ code }: { code: string }) {
                         return next;
                       })
                     }
-                    aria-label={`Include ${m.displayName} in the schedule`}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-blue-600 disabled:cursor-not-allowed"
+                    className="peer sr-only"
+                  />
+                  {/* A hairline ring that fills when they're counted — the row
+                      already carries the state in its border and opacity, so
+                      the toggle only has to hint, not shout. */}
+                  <span
+                    aria-hidden
+                    className="h-3 w-3 shrink-0 rounded-full border border-neutral-400 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-400 dark:border-neutral-600 dark:peer-checked:border-white dark:peer-checked:bg-white"
                   />
                   {m.image ? (
                     <Image src={m.image} alt="" width={18} height={18} className="shrink-0 rounded-full" />
@@ -654,6 +657,23 @@ function GroupSchedule({ code }: { code: string }) {
                       </span>
                     );
                   })()}
+                  {/* The section count links to editing without toggling the row. */}
+                  {me && m.id === me.id ? (
+                    <Link
+                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+                      className="ml-auto shrink-0 text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {hasSchedule
+                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
+                        : "add your courses →"}
+                    </Link>
+                  ) : (
+                    <span className="ml-auto shrink-0 text-xs text-neutral-500">
+                      {!hasSchedule
+                        ? "no schedule yet"
+                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
+                    </span>
+                  )}
                   {unresolved > 0 && (
                     <span
                       className="shrink-0 text-xs text-amber-600"
@@ -663,27 +683,6 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
-                <div className="px-3 pb-2.5 pl-9">
-                  {classes.length > 0 && (
-                    <ul className="flex flex-wrap gap-1.5" aria-label={`${m.displayName}'s classes`}>
-                      {classes.map((section) => (
-                        <li key={section.classNumber} className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs dark:border-neutral-700">
-                          <span className="font-medium">{section.course}</span> <span className="text-neutral-500">{section.section}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {me && m.id === me.id ? (
-                    <Link
-                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
-                      className="mt-1 inline-block text-xs text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {hasSchedule ? "Edit your classes →" : "Add your courses →"}
-                    </Link>
-                  ) : !hasSchedule ? (
-                    <span className="text-xs text-neutral-500">no schedule yet</span>
-                  ) : null}
-                </div>
               </li>
             );
           })}
@@ -702,7 +701,6 @@ function GroupSchedule({ code }: { code: string }) {
         )}
         </>
         )}
-        </div>
       </aside>
 
       <div className="@container flex min-w-0 flex-1 flex-col gap-6">
