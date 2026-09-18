@@ -13,6 +13,7 @@ import {
   findGroup,
   getGroupState,
   getMemberCourses,
+  regenerateGroupCode,
   removeMemberCourse,
   type Group,
 } from "@/lib/groups";
@@ -44,6 +45,16 @@ describe.skipIf(!hasKey)("a group of four", () => {
   it("finds the group by its invite code", async () => {
     const found = await findGroup(group.code);
     expect(found).toMatchObject({ id: group.id, name: TEST_GROUP.name, term: SAMPLE_TERM });
+  });
+
+  it("rotates the invite code and leaves the old one dead", async () => {
+    const previous = group.code;
+    const next = await regenerateGroupCode(group.id);
+    expect(next).not.toBe(previous);
+    expect(await findGroup(previous)).toBeNull();
+    const found = await findGroup(next);
+    expect(found).toMatchObject({ id: group.id, code: next });
+    group = found!;
   });
 
   it("seats everyone with a distinct palette colour", async () => {
