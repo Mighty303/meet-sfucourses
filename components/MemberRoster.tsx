@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 
 export interface RosterMember {
   id: number;
@@ -158,17 +159,7 @@ export function MemberRoster({
                     <span className="truncate text-sm font-medium" style={{ color: m.color }}>
                       {m.displayName}
                     </span>
-                    {m.sfuVerified && (
-                      /* The same narrow claim the member list makes: CAS let
-                         them in, so they're at SFU. Never which computing ID. */
-                      <span
-                        title="Signed in with an SFU computing ID"
-                        aria-label="SFU verified"
-                        className="shrink-0 text-xs leading-none text-[#a6192e] dark:text-red-400"
-                      >
-                        ✓
-                      </span>
-                    )}
+                    {m.sfuVerified && <SfuVerifiedBadge />}
                     {isMe && <span className="shrink-0 text-xs text-neutral-500">you</span>}
                     {isOwner && (
                       <span className="shrink-0 rounded border border-neutral-300 px-1 text-[10px] uppercase tracking-wide text-neutral-500 dark:border-neutral-700">

@@ -9,6 +9,7 @@ import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { HeatGrid } from "@/components/HeatGrid";
 import { InviteLink } from "@/components/InviteLink";
+import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { STATUS_EFFECT, resolveStatus } from "@/lib/attendance-status";
@@ -661,20 +662,7 @@ function GroupSchedule({ code }: { code: string }) {
                   <span className="truncate font-medium" style={{ color: m.color }}>
                     {m.displayName}
                   </span>
-                  {m.sfuVerified && (
-                    /* An invite code is the only lock on this page, so a
-                       roster can fill up with names you half-recognise. This
-                       says one narrow, checkable thing: CAS let them in, so
-                       they're at SFU. It deliberately doesn't say who — the
-                       computing ID never leaves the server. */
-                    <span
-                      title="Signed in with an SFU computing ID"
-                      aria-label="SFU verified"
-                      className="shrink-0 text-xs leading-none text-[#a6192e] dark:text-red-400"
-                    >
-                      ✓
-                    </span>
-                  )}
+                  {m.sfuVerified && <SfuVerifiedBadge />}
                   {m.userId !== null && m.userId === state.group.ownerUserId && (
                     <span
                       title="Created this group"

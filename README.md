@@ -163,8 +163,8 @@ for why merging silently is the wrong shape):
 - **SFU CAS**, the only door that proves the person is at SFU. Off unless
   `SFU_CAS_ENABLED=1`. The password is typed at `cas.sfu.ca` and never reaches
   this site; what comes back is a one-time ticket validated server to server.
-  Rosters show a ✓ next to members who came in this way, and only that boolean
-  crosses the wire.
+  Rosters show a boxed SFU verification badge next to members who came in this
+  way, and only that boolean crosses the wire.
 
 `SFU_CAS_BASE` is ignored in production unless it is https, because whoever
 answers `/serviceValidate` decides who you are signed in as. The service URL is
