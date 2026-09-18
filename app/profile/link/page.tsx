@@ -22,6 +22,7 @@ interface Preview {
   survivor?: Account;
   absorbed?: Account;
   sharedGroups?: { code: string; name: string }[];
+  resultingEmail?: string;
   error?: string;
 }
 
@@ -130,6 +131,7 @@ function LinkBody() {
           survivor: preview.survivor,
           absorbed: preview.absorbed,
           sharedGroups: preview.sharedGroups ?? [],
+          resultingEmail: preview.resultingEmail ?? preview.survivor.email,
         }
       : null;
 
@@ -161,18 +163,19 @@ function LinkBody() {
     );
   }
 
-  const { survivor, absorbed, sharedGroups } = plan;
+  const { survivor, absorbed, sharedGroups, resultingEmail } = plan;
+  const emailChanges = resultingEmail !== survivor.email;
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Both accounts are proved. Everything on the second moves to the first,
+        Both accounts are proved. Your groups and courses move onto one account,
         and every way of signing in keeps working afterwards.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {[
-          { a: survivor, label: "Keeps your stuff" },
+          { a: survivor, label: "Keeps your groups" },
           { a: absorbed, label: "Folds into it" },
         ].map(({ a, label }) => (
           <article
@@ -194,6 +197,13 @@ function LinkBody() {
           </article>
         ))}
       </div>
+
+      {emailChanges && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          After this, the account email will be{" "}
+          <span className="font-medium text-neutral-900 dark:text-neutral-100">{resultingEmail}</span>.
+        </p>
+      )}
 
       {sharedGroups.length > 0 && (
         <div className="rounded-lg border border-amber-300 p-4 text-sm dark:border-amber-900">

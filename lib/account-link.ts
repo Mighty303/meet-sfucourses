@@ -118,6 +118,8 @@ export async function findVerifiedGoogleAccount(sfuUsername: string): Promise<nu
 export interface LinkSide {
   id: number;
   hasSfu: boolean;
+  /** Group memberships on this live row — empty shells lose to accounts with data. */
+  groups: number;
 }
 
 export type SurvivorChoice =
@@ -127,24 +129,32 @@ export type SurvivorChoice =
 /**
  * Which row keeps its id.
  *
- * The SFU one, whenever exactly one side has an SFU credential. Its address is
- * derived from a computing ID that CAS checked a password for, which makes it
- * the only address on this site anybody has vouched for — and letting that row
- * survive is what puts that address on the merged account without rewriting a
- * column to get it there.
+ * Prefer the side that already has groups when the other is empty. An SFU
+ * Computing ID's first sign-in is often a blank row; it should not "keep your
+ * stuff" over the Google account that holds the timetable. When SFU is the
+ * empty side, merge_accounts still moves the verified @sfu.ca address onto the
+ * survivor (012).
  *
- * Otherwise the initiator: the account they were sitting on when they started,
- * which is the one the confirm screen can describe as a fact rather than as a
- * rule.
+ * When both sides have groups (or both are empty), the SFU row wins — its
+ * address is derived from a computing ID CAS checked, so letting that row
+ * survive puts @sfu.ca on the account without rewriting a column.
  *
- * Two SFU rows is not a merge. idx_meetup_users_sfu_username means they cannot
- * share a computing ID, so they are two different people and somebody has
- * mis-clicked.
+ * Otherwise the initiator. Two SFU rows is not a merge.
  */
 export function chooseSurvivor(initiator: LinkSide, other: LinkSide): SurvivorChoice {
   if (initiator.id === other.id) return { error: "same-account" };
   if (initiator.hasSfu && other.hasSfu) return { error: "two-sfu-accounts" };
-  if (other.hasSfu) return { survivorId: other.id, absorbedId: initiator.id };
+
+  const initiatorEmpty = initiator.groups === 0;
+  const otherEmpty = other.groups === 0;
+  if (initiatorEmpty !== otherEmpty) {
+    return initiatorEmpty
+      ? { survivorId: other.id, absorbedId: initiator.id }
+      : { survivorId: initiator.id, absorbedId: other.id };
+  }
+
+  if (other.hasSfu && !initiator.hasSfu) return { survivorId: other.id, absorbedId: initiator.id };
+  if (initiator.hasSfu && !other.hasSfu) return { survivorId: initiator.id, absorbedId: other.id };
   return { survivorId: initiator.id, absorbedId: other.id };
 }
 
@@ -199,6 +209,11 @@ export interface MergePlan {
    * with it — so the confirm screen names them rather than reporting a count.
    */
   sharedGroups: { code: string; name: string }[];
+  /**
+   * Address the live account will wear after the fold. @sfu.ca whenever an SFU
+   * door is involved — even if the Google row is the survivor id.
+   */
+  resultingEmail: string;
 }
 
 export type PlanResult = MergePlan | { error: SurvivorError };
@@ -217,8 +232,8 @@ export async function planMerge(initiatorId: number, otherId: number): Promise<P
   if (!initiator || !other) return { error: "missing-account" };
 
   const choice = chooseSurvivor(
-    { id: initiator.id, hasSfu: initiator.doors.sfu },
-    { id: other.id, hasSfu: other.doors.sfu }
+    { id: initiator.id, hasSfu: initiator.doors.sfu, groups: initiator.groups },
+    { id: other.id, hasSfu: other.doors.sfu, groups: other.groups }
   );
   if ("error" in choice) return { error: choice.error };
 
@@ -234,10 +249,13 @@ export async function planMerge(initiatorId: number, otherId: number): Promise<P
     WHERE a.user_id = ${survivor.id} AND b.user_id = ${absorbed.id}
     ORDER BY g.name
   `;
+  const resultingEmail =
+    survivor.doors.sfu || !absorbed.doors.sfu ? survivor.email : absorbed.email;
   return {
     survivor,
     absorbed,
     sharedGroups: rows.map((r) => ({ code: r.code as string, name: r.name as string })),
+    resultingEmail,
   };
 }
 
