@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 import type { LinkSfuOffer } from "@/lib/link-sfu-offer";
 
-/** Same chrome as SignInPanel's SFU door — crimson, mark, full-width feel. */
+/** Same crimson + mark as SignInPanel's SFU door, sized for the profile card. */
 const SFU_BUTTON =
-  "flex items-center justify-center gap-2.5 rounded-lg bg-[#a6192e] px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50";
+  "flex items-center justify-center gap-1.5 rounded-lg bg-[#a6192e] px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50";
+
 
 /**
  * Profile copy for attaching an SFU Computing ID (or the generic fold blurb
