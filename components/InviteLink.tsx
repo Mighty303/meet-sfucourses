@@ -82,21 +82,21 @@ export function InviteLink({
           {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy link"}
         </button>
         {isAdmin && !confirmRegen && (
-          <span className="relative inline-flex">
+          <span className="group relative inline-flex">
             <button
               type="button"
               onClick={() => setConfirmRegen(true)}
               disabled={busy}
               aria-label="Regenerate link"
-              className="peer flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             >
               <RegenerateIcon />
             </button>
-            {/* Visible hover label — native title is too easy to miss on an
-                icon-only control that used to be a text button. */}
+            {/* Label under the icon on hover/focus — the control used to be a
+                text button, and a native title alone is easy to miss. */}
             <span
               role="tooltip"
-              className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity peer-hover:opacity-100 peer-focus-visible:opacity-100 dark:bg-neutral-100 dark:text-neutral-900"
+              className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-neutral-100 dark:text-neutral-900"
             >
               Regenerate link
             </span>
