@@ -76,8 +76,9 @@ export function InviteLink({
               setTimeout(() => setCopyState("idle"), 2000);
             });
           }}
-          className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          className="flex shrink-0 items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium transition-colors hover:bg-neutral-100 active:scale-[0.98] dark:border-neutral-700 dark:hover:bg-neutral-800"
         >
+          <CopyIcon done={copyState === "copied"} />
           {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy link"}
         </button>
         {isAdmin && !confirmRegen && (
@@ -105,6 +106,33 @@ export function InviteLink({
       )}
       {error && <p className="text-sm text-amber-600">{error}</p>}
     </div>
+  );
+}
+
+/** Clipboard by default; a check once the copy landed. */
+function CopyIcon({ done }: { done: boolean }) {
+  return (
+    <svg
+      width="17"
+      height="17"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="shrink-0 text-neutral-500 dark:text-neutral-400"
+    >
+      {done ? (
+        <path d="M4.5 10.5l3.5 3.5 7.5-8" />
+      ) : (
+        <>
+          <rect x="7.25" y="7.25" width="9" height="9" rx="2" />
+          <path d="M12.75 4.75a2 2 0 00-2-2h-6a2 2 0 00-2 2v6a2 2 0 002 2" />
+        </>
+      )}
+    </svg>
   );
 }
 
