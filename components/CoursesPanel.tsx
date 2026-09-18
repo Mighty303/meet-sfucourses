@@ -289,22 +289,36 @@ export function CoursesPanel({
           {/* Skip is a link, not a lesser button: this step is a suggestion
               about what to do first, and dressing the way past it as a control
               to defeat would make it look like one. */}
-          <div className="flex flex-wrap items-center gap-4 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-            <Link
-              href={next}
-              className="rounded-lg bg-neutral-900 px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
-            >
-              {toGroup ? "Back to your group" : "Create or join a group"}
-            </Link>
-            {courses !== null && saved === 0 ? (
-              <Link href={next} className="text-sm text-neutral-500 underline-offset-2 hover:underline">
-                Skip for now
+          <div className="flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
+            {/* The solo week only shows gaps you already knew about. The point
+                of saving a section is who you invite next — say so the moment
+                the list stops being empty, but only for someone who arrived
+                with nothing, so a return visit doesn't re-cheer. */}
+            {saved > 0 && startCourses.length === 0 && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Nice — now invite the people you want to meet.
+                {toGroup
+                  ? " Share the invite link from your group."
+                  : " Create a group and send them the link."}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-4">
+              <Link
+                href={next}
+                className="rounded-lg bg-neutral-900 px-4 py-2.5 font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
+              >
+                {toGroup ? "Back to your group" : "Create or join a group"}
               </Link>
-            ) : saved > 0 ? (
-              <span className="text-sm text-neutral-500">
-                {saved} section{saved === 1 ? "" : "s"} saved.
-              </span>
-            ) : null}
+              {courses !== null && saved === 0 ? (
+                <Link href={next} className="text-sm text-neutral-500 underline-offset-2 hover:underline">
+                  Skip for now
+                </Link>
+              ) : saved > 0 ? (
+                <span className="text-sm text-neutral-500">
+                  {saved} section{saved === 1 ? "" : "s"} saved.
+                </span>
+              ) : null}
+            </div>
           </div>
         </aside>
       </div>

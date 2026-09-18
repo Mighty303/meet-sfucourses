@@ -15,6 +15,7 @@ import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { copyText } from "@/lib/copy-text";
 import { rememberLastGroup } from "@/lib/last-group";
+import { partialScheduleBanner } from "@/lib/name-list";
 import { commonFree, weekDates } from "@/lib/overlap";
 import type { BusyBlock, FreeWindow, UnscheduledSection } from "@/lib/overlap";
 import { fromTermCode, WEEKDAYS } from "@/lib/sfu";
@@ -377,6 +378,17 @@ function GroupSchedule({ code }: { code: string }) {
   const unscheduledMembers = shown
     .map((m) => [m, state.unscheduled[m.id] ?? []] as const)
     .filter(([, sections]) => sections.length > 0);
+
+  // Who is in the group but not in the overlap maths. The roster already says
+  // "no schedule yet" per row; this is the group-level reading of the same gap.
+  const missingSchedules = state.members.filter(
+    (m) => !scheduled.some((s) => s.id === m.id)
+  );
+  const overlapBanner = partialScheduleBanner(
+    scheduled.length,
+    state.members.length,
+    missingSchedules.map((m) => m.displayName)
+  );
 
   // A week counts as in-term if any of it overlaps the term's date range;
   // paging past either end would just show a grid with no classes on it.
@@ -816,6 +828,11 @@ function GroupSchedule({ code }: { code: string }) {
       </aside>
 
       <div className="@container flex min-w-0 flex-1 flex-col gap-6">
+      {overlapBanner && (
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          {overlapBanner}
+        </p>
+      )}
       {!weekInTerm(thisMonday) && (
         <p className="text-xs text-neutral-500">
           Today falls outside {fromTermCode(state.group.term)}, so this starts at
