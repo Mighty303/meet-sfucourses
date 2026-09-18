@@ -97,10 +97,9 @@ export function GuestSchedule() {
     <div className="flex flex-col gap-8">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-2">
         {/* Not a heading: the picker brings its own, and three of them stacked
-            said the same thing three times. This is the one fact it can't
-            say — that none of this is going to ask you to sign up. */}
+            said the same thing three times. */}
         <p className="text-sm text-neutral-500">
-          {fromTermCode(TERM)} · no account needed
+          {fromTermCode(TERM)}
         </p>
         <CoursePicker
           term={TERM}
