@@ -82,78 +82,92 @@ function WeekGridSkeleton() {
   );
 }
 
-/** Cards under "Gaps between classes" — same grid as the real windows. */
-function WindowListSkeleton({ rows = 3 }: { rows?: number }) {
+/** The fixed-width member rail beside the calendar on desktop. */
+function MemberListSkeleton() {
   return (
-    <ul className="grid animate-pulse gap-1.5 sm:grid-cols-2 xl:grid-cols-3" aria-hidden>
-      {Array.from({ length: rows }, (_, i) => (
-        <li key={i} className="rounded-lg border border-neutral-200 px-3 py-2 dark:border-neutral-800">
-          <div className="flex items-center gap-2">
-            <Bar className="h-3.5 w-20 shrink-0" />
-            <Bar className="h-3.5 w-24" />
-            <Bar className="ml-auto h-3 w-14" />
+    <aside className="relative min-h-0 animate-pulse" aria-hidden>
+      <div className="flex flex-col gap-2 lg:absolute lg:inset-0 lg:min-h-0">
+        <div className="flex items-start justify-end gap-x-3">
+          <div className="mr-auto flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <Bar className="h-4 w-36" />
+            <Bar className="h-3 w-40" />
           </div>
-          <Bar className="mt-1.5 h-3 w-40" />
-        </li>
-      ))}
-    </ul>
+          <Bar className="h-8 w-8 shrink-0" />
+        </div>
+
+        <ul className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-hidden">
+          {["w-24", "w-20", "w-28", "w-16", "w-24", "w-20"].map((width, i) => (
+            <li
+              key={i}
+              className="flex flex-col gap-2 rounded-lg border border-neutral-300 px-3 py-2.5 dark:border-neutral-700"
+            >
+              <div className="flex items-center gap-2">
+                <Bar className="h-4 w-4 shrink-0" />
+                <Dot className="h-[18px] w-[18px] shrink-0" />
+                <Bar className={`h-3.5 ${width}`} />
+              </div>
+              <div className="flex gap-1.5 pl-6">
+                <Bar className="h-5 w-16" />
+                <Bar className="h-5 w-14" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
   );
 }
 
 /** The group page while the group state is in flight. */
 export function GroupPageSkeleton() {
   return (
-    <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 p-4 sm:p-6" aria-busy>
+    <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8" aria-busy>
       <span className="sr-only">Loading schedule…</span>
 
-      <header className="flex animate-pulse flex-wrap items-start justify-between gap-3" aria-hidden>
-        <div className="flex flex-col gap-2">
-          <Bar className="h-7 w-48" />
-          <Bar className="h-4 w-64" />
+      <div className="flex animate-pulse flex-col gap-3" aria-hidden>
+        <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
+          <div className="flex flex-col gap-2">
+            <Bar className="h-7 w-48" />
+            <Bar className="h-4 w-40" />
+          </div>
+          <Bar className="h-9 w-9 shrink-0" />
+        </header>
+        <div className="flex flex-wrap items-center gap-2">
+          <Bar className="h-9 w-64 max-w-full sm:w-96" />
+          <Bar className="h-9 w-28 shrink-0" />
+          <Bar className="h-9 w-9 shrink-0" />
         </div>
-        <div className="flex items-center gap-2">
-          <Bar className="h-8 w-44 sm:w-72 lg:w-96" />
-          <Bar className="h-8 w-20 shrink-0" />
-        </div>
-      </header>
-
-      <div className="flex animate-pulse flex-col gap-3 rounded-lg border border-neutral-200 p-4 dark:border-neutral-800" aria-hidden>
-        <div className="flex items-center gap-2">
-          <Dot className="h-6 w-6" />
-          <Bar className="h-4 w-28" />
-        </div>
-        <Bar className="h-9 w-full" />
       </div>
 
-      <section aria-hidden>
-        <Bar className="mb-2 h-4 w-24 animate-pulse" />
-        <ul className="grid animate-pulse gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-          {["w-24", "w-20", "w-28", "w-16", "w-24", "w-20"].map((w, i) => (
-            <li
-              key={i}
-              className="flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 dark:border-neutral-700"
-            >
-              <Dot className="h-3 w-3 shrink-0" />
-              <Dot className="h-[18px] w-[18px] shrink-0" />
-              <Bar className={`h-3.5 ${w}`} />
-              <Bar className="ml-auto h-3 w-16 shrink-0" />
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="flex animate-pulse items-center justify-center gap-2" aria-hidden>
-        <Bar className="h-9 w-10" />
-        <Bar className="h-5 w-48" />
-        <Bar className="h-9 w-10" />
+      <div className="-mt-2 flex animate-pulse flex-col gap-2" aria-hidden>
+        <Bar className="h-4 w-24" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Bar className="h-9 w-32 rounded-full" />
+          <Bar className="h-9 w-28 rounded-full" />
+          <Bar className="h-9 w-36 rounded-full" />
+        </div>
       </div>
 
-      <WeekGridSkeleton />
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-stretch xl:grid-cols-[16rem_minmax(0,1fr)]">
+        <MemberListSkeleton />
 
-      <section aria-hidden>
-        <Bar className="mb-2 h-4 w-40 animate-pulse" />
-        <WindowListSkeleton />
-      </section>
+        <div className="@container flex min-w-0 flex-1 flex-col gap-6">
+          <div className="flex animate-pulse flex-wrap items-center justify-center gap-2 @min-[68rem]:grid @min-[68rem]:grid-cols-[1fr_auto_1fr]" aria-hidden>
+            <div />
+            <div className="flex items-center gap-2">
+              <Bar className="h-9 w-10" />
+              <Bar className="h-5 w-48" />
+              <Bar className="h-9 w-10" />
+            </div>
+            <div className="flex items-center justify-center gap-2 @min-[68rem]:justify-self-end">
+              <Bar className="h-9 w-40" />
+              <Bar className="h-9 w-40" />
+            </div>
+          </div>
+
+          <WeekGridSkeleton />
+        </div>
+      </div>
     </main>
   );
 }
