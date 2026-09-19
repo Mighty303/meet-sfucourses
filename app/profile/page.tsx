@@ -20,7 +20,7 @@ interface Membership {
   displayName: string;
   color: string;
   classNumbers: string[];
-  group: { id: number; code: string; name: string; term: string };
+  group: { id: number; code: string; name: string; term: string; image: string | null };
   /** The whole roster, so the colour picker knows what's already spoken for. */
   members: { id: number; displayName: string; color: string }[];
 }

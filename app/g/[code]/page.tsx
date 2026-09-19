@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
+import { GroupImage } from "@/components/GroupImage";
 import { HeatGrid } from "@/components/HeatGrid";
 import { InviteLink } from "@/components/InviteLink";
 import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
@@ -39,9 +40,9 @@ interface Member {
  */
 interface GroupOption {
   memberId: number;
-  /** Your colour in that group, so the dot matches its grid. */
+  /** Your colour in that group, used by the fallback icon and the grid. */
   color: string;
-  group: { code: string; name: string; term: string };
+  group: { code: string; name: string; term: string; image: string | null };
 }
 
 interface GroupState {
@@ -50,6 +51,7 @@ interface GroupState {
     code: string;
     name: string;
     term: string;
+    image: string | null;
     /** The group's admin — the only person who can delete it. */
     ownerUserId: number | null;
   };
@@ -412,11 +414,14 @@ function GroupSchedule({ code }: { code: string }) {
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8">
       <div className="flex flex-col gap-3">
         <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
-            <p className="text-sm text-neutral-500">
-              {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <GroupImage src={state.group.image} name={state.group.name} size={48} />
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">{state.group.name}</h1>
+              <p className="text-sm text-neutral-500">
+                {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
+              </p>
+            </div>
           </div>
           {/* Name and settings stay on this row; the invite URL is a full-width
               field below so it matches group settings and stays readable. */}
@@ -450,8 +455,12 @@ function GroupSchedule({ code }: { code: string }) {
               current={g.group.code === code}
               title={`${g.group.name} · ${fromTermCode(g.group.term)}`}
             >
-              {/* Your colour in that group — the same key its grid uses. */}
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: g.color }} />
+              <GroupImage
+                src={g.group.image}
+                name={g.group.name}
+                color={g.color}
+                size={20}
+              />
               <span className="truncate">{g.group.name}</span>
             </Pill>
           ))}
