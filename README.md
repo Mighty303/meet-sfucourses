@@ -77,6 +77,7 @@ erDiagram
         string code UK "the invite link"
         string name
         string term "2026-fall"
+        string image "custom square picture"
         int owner_user_id FK "nullable, ON DELETE SET NULL"
     }
     members {

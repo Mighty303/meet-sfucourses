@@ -1,5 +1,6 @@
 import { casEmail } from "./cas";
 import { getDb } from "./db";
+import { MAX_IMAGE_DATA_URL_CHARS, isValidImageDataUrl } from "./image-data-url";
 
 export interface AppUser {
   id: number;
@@ -55,15 +56,8 @@ export function avatarOf(user: { image: string | null; avatar: string | null }):
  * Only the three formats a canvas will encode, and only base64 — anything else
  * (an http URL, an SVG that could carry script) is refused.
  */
-export const MAX_AVATAR_CHARS = 200_000;
-
-export function isValidAvatar(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length <= MAX_AVATAR_CHARS &&
-    /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)
-  );
-}
+export const MAX_AVATAR_CHARS = MAX_IMAGE_DATA_URL_CHARS;
+export const isValidAvatar = isValidImageDataUrl;
 
 /**
  * Keyed on Google's `sub`, not the email — an email can be reassigned within a
