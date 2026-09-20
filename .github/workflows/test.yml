@@ -2,8 +2,19 @@
 #
 # The unit suite gates merges: it needs no network, no database and no secrets,
 # so it can never fail for a reason unrelated to the diff. The smoke suite talks
-# to SFU's server and the database suite costs a Neon branch — neither belongs
-# in the path of a pull request, so they run on their own schedule.
+# to SFU's server and runs on its own schedule.
+#
+# Two jobs touch Postgres, and the difference between them is the point.
+#
+# `migrations` runs against a sidecar container: no secret, no Neon branch, so
+# it runs on every pull request including one from a fork, where secrets are
+# withheld and the `database` job skips itself silently. It starts from an
+# empty database, which is the path the other job structurally cannot take.
+#
+# `database` branches from production and re-runs every migration over a copy
+# of the real schema and data, then exercises the app's own queries against the
+# result. That needs the Neon key, and it is the only job that can notice
+# production drifting away from db/migrations.
 
 name: test
 
@@ -39,6 +50,37 @@ jobs:
           DATABASE_URL: postgresql://user:pass@localhost/db
           AUTH_SECRET: build-only-not-a-real-secret
       - run: npx tsc --noEmit
+
+  migrations:
+    name: migrations (throwaway Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          # trust, not a password: the container holds nothing, lives for the
+          # length of one job, and is reachable only from that job.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        # Without this the job can connect before the server is accepting
+        # connections, and the first migration fails for no reason at all.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Set here, so tests/migrations/setup.ts knows not to reach for Docker.
+      - run: npm run test:migrations
+        env:
+          MIGRATIONS_DATABASE_URL: postgresql://postgres@localhost:5432/postgres
 
   database:
     name: database (Neon branch)
