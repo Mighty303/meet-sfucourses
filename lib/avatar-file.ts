@@ -1,8 +1,8 @@
-// Turning a chosen file into something small enough to keep on the user row.
+// Turning a chosen file into something small enough to keep on a database row.
 // Browser-only: it needs a canvas.
 
-/** Square, and big enough for a 48px avatar on a 2x screen. */
-export const AVATAR_PX = 128;
+/** Square, and big enough for a 64px picture on a 2x screen. */
+export const SQUARE_IMAGE_PX = 128;
 
 /** Anything larger is refused before decoding — a 40MP photo would just stall. */
 export const MAX_FILE_BYTES = 12 * 1024 * 1024;
@@ -13,7 +13,7 @@ export const MAX_FILE_BYTES = 12 * 1024 * 1024;
  * type, which for a photo would be several times the size, so the result is
  * checked rather than trusted.
  */
-export async function fileToAvatar(file: File): Promise<string> {
+export async function fileToSquareImage(file: File): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("that isn't an image");
   }
@@ -24,8 +24,8 @@ export async function fileToAvatar(file: File): Promise<string> {
   const bitmap = await loadBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
-  canvas.width = AVATAR_PX;
-  canvas.height = AVATAR_PX;
+  canvas.width = SQUARE_IMAGE_PX;
+  canvas.height = SQUARE_IMAGE_PX;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("your browser wouldn't render the image");
@@ -38,14 +38,17 @@ export async function fileToAvatar(file: File): Promise<string> {
     side,
     0,
     0,
-    AVATAR_PX,
-    AVATAR_PX
+    SQUARE_IMAGE_PX,
+    SQUARE_IMAGE_PX
   );
   if ("close" in bitmap) bitmap.close();
 
   const webp = canvas.toDataURL("image/webp", 0.85);
   return webp.startsWith("data:image/webp") ? webp : canvas.toDataURL("image/jpeg", 0.85);
 }
+
+/** Profile-facing name kept for callers that describe this square as an avatar. */
+export const fileToAvatar = fileToSquareImage;
 
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === "function") {

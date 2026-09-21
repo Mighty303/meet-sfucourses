@@ -15,6 +15,7 @@ import {
   getMemberCourses,
   regenerateGroupCode,
   removeMemberCourse,
+  setGroupImage,
   type Group,
 } from "@/lib/groups";
 import { weekDates } from "@/lib/overlap";
@@ -55,6 +56,15 @@ describe.skipIf(!hasKey)("a group of four", () => {
     const found = await findGroup(next);
     expect(found).toMatchObject({ id: group.id, code: next });
     group = found!;
+  });
+
+  it("stores and removes a custom group image", async () => {
+    const image = "data:image/png;base64,YQ==";
+    await setGroupImage(group.id, image);
+    expect(await findGroup(group.code)).toMatchObject({ image });
+
+    await setGroupImage(group.id, null);
+    expect(await findGroup(group.code)).toMatchObject({ image: null });
   });
 
   it("seats everyone with a distinct palette colour", async () => {

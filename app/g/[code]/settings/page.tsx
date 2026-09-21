@@ -4,9 +4,11 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useCallback, useEffect, useState } from "react";
+import { GroupImage } from "@/components/GroupImage";
 import { Confirm, MemberRoster, type RosterMember } from "@/components/MemberRoster";
 import { InviteLink } from "@/components/InviteLink";
 import { GroupSettingsSkeleton } from "@/components/Skeleton";
+import { fileToSquareImage } from "@/lib/avatar-file";
 import { forgetLastGroup } from "@/lib/last-group";
 import { fromTermCode } from "@/lib/sfu";
 
@@ -16,6 +18,7 @@ interface Roster {
     code: string;
     name: string;
     term: string;
+    image: string | null;
     /** The group's admin, and the only person the buttons below appear for. */
     ownerUserId: number | null;
   };
@@ -47,6 +50,8 @@ export default function GroupSettingsPage({
   const [state, setState] = useState<Roster | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   // Null when nobody is renaming the group; the string being edited otherwise.
   const [draftName, setDraftName] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -91,6 +96,41 @@ export default function GroupSettingsPage({
     setError(null);
     setDraftName(null);
     load();
+  }
+
+  async function saveGroupImage(image: string | null) {
+    setImageBusy(true);
+    setImageError(null);
+    const res = await fetch(`/api/groups/${code}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image }),
+    });
+    setImageBusy(false);
+    if (!res.ok) {
+      setImageError((await res.json().catch(() => ({}))).error ?? "could not save that picture");
+      return;
+    }
+    setState((current) =>
+      current ? { ...current, group: { ...current.group, image } } : current
+    );
+  }
+
+  async function pickGroupImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImageBusy(true);
+    setImageError(null);
+    let image: string;
+    try {
+      image = await fileToSquareImage(file);
+    } catch (err) {
+      setImageBusy(false);
+      setImageError(err instanceof Error ? err.message : "could not read that image");
+      return;
+    }
+    await saveGroupImage(image);
   }
 
   async function leave() {
@@ -157,6 +197,49 @@ export default function GroupSettingsPage({
           <span className="font-mono">{state.group.code}</span>
         </p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="font-medium">Picture</h2>
+          <p className="text-xs text-neutral-500">
+            {isAdmin ? "Shown anywhere this group appears." : "Only the admin can change it."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <GroupImage src={state.group.image} name={state.group.name} size={64} />
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-3">
+              <label
+                className={`rounded-lg border border-neutral-300 px-3 py-1.5 text-sm transition-colors dark:border-neutral-700 ${
+                  imageBusy
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                }`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={imageBusy}
+                  onChange={pickGroupImage}
+                  className="sr-only"
+                />
+                {imageBusy ? "Saving…" : state.group.image ? "Change picture" : "Upload a picture"}
+              </label>
+              {state.group.image && (
+                <button
+                  type="button"
+                  onClick={() => saveGroupImage(null)}
+                  disabled={imageBusy}
+                  className="text-sm text-neutral-500 underline-offset-2 hover:underline disabled:opacity-50"
+                >
+                  Remove picture
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        {imageError && <p className="text-xs text-amber-600">{imageError}</p>}
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

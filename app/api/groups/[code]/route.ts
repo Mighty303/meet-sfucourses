@@ -7,7 +7,9 @@ import {
   isGroupOwner,
   listMembers,
   renameGroup,
+  setGroupImage,
 } from "@/lib/groups";
+import { MAX_IMAGE_DATA_URL_CHARS, isValidImageDataUrl } from "@/lib/image-data-url";
 import { toMinutes } from "@/lib/sfu";
 
 export async function GET(
@@ -49,7 +51,7 @@ export async function GET(
   }
 }
 
-/** Renaming is the admin's too — one name, and everyone reads it. */
+/** Group identity is admin-managed because every member sees the same values. */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ code: string }> }
@@ -63,20 +65,52 @@ export async function PATCH(
   const session = await auth();
   if (!(await isGroupOwner(group.id, session?.appUserId ?? null))) {
     return NextResponse.json(
-      { error: "only the group admin can rename this group" },
+      { error: "only the group admin can change this group" },
       { status: 403 }
     );
   }
 
-  const body = await req.json().catch(() => ({}));
-  if (typeof body.name !== "string" || !body.name.trim()) {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const parsed: unknown = await req.json().catch(() => ({}));
+  const body = parsed && typeof parsed === "object"
+    ? parsed as Record<string, unknown>
+    : {};
+  const hasName = Object.prototype.hasOwnProperty.call(body, "name");
+  const hasImage = Object.prototype.hasOwnProperty.call(body, "image");
+  if (!hasName && !hasImage) {
+    return NextResponse.json({ error: "name or image is required" }, { status: 400 });
   }
 
-  // Same cap as creation, so a rename can't hold more than the form allows.
-  const name = body.name.trim().slice(0, 120);
-  await renameGroup(group.id, name);
-  return NextResponse.json({ name });
+  let name: string | undefined;
+  if (hasName) {
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      return NextResponse.json({ error: "name is required" }, { status: 400 });
+    }
+    // Same cap as creation, so a rename can't hold more than the form allows.
+    name = body.name.trim().slice(0, 120);
+  }
+
+  let image: string | null | undefined;
+  if (hasImage) {
+    const candidate: unknown = body.image;
+    if (candidate !== null && !isValidImageDataUrl(candidate)) {
+      return NextResponse.json(
+        {
+          error:
+            typeof candidate === "string" && candidate.length > MAX_IMAGE_DATA_URL_CHARS
+              ? "that picture is too big"
+              : "that isn't an image we can store",
+        },
+        { status: 400 }
+      );
+    }
+    image = candidate;
+  }
+
+  await Promise.all([
+    name === undefined ? Promise.resolve() : renameGroup(group.id, name),
+    image === undefined ? Promise.resolve() : setGroupImage(group.id, image),
+  ]);
+  return NextResponse.json({ name, image });
 }
 
 /**

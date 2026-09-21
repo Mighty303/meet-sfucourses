@@ -187,8 +187,14 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
       sql`
         SELECT
           pg_database_size(current_database()) AS database_bytes,
-          (SELECT COALESCE(SUM(octet_length(avatar)), 0) FROM meetup.users) AS avatar_bytes,
-          (SELECT COALESCE(MAX(octet_length(avatar)), 0) FROM meetup.users) AS largest_avatar_bytes
+          (
+            (SELECT COALESCE(SUM(octet_length(avatar)), 0) FROM meetup.users)
+            + (SELECT COALESCE(SUM(octet_length(image)), 0) FROM meetup.groups)
+          ) AS avatar_bytes,
+          GREATEST(
+            (SELECT COALESCE(MAX(octet_length(avatar)), 0) FROM meetup.users),
+            (SELECT COALESCE(MAX(octet_length(image)), 0) FROM meetup.groups)
+          ) AS largest_avatar_bytes
       `,
 
       // relkind 'r' only: pg_total_relation_size already folds in each table's
