@@ -439,21 +439,15 @@ export function WeekGrid({
                             subtitle: LABELS[day],
                             lines: [
                               `${formatTime(w.start)} – ${formatTime(w.end)} · ${formatDuration(minutes)}`,
-                              w.onCampus.length === 0
-                                ? solo ? "You have no class this day" : "Nobody has class this day, so someone has to travel"
-                                // Present tense only when they're actually there:
-                                // outside the gaps this window is before the first
-                                // class or after the last, and campus has emptied.
-                                : {
-                                    label: w.betweenClasses ? "On campus" : "Has class today",
-                                    value: w.onCampus.join(", "),
-                                  },
-                              // Only the split is worth a row: one campus is
-                              // the ordinary case, and saying it on every card
-                              // is a line you learn to skip. Two means they
-                              // can't actually meet.
                               ...(w.sharedCampus
-                                ? []
+                                ? [
+                                    w.onCampus.length === 0
+                                      ? solo ? "You have no class this day" : "Nobody has class this day, so someone has to travel"
+                                      : {
+                                          label: w.betweenClasses ? "On campus" : "Has class today",
+                                          value: w.onCampus.join(", "),
+                                        },
+                                  ]
                                 : [
                                     "Campus split",
                                     ...w.campuses.map((campus) => ({
