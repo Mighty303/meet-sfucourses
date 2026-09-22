@@ -105,6 +105,7 @@ function GroupSchedule({ code }: { code: string }) {
   // rather than in the URL the way `grid` does. A shared link shouldn't decide
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
+  const [memberQuery, setMemberQuery] = useState("");
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
   // The account modal, asked for by the guest bar.
@@ -303,6 +304,18 @@ function GroupSchedule({ code }: { code: string }) {
     () => scheduled.filter((m) => !hidden.has(m.id)),
     [scheduled, hidden]
   );
+  const filteredMembers = useMemo(() => {
+    const query = memberQuery.trim().toLocaleLowerCase();
+    if (!query) return state?.members ?? [];
+    return (state?.members ?? []).filter((m) =>
+      m.displayName.toLocaleLowerCase().includes(query)
+    );
+  }, [memberQuery, state]);
+
+  /** Replace the current comparison with one person's schedule. */
+  function showOnly(memberId: number) {
+    setHidden(new Set(scheduled.filter((m) => m.id !== memberId).map((m) => m.id)));
+  }
 
   /**
    * Two readings of the same week, and which one a group opens on depends on
@@ -571,7 +584,7 @@ function GroupSchedule({ code }: { code: string }) {
             <div className="mr-auto flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="font-medium">Group Member List</h2>
               <p className="text-xs text-neutral-500">
-                Click a name to toggle them out
+                Toggle names or show one person only
               </p>
               {shown.length < scheduled.length && (
                 <button
@@ -598,22 +611,49 @@ function GroupSchedule({ code }: { code: string }) {
         </div>
         {listOpen && (
         <>
+        <div className="relative">
+          <label htmlFor="member-search" className="sr-only">Search group members</label>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-neutral-400"
+          >
+            <circle cx="8.5" cy="8.5" r="5.25" />
+            <path d="m12.5 12.5 4 4" strokeLinecap="round" />
+          </svg>
+          <input
+            id="member-search"
+            type="search"
+            value={memberQuery}
+            onChange={(event) => setMemberQuery(event.target.value)}
+            placeholder="Search members…"
+            aria-controls="group-list"
+            className="w-full rounded-lg border border-neutral-300 bg-transparent py-2 pr-3 pl-9 text-sm outline-none placeholder:text-neutral-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-neutral-700"
+          />
+        </div>
         {/* Scroll member rows while the heading stays visible. */}
         <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
-          {state.members.map((m) => {
+          {filteredMembers.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
             const on = hasSchedule && !hidden.has(m.id);
+            const isOnly = on && shown.length === 1;
             const unresolved = state.unresolved[m.id]?.length ?? 0;
             return (
-              <li key={m.id}>
+              <li
+                key={m.id}
+                className={`rounded-lg border transition-colors ${
+                  hasSchedule
+                    ? on
+                      ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+                      : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
+                    : "border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
+                }`}
+              >
                 <label
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                    hasSchedule
-                      ? on
-                        ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-                        : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
-                      : "cursor-not-allowed border-dashed border-neutral-200 opacity-55 dark:border-neutral-800"
-                  }`}
+                  className={`flex items-center gap-2 px-3 pt-2.5 text-sm ${hasSchedule ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   <input
                     type="checkbox"
@@ -667,23 +707,6 @@ function GroupSchedule({ code }: { code: string }) {
                       </span>
                     );
                   })()}
-                  {/* The section count links to editing without toggling the row. */}
-                  {me && m.id === me.id ? (
-                    <Link
-                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
-                      className="ml-auto shrink-0 text-xs text-blue-600 hover:underline dark:text-blue-400"
-                    >
-                      {hasSchedule
-                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
-                        : "add your courses →"}
-                    </Link>
-                  ) : (
-                    <span className="ml-auto shrink-0 text-xs text-neutral-500">
-                      {!hasSchedule
-                        ? "no schedule yet"
-                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
-                    </span>
-                  )}
                   {unresolved > 0 && (
                     <span
                       className="shrink-0 text-xs text-amber-600"
@@ -693,9 +716,44 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
+                <div className="flex items-center justify-between gap-2 px-3 pb-2.5 pl-9 text-xs">
+                  {/* The section count links to editing without toggling the row. */}
+                  {me && m.id === me.id ? (
+                    <Link
+                      href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
+                      className="shrink-0 text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {hasSchedule
+                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
+                        : "add your courses →"}
+                    </Link>
+                  ) : (
+                    <span className="shrink-0 text-neutral-500">
+                      {!hasSchedule
+                        ? "no schedule yet"
+                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
+                    </span>
+                  )}
+                  {hasSchedule && (
+                    <button
+                      type="button"
+                      onClick={() => showOnly(m.id)}
+                      disabled={isOnly}
+                      aria-label={`Show only ${m.displayName}'s schedule`}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-blue-600 transition-colors hover:bg-blue-50 disabled:cursor-default disabled:text-neutral-400 dark:text-blue-400 dark:hover:bg-blue-950 dark:disabled:text-neutral-600"
+                    >
+                      Only
+                    </button>
+                  )}
+                </div>
               </li>
             );
           })}
+          {filteredMembers.length === 0 && (
+            <li className="rounded-lg border border-dashed border-neutral-300 px-3 py-5 text-center text-sm text-neutral-500 dark:border-neutral-700">
+              No members match “{memberQuery.trim()}”.
+            </li>
+          )}
         </ul>
         {/* Why the grid below isn't answering the question yet. Three
             different problems with three different fixes, so they get three
