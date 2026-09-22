@@ -14,6 +14,7 @@ export interface PersonStatus {
   color: string;
   isCurrentUser: boolean;
   status: AttendanceStatus | "away";
+  statusUpdatedAt: string | null;
   classLabel: string | null;
   campus: string | null;
 }
@@ -29,6 +30,7 @@ export interface ClassOccurrence {
   end: number;
   status: "going" | "skipping" | "remote";
   note: string | null;
+  updatedAt: string | null;
 }
 
 export interface HomeStatus {
@@ -70,6 +72,9 @@ function Person({ person }: { person: PersonStatus }) {
       : person.status === "away"
         ? "bg-neutral-300 dark:bg-neutral-600"
         : "bg-emerald-500";
+  const statusTime = person.statusUpdatedAt
+    ? new Date(person.statusUpdatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
 
   return (
     <div className="flex min-w-0 items-start gap-3 border-b border-neutral-100 py-2.5 first:pt-0 last:border-b-0 last:pb-0 dark:border-neutral-800">
@@ -87,6 +92,7 @@ function Person({ person }: { person: PersonStatus }) {
             <span className={`h-2 w-2 rounded-full ${statusDot}`} aria-hidden />
             {statusLabel}
           </span>
+          {statusTime && <span className="shrink-0 text-xs text-neutral-500">set {statusTime}</span>}
         </span>
         <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
           {person.classLabel ?? "No class right now"}

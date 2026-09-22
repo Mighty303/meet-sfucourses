@@ -20,10 +20,10 @@ export default function HomeStatusPreviewPage() {
   const nextDate = inClass ? now.date : tomorrow(now.date);
   const preview: HomeStatus = {
     onCampus: [
-      { key: "ada", displayName: "Ada", image: null, color: "#ef4444", isCurrentUser: false, status: "going", classLabel: "CMPT 225 D100 LEC", campus: "Burnaby" },
-      { key: "bo", displayName: "Bo", image: null, color: "#3b82f6", isCurrentUser: false, status: "remote", classLabel: "MATH 232 D100 LEC", campus: null },
-      { key: "you", displayName: "Martin", image: null, color: "#0f8a6d", isCurrentUser: true, status: "away", classLabel: "Next CMPT 419 D500 LEC · 2:30 PM", campus: null },
-      { key: "kaleigh", displayName: "Kaleigh", image: null, color: "#ec4899", isCurrentUser: false, status: "away", classLabel: "Done CMPT 225 D100 LEC · 12:00 PM", campus: null },
+      { key: "ada", displayName: "Ada", image: null, color: "#ef4444", isCurrentUser: false, status: "going", statusUpdatedAt: "2026-09-22T14:18:00.000Z", classLabel: "CMPT 225 D100 LEC", campus: "Burnaby" },
+      { key: "bo", displayName: "Bo", image: null, color: "#3b82f6", isCurrentUser: false, status: "remote", statusUpdatedAt: "2026-09-22T13:45:00.000Z", classLabel: "MATH 232 D100 LEC", campus: null },
+      { key: "you", displayName: "Martin", image: null, color: "#0f8a6d", isCurrentUser: true, status: "away", statusUpdatedAt: null, classLabel: "Next CMPT 419 D500 LEC · 2:30 PM", campus: null },
+      { key: "kaleigh", displayName: "Kaleigh", image: null, color: "#ec4899", isCurrentUser: false, status: "away", statusUpdatedAt: "2026-09-22T12:30:00.000Z", classLabel: "Done CMPT 225 D100 LEC · 12:00 PM", campus: null },
     ],
     currentClasses: inClass ? [{
       course: "CMPT 225",
@@ -36,6 +36,7 @@ export default function HomeStatusPreviewPage() {
       end: currentEnd,
       status: "going",
       note: null,
+      updatedAt: null,
     }] : [],
     nextClass: {
       course: "MATH 232",
@@ -48,6 +49,7 @@ export default function HomeStatusPreviewPage() {
       end: inClass ? Math.min(now.minutes + 140, 23 * 60) : 13 * 60,
       status: "going",
       note: null,
+      updatedAt: null,
     },
     hasScheduledClasses: true,
     refreshAt: "2099-01-01T00:00:00.000Z",

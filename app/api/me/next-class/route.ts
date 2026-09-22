@@ -30,6 +30,7 @@ interface Occurrence {
   end: number;
   status: AttendanceStatus;
   note: string | null;
+  updatedAt: string | null;
 }
 
 function addDays(date: string, amount: number): string {
@@ -47,7 +48,7 @@ function occurrencesFor(
   person: Person,
   dates: string[],
   index: Map<string, { course: { dept: string; number: string; title: string }; section: { section: string; schedules: { days: string; startTime: string; endTime: string; campus: string; startDate: string; endDate: string; sectionCode: string }[] } }>,
-  attendance: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus; note: string | null }[]
+  attendance: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus; note: string | null; updatedAt?: string | null }[]
 ): Occurrence[] {
   const out: Occurrence[] = [];
   for (const date of dates) {
@@ -56,7 +57,7 @@ function occurrencesFor(
       const hit = index.get(classNumber);
       if (!hit) continue;
       const status = person.userId === null
-        ? { status: "going" as const, note: null }
+        ? { status: "going" as const, note: null, updatedAt: null }
         : resolveStatus(attendance, person.userId, date, classNumber);
       for (const schedule of hit.section.schedules) {
         if (!parseDays(schedule.days).includes(day) || date < schedule.startDate || date > schedule.endDate) continue;
@@ -74,6 +75,7 @@ function occurrencesFor(
           end,
           status: status.status,
           note: status.note,
+          updatedAt: status.updatedAt ?? null,
         });
       }
     }
@@ -192,6 +194,7 @@ export async function GET() {
               : previous
                 ? `Done ${previous.course} ${previous.section} · ${formatTime(previous.end)}`
                 : "No more classes today",
+      statusUpdatedAt: (current ?? next ?? previous)?.updatedAt ?? null,
       campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
     }];
   });
