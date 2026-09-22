@@ -5,7 +5,7 @@ import { campusNow, campusTerm } from "@/lib/class-status";
 import { getDb } from "@/lib/db";
 import { campusPresence } from "@/lib/home-status";
 import { sectionIndexForClassNumbers } from "@/lib/sections";
-import { DAYS, parseDays, toMinutes } from "@/lib/sfu";
+import { DAYS, formatTime, parseDays, toMinutes } from "@/lib/sfu";
 import { avatarOf, getUser } from "@/lib/users";
 import { listUserCourses } from "@/lib/user-courses";
 
@@ -29,6 +29,9 @@ interface Occurrence {
   start: number;
   end: number;
   status: AttendanceStatus;
+  selectedStatus: AttendanceStatus | null;
+  note: string | null;
+  updatedAt: string | null;
 }
 
 function addDays(date: string, amount: number): string {
@@ -42,11 +45,26 @@ function dayFor(date: string): (typeof DAYS)[number] {
   return DAYS[(value.getUTCDay() + 6) % 7];
 }
 
+function selectedStatusFor(
+  rows: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus }[],
+  userId: number,
+  onDate: string,
+  classNumber: string | null,
+): AttendanceStatus | null {
+  let day: AttendanceStatus | null = null;
+  for (const row of rows) {
+    if (row.userId !== userId || row.onDate !== onDate) continue;
+    if (classNumber !== null && row.classNumber === classNumber) return row.status;
+    if (row.classNumber === null) day = row.status;
+  }
+  return day;
+}
+
 function occurrencesFor(
   person: Person,
   dates: string[],
   index: Map<string, { course: { dept: string; number: string; title: string }; section: { section: string; schedules: { days: string; startTime: string; endTime: string; campus: string; startDate: string; endDate: string; sectionCode: string }[] } }>,
-  attendance: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus; note: string | null }[]
+  attendance: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus; note: string | null; updatedAt?: string | null }[]
 ): Occurrence[] {
   const out: Occurrence[] = [];
   for (const date of dates) {
@@ -55,7 +73,7 @@ function occurrencesFor(
       const hit = index.get(classNumber);
       if (!hit) continue;
       const status = person.userId === null
-        ? { status: "going" as const }
+        ? { status: "going" as const, note: null, updatedAt: null }
         : resolveStatus(attendance, person.userId, date, classNumber);
       for (const schedule of hit.section.schedules) {
         if (!parseDays(schedule.days).includes(day) || date < schedule.startDate || date > schedule.endDate) continue;
@@ -72,6 +90,9 @@ function occurrencesFor(
           start,
           end,
           status: status.status,
+          selectedStatus: person.userId === null ? null : selectedStatusFor(attendance, person.userId, date, classNumber),
+          note: status.note,
+          updatedAt: status.updatedAt ?? null,
         });
       }
     }
@@ -157,7 +178,11 @@ export async function GET() {
   ) ?? null;
 
   const onCampus = personList.flatMap((person) => {
-    const today = occurrencesFor(person, [date], index, attendance);
+    const all = occurrencesFor(person, dates, index, attendance);
+    const today = all.filter((occurrence) => occurrence.date === date);
+    const current = today.find((occurrence) => occurrence.start <= minutes && minutes < occurrence.end) ?? null;
+    const previous = [...today].reverse().find((occurrence) => occurrence.end <= minutes) ?? null;
+    const next = today.find((occurrence) => occurrence.start > minutes) ?? null;
     const presence = campusPresence(
       today.map((occurrence) => ({
         start: occurrence.start,
@@ -167,9 +192,28 @@ export async function GET() {
       })),
       minutes
     );
-    return presence.campus
-      ? [{ key: person.key, displayName: person.displayName, image: person.image, color: person.color, isCurrentUser: person.isCurrentUser, campus: presence.campus }]
-      : [];
+    const status = current?.status ?? (presence.campus ? "going" : "away");
+    return [{
+      key: person.key,
+      displayName: person.displayName,
+      image: person.image,
+      color: person.color,
+      isCurrentUser: person.isCurrentUser,
+      status,
+      classLabel: current
+        ? `${current.course} ${current.section}`
+        : presence.campus && next
+          ? `Between classes · next ${next.course} ${next.section} at ${formatTime(next.start)}`
+          : presence.campus
+            ? "Between classes"
+            : next
+              ? `Next ${next.course} ${next.section} · ${formatTime(next.start)}`
+              : previous
+                ? `Done ${previous.course} ${previous.section} · ${formatTime(previous.end)}`
+                : "No more classes today",
+      statusUpdatedAt: (current ?? next ?? previous)?.updatedAt ?? null,
+      campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
+    }];
   });
 
   return NextResponse.json({

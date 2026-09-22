@@ -22,6 +22,8 @@ export interface AttendanceRow {
   classNumber: string | null;
   status: AttendanceStatus;
   note: string | null;
+  /** Database update time, when this deviation was explicitly saved. */
+  updatedAt?: string | null;
 }
 
 /**
@@ -54,16 +56,26 @@ export function resolveStatus(
   userId: number,
   onDate: string,
   classNumber: string | null
-): { status: AttendanceStatus; note: string | null } {
+): { status: AttendanceStatus; note: string | null; updatedAt?: string | null } {
   let day: AttendanceRow | null = null;
   for (const row of rows) {
     if (row.userId !== userId || row.onDate !== onDate) continue;
     // A class-level row is the most specific answer there is; nothing can
     // override it, so it can return immediately.
     if (classNumber !== null && row.classNumber === classNumber) {
-      return { status: row.status, note: row.note };
+      return {
+        status: row.status,
+        note: row.note,
+        ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
+      };
     }
     if (row.classNumber === null) day = row;
   }
-  return day ? { status: day.status, note: day.note } : { status: "going", note: null };
+  return day
+    ? {
+        status: day.status,
+        note: day.note,
+        ...(day.updatedAt ? { updatedAt: day.updatedAt } : {}),
+      }
+    : { status: "going", note: null };
 }

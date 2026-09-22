@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { AttendanceButtons } from "@/components/AttendanceButtons";
 import { campusNow } from "@/lib/class-status";
 import { formatTime } from "@/lib/sfu";
+import type { AttendanceStatus } from "@/lib/attendance-status";
 
 export interface PersonStatus {
   key: string;
@@ -11,18 +13,25 @@ export interface PersonStatus {
   image: string | null;
   color: string;
   isCurrentUser: boolean;
-  campus: string;
+  status: AttendanceStatus | "away";
+  statusUpdatedAt: string | null;
+  classLabel: string | null;
+  campus: string | null;
 }
 
 export interface ClassOccurrence {
   course: string;
   title: string;
   section: string;
+  classNumber: string;
   campus: string;
   date: string;
   start: number;
   end: number;
   status: "going" | "skipping" | "remote";
+  selectedStatus: AttendanceStatus | null;
+  note: string | null;
+  updatedAt: string | null;
 }
 
 export interface HomeStatus {
@@ -43,28 +52,55 @@ function dayLabel(date: string): string {
 }
 
 function Person({ person }: { person: PersonStatus }) {
+  const statusLabel = person.status === "remote"
+    ? "Online"
+    : person.status === "skipping"
+      ? "Skipping"
+      : person.status === "away"
+        ? "Away"
+        : "Going";
+  const statusTone = person.status === "remote"
+    ? "text-blue-700 dark:text-blue-300"
+    : person.status === "skipping"
+      ? "text-neutral-600 dark:text-neutral-300"
+      : person.status === "away"
+        ? "text-neutral-500 dark:text-neutral-400"
+        : "text-emerald-700 dark:text-emerald-300";
+  const statusDot = person.status === "remote"
+    ? "bg-blue-500"
+    : person.status === "skipping"
+      ? "bg-neutral-400"
+      : person.status === "away"
+        ? "bg-neutral-300 dark:bg-neutral-600"
+        : "bg-emerald-500";
+  const statusTime = person.statusUpdatedAt
+    ? new Date(person.statusUpdatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
+
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-start gap-3 border-b border-neutral-100 py-2.5 first:pt-0 last:border-b-0 last:pb-0 dark:border-neutral-800">
       {person.image ? (
         <Image src={person.image} alt="" width={28} height={28} className="shrink-0 rounded-full" />
       ) : (
-        <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: person.color }} />
+        <span className="h-7 w-7 shrink-0 rounded-full" style={{ backgroundColor: `${person.color}22`, border: `2px solid ${person.color}` }} aria-hidden />
       )}
-      <span className="shrink-0" style={{ color: person.color }}><UserIcon /></span>
-      <span className="truncate" style={{ color: person.color }}>
-        {person.isCurrentUser ? "You" : person.displayName}
-      </span>
-      <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{person.campus}</span>
-    </span>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="10" cy="6.25" r="2.75" />
-      <path d="M4.5 16c.55-2.65 2.55-4.25 5.5-4.25s4.95 1.6 5.5 4.25" />
-    </svg>
+      <div className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate" style={{ color: person.color }}>
+            {person.isCurrentUser ? "You" : person.displayName}
+          </span>
+          <span className={`flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusTone}`}>
+            <span className={`h-2 w-2 rounded-full ${statusDot}`} aria-hidden />
+            {statusLabel}
+          </span>
+          {statusTime && <span className="shrink-0 text-xs text-neutral-500">set {statusTime}</span>}
+        </span>
+        <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
+          {person.classLabel ?? "No class right now"}
+          {person.campus ? ` · ${person.campus}` : ""}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -91,7 +127,17 @@ function countdownLabel(seconds: number): string {
   return `in ${remainder}m`;
 }
 
-function ClassLine({ occurrence, label, now }: { occurrence: ClassOccurrence; label: string; now: Date }) {
+function ClassLine({
+  occurrence,
+  label,
+  now,
+  onStatusChange,
+}: {
+  occurrence: ClassOccurrence;
+  label: string;
+  now: Date;
+  onStatusChange: (occurrence: ClassOccurrence, status: AttendanceStatus) => void | Promise<void>;
+}) {
   const countdown = label === "Next class" ? secondsUntil(occurrence, now) : null;
   return (
     <div className="flex flex-col gap-1">
@@ -106,6 +152,10 @@ function ClassLine({ occurrence, label, now }: { occurrence: ClassOccurrence; la
       <p className="text-sm text-neutral-500 dark:text-neutral-400">
         {dayLabel(occurrence.date)} · {formatTime(occurrence.start)}–{formatTime(occurrence.end)} · {occurrence.status === "remote" ? "Online" : occurrence.campus || "Campus"}
       </p>
+      <AttendanceButtons
+        current={occurrence.selectedStatus}
+        onPick={(status) => onStatusChange(occurrence, status)}
+      />
     </div>
   );
 }
@@ -146,6 +196,35 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
     return () => window.clearInterval(timer);
   }, []);
 
+  async function setAttendance(occurrence: ClassOccurrence, next: AttendanceStatus) {
+    if (!preview) {
+      const response = await fetch("/api/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: occurrence.date,
+          classNumber: occurrence.classNumber,
+          status: next,
+          note: occurrence.note,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not save class attendance");
+    }
+
+    setStatus((current) => {
+      if (!current) return current;
+      const selected = (item: ClassOccurrence) =>
+        item.date === occurrence.date && item.classNumber === occurrence.classNumber
+          ? { ...item, status: next, selectedStatus: next }
+          : item;
+      return {
+        ...current,
+        currentClasses: current.currentClasses.map(selected),
+        nextClass: current.nextClass ? selected(current.nextClass) : null,
+      };
+    });
+  }
+
   const showCurrent = status === null || failed || status.currentClasses.length > 0;
 
   return (
@@ -160,9 +239,9 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         ) : failed ? (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">Campus status is unavailable right now.</p>
         ) : status!.onCampus.length === 0 ? (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No one is scheduled on campus right now.</p>
+          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No group members found.</p>
         ) : (
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-3">
+          <div className="mt-4">
             {status!.onCampus.map((person) => <Person key={person.key} person={person} />)}
           </div>
         )}
@@ -181,7 +260,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
           ) : !status!.hasScheduledClasses ? (
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
           ) : status!.currentClasses.length > 0 ? (
-            <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} /></div>
+            <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} onStatusChange={setAttendance} /></div>
           ) : (
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No class right now.</p>
           )}
@@ -200,7 +279,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         ) : !status!.hasScheduledClasses ? (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
         ) : status!.nextClass ? (
-          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" now={clock} /></div>
+          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" now={clock} onStatusChange={setAttendance} /></div>
         ) : (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No upcoming classes.</p>
         )}

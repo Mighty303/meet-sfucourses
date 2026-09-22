@@ -16,6 +16,11 @@ function toRow(row: Record<string, unknown>): AttendanceRow {
     classNumber: (row.class_number as string | null) ?? null,
     status: row.status as AttendanceStatus,
     note: (row.note as string | null) ?? null,
+    updatedAt: row.updated_at instanceof Date
+      ? row.updated_at.toISOString()
+      : typeof row.updated_at === "string"
+        ? row.updated_at
+        : null,
   };
 }
 
@@ -38,7 +43,7 @@ export async function listAttendance(
   if (userIds.length === 0) return [];
   const sql = getDb();
   const rows = await sql`
-    SELECT user_id, on_date, class_number, status, note
+    SELECT user_id, on_date, class_number, status, note, updated_at
     FROM meetup.attendance
     WHERE user_id = ANY(${userIds}::int[])
       AND on_date BETWEEN ${from}::date AND ${to}::date
