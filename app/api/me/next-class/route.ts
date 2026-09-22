@@ -5,7 +5,7 @@ import { campusNow, campusTerm } from "@/lib/class-status";
 import { getDb } from "@/lib/db";
 import { campusPresence } from "@/lib/home-status";
 import { sectionIndexForClassNumbers } from "@/lib/sections";
-import { DAYS, parseDays, toMinutes } from "@/lib/sfu";
+import { DAYS, formatTime, parseDays, toMinutes } from "@/lib/sfu";
 import { avatarOf, getUser } from "@/lib/users";
 import { listUserCourses } from "@/lib/user-courses";
 
@@ -41,6 +41,12 @@ function addDays(date: string, amount: number): string {
 function dayFor(date: string): (typeof DAYS)[number] {
   const value = new Date(`${date}T12:00:00Z`);
   return DAYS[(value.getUTCDay() + 6) % 7];
+}
+
+function dateLabel(date: string, today: string): string {
+  if (date === today) return "today";
+  if (date === addDays(today, 1)) return "tomorrow";
+  return date;
 }
 
 function occurrencesFor(
@@ -159,8 +165,11 @@ export async function GET() {
   ) ?? null;
 
   const onCampus = personList.flatMap((person) => {
-    const today = occurrencesFor(person, [date], index, attendance);
+    const all = occurrencesFor(person, dates, index, attendance);
+    const today = all.filter((occurrence) => occurrence.date === date);
     const current = today.find((occurrence) => occurrence.start <= minutes && minutes < occurrence.end) ?? null;
+    const previous = [...today].reverse().find((occurrence) => occurrence.end <= minutes) ?? null;
+    const next = all.find((occurrence) => occurrence.date !== date || occurrence.start > minutes) ?? null;
     const presence = campusPresence(
       today.map((occurrence) => ({
         start: occurrence.start,
@@ -178,7 +187,17 @@ export async function GET() {
       color: person.color,
       isCurrentUser: person.isCurrentUser,
       status,
-      classLabel: current ? `${current.course} ${current.section}` : presence.campus ? "Between classes" : null,
+      classLabel: current
+        ? `${current.course} ${current.section}`
+        : presence.campus && next
+          ? `Between classes · next ${next.course} ${next.section} at ${formatTime(next.start)}`
+          : presence.campus
+            ? "Between classes"
+            : next
+              ? `Next ${next.course} ${next.section} · ${dateLabel(next.date, date)} ${formatTime(next.start)}`
+              : previous
+                ? `Done ${previous.course} ${previous.section} · ${formatTime(previous.end)}`
+                : "No class today",
       campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
     }];
   });

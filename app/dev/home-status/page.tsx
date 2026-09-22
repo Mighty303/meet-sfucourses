@@ -22,7 +22,8 @@ export default function HomeStatusPreviewPage() {
     onCampus: [
       { key: "ada", displayName: "Ada", image: null, color: "#ef4444", isCurrentUser: false, status: "going", classLabel: "CMPT 225 D100 LEC", campus: "Burnaby" },
       { key: "bo", displayName: "Bo", image: null, color: "#3b82f6", isCurrentUser: false, status: "remote", classLabel: "MATH 232 D100 LEC", campus: null },
-      { key: "you", displayName: "Martin", image: null, color: "#0f8a6d", isCurrentUser: true, status: "away", classLabel: null, campus: null },
+      { key: "you", displayName: "Martin", image: null, color: "#0f8a6d", isCurrentUser: true, status: "away", classLabel: "Next CMPT 419 D500 LEC · tomorrow 2:30 PM", campus: null },
+      { key: "kaleigh", displayName: "Kaleigh", image: null, color: "#ec4899", isCurrentUser: false, status: "away", classLabel: "Done CMPT 225 D100 LEC · 12:00 PM", campus: null },
     ],
     currentClasses: inClass ? [{
       course: "CMPT 225",
