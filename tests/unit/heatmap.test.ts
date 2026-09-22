@@ -148,7 +148,6 @@ describe("availabilityBands — campus", () => {
     const gap = at(bands(roster), "10:00")!;
     expect(gap.freeIndices).toEqual([0, 1]);
     expect(gap.campuses).toEqual(["Burnaby"]);
-    expect(gap.freeCampusByIndex).toEqual(["Burnaby", "Burnaby"]);
     expect(gap.sharedCampus).toBe(true);
   });
 
@@ -159,7 +158,6 @@ describe("availabilityBands — campus", () => {
     ];
     const gap = at(bands(roster), "10:00")!;
     expect(gap.campuses.slice().sort()).toEqual(["Burnaby", "Surrey"]);
-    expect(gap.freeCampusByIndex).toEqual(["Burnaby", "Surrey"]);
     expect(gap.sharedCampus).toBe(false);
   });
 

@@ -1,4 +1,4 @@
-import { onCampus, type AvailabilityBand, type BusyBlock, type FreeWindow } from "@/lib/overlap";
+import { onCampus, type BusyBlock } from "@/lib/overlap";
 
 interface CampusMember {
   id: number;
@@ -18,17 +18,18 @@ export function scheduleCampuses(
   return [...campuses].sort((a, b) => a.localeCompare(b));
 }
 
-/** Free-member indices that count for the selected campus. */
-export function freeIndicesForCampus(
-  band: AvailabilityBand,
+/** Members with at least one attended in-person class at the selected campus. */
+export function membersAtCampus(
+  members: CampusMember[],
+  busyByMember: Record<number, BusyBlock[]>,
   campus: string | null
-): number[] {
-  if (campus === null) return band.freeIndices;
-  return band.freeIndices.filter((index) => band.freeCampusByIndex[index] === campus);
-}
-
-/** Whether an all-member free window is usable at the selected campus. */
-export function windowMatchesCampus(window: FreeWindow, campus: string | null): boolean {
-  if (campus === null) return true;
-  return window.betweenClasses && window.sharedCampus && window.campuses.includes(campus);
+): Set<number> {
+  if (campus === null) return new Set(members.map((member) => member.id));
+  return new Set(
+    members
+      .filter((member) =>
+        onCampus(busyByMember[member.id] ?? []).some((block) => block.campus === campus)
+      )
+      .map((member) => member.id)
+  );
 }

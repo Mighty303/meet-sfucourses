@@ -14,7 +14,7 @@ import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { resolveStatus } from "@/lib/attendance-status";
-import { scheduleCampuses } from "@/lib/campus-filter";
+import { membersAtCampus, scheduleCampuses } from "@/lib/campus-filter";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { rememberLastGroup } from "@/lib/last-group";
@@ -309,15 +309,23 @@ function GroupSchedule({ code }: { code: string }) {
       ),
     [state]
   );
-  const shown = useMemo(
-    () => scheduled.filter((m) => !hidden.has(m.id)),
-    [scheduled, hidden]
-  );
   const campuses = useMemo(
-    () => scheduleCampuses(shown, state?.busyByMember ?? {}),
-    [shown, state]
+    () => scheduleCampuses(scheduled, state?.busyByMember ?? {}),
+    [scheduled, state]
   );
   const campus = campusParam !== null && campuses.includes(campusParam) ? campusParam : null;
+  const campusMemberIds = useMemo(
+    () => membersAtCampus(scheduled, state?.busyByMember ?? {}, campus),
+    [scheduled, state, campus]
+  );
+  const campusEligible = useMemo(
+    () => scheduled.filter((member) => campusMemberIds.has(member.id)),
+    [scheduled, campusMemberIds]
+  );
+  const shown = useMemo(
+    () => campusEligible.filter((m) => !hidden.has(m.id)),
+    [campusEligible, hidden]
+  );
   const filteredMembers = useMemo(() => {
     const query = memberQuery.trim().toLocaleLowerCase();
     if (!query) return state?.members ?? [];
@@ -600,7 +608,7 @@ function GroupSchedule({ code }: { code: string }) {
               <p className="text-xs text-neutral-500">
                 Toggle names or show one person only
               </p>
-              {shown.length < scheduled.length && (
+              {shown.length < campusEligible.length && (
                 <button
                   onClick={() => setHidden(new Set())}
                   className="text-xs text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
@@ -652,14 +660,15 @@ function GroupSchedule({ code }: { code: string }) {
         <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
           {filteredMembers.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
-            const on = hasSchedule && !hidden.has(m.id);
+            const campusMatches = campusMemberIds.has(m.id);
+            const on = hasSchedule && campusMatches && !hidden.has(m.id);
             const isOnly = on && shown.length === 1;
             const unresolved = state.unresolved[m.id]?.length ?? 0;
             return (
               <li
                 key={m.id}
                 className={`rounded-lg border transition-colors ${
-                  hasSchedule
+                  hasSchedule && campusMatches
                     ? on
                       ? "border-neutral-300 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
                       : "border-dashed border-neutral-300 opacity-55 hover:opacity-80 dark:border-neutral-700"
@@ -667,12 +676,12 @@ function GroupSchedule({ code }: { code: string }) {
                 }`}
               >
                 <label
-                  className={`flex items-center gap-2 px-3 pt-2.5 text-sm ${hasSchedule ? "cursor-pointer" : "cursor-not-allowed"}`}
+                  className={`flex items-center gap-2 px-3 pt-2.5 text-sm ${hasSchedule && campusMatches ? "cursor-pointer" : "cursor-not-allowed"}`}
                 >
                   <input
                     type="checkbox"
                     checked={on}
-                    disabled={!hasSchedule}
+                    disabled={!hasSchedule || !campusMatches}
                     onChange={() =>
                       setHidden((cur) => {
                         const next = new Set(cur);
@@ -729,6 +738,11 @@ function GroupSchedule({ code }: { code: string }) {
                       ⚠ {unresolved}
                     </span>
                   )}
+                  {hasSchedule && !campusMatches && (
+                    <span className="shrink-0 text-xs text-neutral-500">
+                      no {campus} classes
+                    </span>
+                  )}
                 </label>
                 <div className="flex items-center justify-between gap-2 px-3 pb-2.5 pl-9 text-xs">
                   {/* The section count links to editing without toggling the row. */}
@@ -748,7 +762,7 @@ function GroupSchedule({ code }: { code: string }) {
                         : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
                     </span>
                   )}
-                  {hasSchedule && (
+                  {hasSchedule && campusMatches && (
                     <button
                       type="button"
                       onClick={() => showOnly(m.id)}
@@ -900,7 +914,6 @@ function GroupSchedule({ code }: { code: string }) {
             busyByMember={state.busyByMember}
             dayStart={DAY_START}
             dayEnd={DAY_END}
-            campus={campus}
             weekStart={week ?? undefined}
             attendance={attendance}
           />
@@ -911,7 +924,6 @@ function GroupSchedule({ code }: { code: string }) {
             free={free}
             dayStart={DAY_START}
             dayEnd={DAY_END}
-            campus={campus}
             weekStart={week ?? undefined}
             attendance={attendance}
           />

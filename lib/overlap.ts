@@ -496,8 +496,6 @@ export interface AvailabilityBand extends Interval {
   outsideIndices: number[];
   /** Campuses the free members are anchored to around this band. */
   campuses: string[];
-  /** Each free member's campus, keyed by their index in the input members. */
-  freeCampusByIndex: Array<string | null>;
   sharedCampus: boolean;
 }
 
@@ -593,9 +591,6 @@ export function availabilityBands({
             .filter((c): c is string => c !== null)
         ),
       ];
-      const freeCampusByIndex = members.map((_, i) =>
-        free.includes(i) ? anchorCampus(dayBusy[i], { start, end }) : null
-      );
       bands.push({
         day,
         start,
@@ -605,7 +600,6 @@ export function availabilityBands({
         awayIndices: away,
         outsideIndices: outside,
         campuses,
-        freeCampusByIndex,
         sharedCampus: campuses.length <= 1,
       });
       start = -1;
