@@ -4,11 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GroupActions } from "@/components/GroupActions";
-import { ClassStatusCard } from "@/components/ClassStatusCard";
+import { ClassStatusCard, type HomeStatus } from "@/components/ClassStatusCard";
 import { GroupImage } from "@/components/GroupImage";
 import { fromTermCode } from "@/lib/sfu";
 
-interface Membership {
+export interface Membership {
   memberId: number;
   displayName: string;
   color: string;
@@ -27,18 +27,23 @@ interface Membership {
 // every card in the list is exactly one member-row tall.
 const MEMBER_PREVIEW = 3;
 
+interface GroupsHomePreview {
+  memberships: Membership[];
+  status: HomeStatus;
+}
+
 /**
  * What "/" is once you're signed in: the groups you're in, and the two ways to
  * get into another one. No pitch and no demo — see LandingHome for where those
  * went and why.
  */
-export function GroupsHome() {
+export function GroupsHome({ preview }: { preview?: GroupsHomePreview } = {}) {
   // Null until the fetch lands, which is the difference between "still
   // loading" and "you aren't in any".
-  const [memberships, setMemberships] = useState<Membership[] | null>(null);
-  const [lastGroupCode, setLastGroupCode] = useState<string | null>(null);
+  const [memberships, setMemberships] = useState<Membership[] | null>(preview?.memberships ?? null);
 
   useEffect(() => {
+    if (preview) return;
     let live = true;
     fetch("/api/me")
       .then((res) => (res.ok ? res.json() : null))
@@ -49,13 +54,13 @@ export function GroupsHome() {
       })
       .catch(() => {});
     return () => { live = false; };
-  }, []);
+  }, [preview]);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 pb-20 sm:pb-24">
-      <ClassStatusCard />
+      <ClassStatusCard preview={preview?.status} />
 
-      <section id="your-groups" className="fade-up mx-auto w-full max-w-lg flex flex-col gap-2">
+      <section id="your-groups" className="fade-up flex w-full flex-col gap-2">
         <h2 className="text-sm font-medium">Your groups</h2>
 
         {memberships === null ? (
@@ -70,7 +75,7 @@ export function GroupsHome() {
                 key={i}
                 className="flex animate-pulse gap-4 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800"
               >
-                <div className="h-11 w-11 shrink-0 rounded-lg bg-neutral-200 dark:bg-neutral-800" />
+                <div className="h-14 w-14 shrink-0 rounded-lg bg-neutral-200 dark:bg-neutral-800" />
                 <div className="flex flex-1 flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <div className={`h-5 rounded bg-neutral-200 dark:bg-neutral-800 ${row.name}`} />
@@ -106,6 +111,7 @@ export function GroupsHome() {
                     src={m.group.image}
                     name={m.group.name}
                     color={m.color}
+                    size={56}
                   />
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="flex items-baseline gap-2 text-base">
