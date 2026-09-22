@@ -152,6 +152,7 @@ function ClassLine({
       <p className="text-sm text-neutral-500 dark:text-neutral-400">
         {dayLabel(occurrence.date)} · {formatTime(occurrence.start)}–{formatTime(occurrence.end)} · {occurrence.status === "remote" ? "Online" : occurrence.campus || "Campus"}
       </p>
+      <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">Let your friends know your status</p>
       <AttendanceButtons
         current={occurrence.selectedStatus}
         onPick={(status) => onStatusChange(occurrence, status)}

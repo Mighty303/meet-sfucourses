@@ -180,6 +180,7 @@ export async function GET() {
   const onCampus = personList.flatMap((person) => {
     const all = occurrencesFor(person, dates, index, attendance);
     const today = all.filter((occurrence) => occurrence.date === date);
+    if (today.length === 0) return [];
     const current = today.find((occurrence) => occurrence.start <= minutes && minutes < occurrence.end) ?? null;
     const previous = [...today].reverse().find((occurrence) => occurrence.end <= minutes) ?? null;
     const next = today.find((occurrence) => occurrence.start > minutes) ?? null;
