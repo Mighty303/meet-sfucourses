@@ -89,6 +89,7 @@ function GroupSchedule({ code }: { code: string }) {
 
   const [state, setState] = useState<GroupState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   // Null until the server tells us which week is actually inside the term.
   const [week, setWeek] = useState<string | null>(null);
   // Member ids ticked off in the list. Kept as ids, not indices, so it survives
@@ -731,10 +732,9 @@ function GroupSchedule({ code }: { code: string }) {
           threshold is what the layout actually costs — the outer tracks are
           `1fr` each, so the empty left one is forced to mirror the right one,
           and the row needs twice the controls plus the date. Under that it
-          squeezed instead, clipping "Detailed" and wrapping "Export Calendar"
-          onto two lines. */}
-      <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:grid @min-[68rem]:grid-cols-[1fr_auto_1fr]">
-        <div className="flex items-center gap-2 @min-[68rem]:justify-self-start">
+          squeezed instead, clipping the view toggle and export buttons. */}
+      <div className="flex flex-wrap items-center justify-center gap-2 @min-[74rem]:grid @min-[74rem]:grid-cols-[1fr_auto_1fr]">
+        <div className="flex items-center gap-2 @min-[74rem]:justify-self-start">
           {week !== thisMonday && weekInTerm(thisMonday) && (
             <button
               onClick={() => setWeek(thisMonday)}
@@ -767,7 +767,7 @@ function GroupSchedule({ code }: { code: string }) {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:flex-nowrap @min-[68rem]:justify-self-end">
+        <div className="flex flex-wrap items-center justify-center gap-2 @min-[74rem]:flex-nowrap @min-[74rem]:justify-self-end">
           {/* Two readings of the same week, and picking one here pins it —
               otherwise `grid` above decides from how many schedules are in. */}
           <div className="flex shrink-0 overflow-hidden rounded-lg border border-neutral-300 text-sm dark:border-neutral-700">
@@ -789,30 +789,51 @@ function GroupSchedule({ code }: { code: string }) {
 
           {/* Same row as the view toggle: these all act on the week on screen,
               and "this week's free windows" means whichever week that is. */}
-          <CalendarTools groupCode={code} memberId={me?.id ?? null} />
+          <CalendarTools
+            groupCode={code}
+            memberId={me?.id ?? null}
+            calendarRef={calendarRef}
+            groupName={state.group.name}
+            week={week ?? state.week}
+            view={grid}
+          />
         </div>
       </div>
 
-      {grid === "heat" ? (
-        <HeatGrid
-          members={shown}
-          busyByMember={state.busyByMember}
-          dayStart={DAY_START}
-          dayEnd={DAY_END}
-          weekStart={week ?? undefined}
-          attendance={attendance}
-        />
-      ) : (
-        <WeekGrid
-          members={shown}
-          busyByMember={state.busyByMember}
-          free={free}
-          dayStart={DAY_START}
-          dayEnd={DAY_END}
-          weekStart={week ?? undefined}
-          attendance={attendance}
-        />
-      )}
+      <div ref={calendarRef}>
+        <div className="calendar-png-heading hidden items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">{state.group.name}</h2>
+            <p className="mt-0.5 text-sm text-neutral-500">
+              {shortDate(week ?? state.week)} – {shortDate(addDays(week ?? state.week, 4))}
+            </p>
+          </div>
+          <span className="rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-500 dark:border-neutral-700">
+            {grid === "detailed" ? "Detailed schedule" : "Availability"}
+          </span>
+        </div>
+
+        {grid === "heat" ? (
+          <HeatGrid
+            members={shown}
+            busyByMember={state.busyByMember}
+            dayStart={DAY_START}
+            dayEnd={DAY_END}
+            weekStart={week ?? undefined}
+            attendance={attendance}
+          />
+        ) : (
+          <WeekGrid
+            members={shown}
+            busyByMember={state.busyByMember}
+            free={free}
+            dayStart={DAY_START}
+            dayEnd={DAY_END}
+            weekStart={week ?? undefined}
+            attendance={attendance}
+          />
+        )}
+      </div>
 
       {/* Directly under the grid, because that is where you go looking for a
           course you know someone is taking and can't find a block for. Set
