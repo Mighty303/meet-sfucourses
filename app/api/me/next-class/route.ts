@@ -29,6 +29,7 @@ interface Occurrence {
   start: number;
   end: number;
   status: AttendanceStatus;
+  note: string | null;
 }
 
 function addDays(date: string, amount: number): string {
@@ -55,7 +56,7 @@ function occurrencesFor(
       const hit = index.get(classNumber);
       if (!hit) continue;
       const status = person.userId === null
-        ? { status: "going" as const }
+        ? { status: "going" as const, note: null }
         : resolveStatus(attendance, person.userId, date, classNumber);
       for (const schedule of hit.section.schedules) {
         if (!parseDays(schedule.days).includes(day) || date < schedule.startDate || date > schedule.endDate) continue;
@@ -72,6 +73,7 @@ function occurrencesFor(
           start,
           end,
           status: status.status,
+          note: status.note,
         });
       }
     }
