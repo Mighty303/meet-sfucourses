@@ -77,6 +77,8 @@ export interface FreeWindow extends Interval {
   day: DayKey;
   /** Distinct campuses the members are anchored to around this window. */
   campuses: string[];
+  /** Names grouped by the campus they are anchored to around this window. */
+  campusMembers: Record<string, string[]>;
   /** False when members are anchored to different campuses — they can't meet in person. */
   sharedCampus: boolean;
   /**
@@ -287,6 +289,21 @@ function anchorCampus(busy: BusyBlock[], window: Interval): string | null {
   return best?.campus ?? null;
 }
 
+function campusMembersFor(
+  members: MemberSchedule[],
+  dayBusy: BusyBlock[][],
+  window: Interval,
+  indices = members.map((_, i) => i)
+): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
+  for (const i of indices) {
+    const campus = anchorCampus(dayBusy[i], window);
+    if (campus === null) continue;
+    (grouped[campus] ??= []).push(members[i].name);
+  }
+  return grouped;
+}
+
 export interface MemberSchedule {
   /** Shown against the windows this member is free for. */
   name: string;
@@ -330,19 +347,15 @@ export function commonFree({
     for (const slot of intersectAll(perMemberFree)) {
       if (slot.end - slot.start < minMinutes) continue;
 
-      const campuses = [
-        ...new Set(
-          dayBusy
-            .map((busy) => anchorCampus(busy, slot))
-            .filter((c): c is string => c !== null)
-        ),
-      ];
+      const campusMembers = campusMembersFor(members, dayBusy, slot);
+      const campuses = Object.keys(campusMembers);
 
       windows.push({
         day,
         start: slot.start,
         end: slot.end,
         campuses,
+        campusMembers,
         sharedCampus: campuses.length <= 1,
         // Windows are maximal, so an edge that isn't the day boundary is always
         // a class boundary — but check for the class directly rather than
@@ -439,13 +452,8 @@ export function partialFree({
         if (j < segs.length - 1 && covers(segs[j + 1].free, attending)) continue;
 
         const busyLists = attending.map((mi) => dayBusy[mi]);
-        const campuses = [
-          ...new Set(
-            busyLists
-              .map((busy) => anchorCampus(busy, { start, end }))
-              .filter((c): c is string => c !== null)
-          ),
-        ];
+        const campusMembers = campusMembersFor(members, dayBusy, { start, end }, attending);
+        const campuses = Object.keys(campusMembers);
         const blocks = busyLists.flat();
 
         windows.push({
@@ -453,6 +461,7 @@ export function partialFree({
           start,
           end,
           campuses,
+          campusMembers,
           sharedCampus: campuses.length <= 1,
           betweenClasses:
             blocks.some((b) => b.end === start) && blocks.some((b) => b.start === end),

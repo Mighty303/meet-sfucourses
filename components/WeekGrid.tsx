@@ -251,6 +251,8 @@ interface Props {
   free: FreeWindow[];
   dayStart: number;
   dayEnd: number;
+  /** Selected meetup campus; other-campus classes stay visible but muted. */
+  campus?: string | null;
   /** One person's week: labels drop the group framing. */
   solo?: boolean;
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
@@ -287,6 +289,7 @@ export function WeekGrid({
   free,
   dayStart,
   dayEnd,
+  campus = null,
   solo = false,
   weekStart,
   courseColors,
@@ -357,6 +360,7 @@ export function WeekGrid({
         <span className="text-neutral-400 dark:text-neutral-500">
           Coloured blocks are classes · dashed = skipping, dot = online
           {attendance ? " · hover yours to change" : " · hover one for details"}
+          {campus ? " · muted campus blocks still block availability" : ""}
         </span>
       </div>
 
@@ -435,20 +439,22 @@ export function WeekGrid({
                             subtitle: LABELS[day],
                             lines: [
                               `${formatTime(w.start)} – ${formatTime(w.end)} · ${formatDuration(minutes)}`,
-                              w.onCampus.length === 0
-                                ? solo ? "You have no class this day" : "Nobody has class this day, so someone has to travel"
-                                // Present tense only when they're actually there:
-                                // outside the gaps this window is before the first
-                                // class or after the last, and campus has emptied.
-                                : {
-                                    label: w.betweenClasses ? "On campus" : "Has class today",
-                                    value: w.onCampus.join(", "),
-                                  },
-                              // Only the split is worth a row: one campus is
-                              // the ordinary case, and saying it on every card
-                              // is a line you learn to skip. Two means they
-                              // can't actually meet.
-                              ...(w.sharedCampus ? [] : [`Split across ${w.campuses.join(" and ")}`]),
+                              ...(w.sharedCampus
+                                ? [
+                                    w.onCampus.length === 0
+                                      ? solo ? "You have no class this day" : "Nobody has class this day, so someone has to travel"
+                                      : {
+                                          label: w.betweenClasses ? "On campus" : "Has class today",
+                                          value: w.onCampus.join(", "),
+                                        },
+                                  ]
+                                : [
+                                    "Campus split",
+                                    ...w.campuses.map((campus) => ({
+                                      label: campus,
+                                      value: w.campusMembers[campus].join(", "),
+                                    })),
+                                  ]),
                             ],
                             accent: tone.accent,
                             x: e.clientX,
@@ -509,6 +515,8 @@ export function WeekGrid({
                     const width = unit * span;
                     const shared = who.length > 1;
                     const fill = courseColors?.[b.course] ?? who[0].color;
+                    const otherCampus =
+                      campus !== null && b.campus !== null && b.campus !== campus;
                     // Skipping hollows the block out: dashed outline, no fill,
                     // neutral text — which is what border-dashed already means
                     // everywhere else on this page. Filling it and dimming it
@@ -578,14 +586,17 @@ export function WeekGrid({
                         } ${shared ? "pl-2.5" : ""} ${
                           skipped
                             ? "border-2 border-dashed"
-                            : `text-white ${shared ? "bg-neutral-700 dark:bg-neutral-600" : ""}`
+                            : `text-white ${shared ? "bg-neutral-700 dark:bg-neutral-600" : ""} ${otherCampus ? "opacity-55 grayscale" : ""}`
                         } ${mine ? "hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current" : ""}`}
                         style={{
                           top: `calc(${pct(b.start)}% + ${GAP_Y / 2}px)`,
                           height: `calc(${heightPct(minutes)}% - ${GAP_Y}px)`,
                           left: `calc(${column * unit}% + ${GAP_X / 2}px)`,
                           width: `calc(${width}% - ${GAP_X}px)`,
-                          backgroundColor: skipped || shared ? undefined : fill,
+                          backgroundColor: skipped || shared || otherCampus ? undefined : fill,
+                          backgroundImage: otherCampus
+                            ? "repeating-linear-gradient(135deg, rgba(115,115,115,.55) 0 5px, rgba(64,64,64,.55) 5px 10px)"
+                            : undefined,
                           borderColor: skipped ? fill : undefined,
                         }}
                         onFocus={
@@ -616,6 +627,11 @@ export function WeekGrid({
                             thing separating it from being there in person. */}
                         {b.status === "remote" && (
                           <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-white ring-1 ring-black/20" />
+                        )}
+                        {otherCampus && minutes >= 35 && (
+                          <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-white/90">
+                            {b.campus}
+                          </span>
                         )}
                         <span
                           className={`truncate font-semibold ${tight ? "text-[10px]" : "text-[11px]"} ${

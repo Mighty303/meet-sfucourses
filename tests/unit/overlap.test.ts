@@ -243,6 +243,23 @@ describe("commonFree", () => {
     expect(wedged.onCampus).toEqual([ADA, BO]);
   });
 
+  it("keeps the people behind a campus split for the detailed tooltip", () => {
+    const roster = [
+      schedule("Burnaby one", block("Mo", "09:00", "10:00"), block("Mo", "12:00", "13:00")),
+      schedule("Burnaby two", block("Mo", "09:00", "10:00"), block("Mo", "12:00", "13:00")),
+      schedule("Burnaby three", block("Mo", "09:00", "10:00"), block("Mo", "12:00", "13:00")),
+      schedule("Burnaby four", block("Mo", "09:00", "10:00"), block("Mo", "12:00", "13:00")),
+      schedule("Surrey", block("Mo", "09:00", "10:00", { campus: "Surrey" }), block("Mo", "12:00", "13:00", { campus: "Surrey" })),
+    ];
+    const gap = commonFree({ members: roster, dayStart: DAY_START, dayEnd: toMinutes("13:00"), minMinutes: 60, days: ["Mo"] })
+      .find((w) => w.start === toMinutes("10:00"))!;
+
+    expect(gap.campusMembers).toEqual({
+      Burnaby: ["Burnaby one", "Burnaby two", "Burnaby three", "Burnaby four"],
+      Surrey: ["Surrey"],
+    });
+  });
+
   it("does not call the morning before the first class a gap", () => {
     const windows = commonFree(mon({ members: gapRoster }));
     expect(windows.some((w) => !w.betweenClasses && w.start === DAY_START)).toBe(true);

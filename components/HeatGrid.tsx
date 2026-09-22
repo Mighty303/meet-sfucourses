@@ -346,8 +346,9 @@ export function HeatGrid({
                     .filter((b) => b.day === day)
                     .map((band) => {
                       const minutes = band.end - band.start;
-                      const free = band.freeIndices.length;
-                      const freeNames = band.freeIndices.map((i) => withSchedules[i].displayName);
+                      const freeIndices = band.freeIndices;
+                      const free = freeIndices.length;
+                      const freeNames = freeIndices.map((i) => withSchedules[i].displayName);
                       // Away can mean no classes, or online-only — same for the
                       // shading (they're off campus), but the card should say
                       // which, or a Zoom day reads as a blank timetable.
@@ -400,7 +401,7 @@ export function HeatGrid({
                       const missingNames =
                         total >= 5 && total - free <= 2
                           ? withSchedules
-                              .filter((_, i) => !band.freeIndices.includes(i))
+                              .filter((_, i) => !freeIndices.includes(i))
                               .map((m) => m.displayName)
                           : null;
                       const hatch = inClass
