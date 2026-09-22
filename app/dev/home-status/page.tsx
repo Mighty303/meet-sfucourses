@@ -1,4 +1,5 @@
-import { ClassStatusCard, type HomeStatus } from "@/components/ClassStatusCard";
+import type { HomeStatus } from "@/components/ClassStatusCard";
+import { GroupsHome, type Membership } from "@/components/GroupsHome";
 import { campusNow } from "@/lib/class-status";
 
 function tomorrow(date: string): string {
@@ -47,14 +48,54 @@ export default function HomeStatusPreviewPage() {
     refreshAt: "2099-01-01T00:00:00.000Z",
   };
 
+  const memberships: Membership[] = [
+    {
+      memberId: 1,
+      displayName: "Martin",
+      color: "#3b82f6",
+      classNumbers: ["1001", "1002", "1003", "1004", "1005", "1006"],
+      group: { id: 1, code: "EDISON", name: "edison n martin", term: "2026-fall", image: "/globe.svg" },
+      members: [
+        { id: 1, displayName: "Martin", color: "#3b82f6", image: null, hasSchedule: true },
+        { id: 2, displayName: "Edwind Wind", color: "#f97316", image: null, hasSchedule: true },
+      ],
+    },
+    {
+      memberId: 3,
+      displayName: "Martin",
+      color: "#a855f7",
+      classNumbers: ["2001", "2002", "2003", "2004", "2005", "2006"],
+      group: { id: 2, code: "STUDY", name: "cmpt study crew", term: "2026-fall", image: null },
+      members: [
+        { id: 3, displayName: "Martin", color: "#a855f7", image: null, hasSchedule: true },
+        { id: 4, displayName: "Brandon Chan", color: "#f97316", image: null, hasSchedule: true },
+        { id: 5, displayName: "Isabelle Kwan", color: "#eab308", image: null, hasSchedule: true },
+        { id: 6, displayName: "Ada", color: "#10b981", image: null, hasSchedule: true },
+      ],
+    },
+    {
+      memberId: 7,
+      displayName: "Martin",
+      color: "#ef4444",
+      classNumbers: ["3001", "3002", "3003", "3004", "3005", "3006"],
+      group: { id: 3, code: "TABLE", name: "subtable", term: "2026-fall", image: "/file.svg" },
+      members: [
+        { id: 7, displayName: "Martin", color: "#ef4444", image: null, hasSchedule: true },
+        { id: 8, displayName: "Kaleigh", color: "#ec4899", image: null, hasSchedule: true },
+        { id: 9, displayName: "Calv", color: "#f97316", image: null, hasSchedule: true },
+        { id: 10, displayName: "Bo", color: "#06b6d4", image: null, hasSchedule: true },
+      ],
+    },
+  ];
+
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 pb-20 sm:pb-24">
-      <header>
+    <div>
+      <header className="mx-auto w-full max-w-4xl px-6 pt-6">
         <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Development preview</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Homepage status cards</h1>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Fixture data for the signed-in homepage. The live page uses the authenticated schedule endpoint.</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Signed-in homepage</h1>
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Fixture data for the homepage status and group cards. The live page uses authenticated endpoints.</p>
       </header>
-      <ClassStatusCard preview={preview} />
-    </main>
+      <GroupsHome preview={{ status: preview, memberships }} />
+    </div>
   );
 }
