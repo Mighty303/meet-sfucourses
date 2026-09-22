@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
 import { GroupImage } from "@/components/GroupImage";
@@ -14,6 +14,7 @@ import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
 import { GroupPageSkeleton } from "@/components/Skeleton";
 import { WeekGrid, type AttendanceControl } from "@/components/WeekGrid";
 import { resolveStatus } from "@/lib/attendance-status";
+import { scheduleCampuses } from "@/lib/campus-filter";
 import { readGuestMember, type GuestMember } from "@/lib/guest-schedule";
 import type { AttendanceRow, AttendanceStatus } from "@/lib/attendance-status";
 import { rememberLastGroup } from "@/lib/last-group";
@@ -100,6 +101,7 @@ function GroupSchedule({ code }: { code: string }) {
   // the group's own size decides (see `grid`, below the member counts).
   const gridParam = searchParams.get("grid");
   const pinnedGrid = gridParam === "detailed" || gridParam === "heat" ? gridParam : null;
+  const campusParam = searchParams.get("campus");
   const [saving, setSaving] = useState(false);
   // Furniture, not a reading of the data — so it stays in component state
   // rather than in the URL the way `grid` does. A shared link shouldn't decide
@@ -235,6 +237,13 @@ function GroupSchedule({ code }: { code: string }) {
     router.replace(`/g/${code}${params.size > 0 ? `?${params}` : ""}`, { scroll: false });
   }
 
+  function setCampus(next: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set("campus", next);
+    else params.delete("campus");
+    router.replace(`/g/${code}${params.size > 0 ? `?${params}` : ""}`, { scroll: false });
+  }
+
   async function claim(memberId: number) {
     setSaving(true);
     const res = await fetch(`/api/groups/${code}/members/${memberId}/claim`, { method: "POST" });
@@ -304,6 +313,11 @@ function GroupSchedule({ code }: { code: string }) {
     () => scheduled.filter((m) => !hidden.has(m.id)),
     [scheduled, hidden]
   );
+  const campuses = useMemo(
+    () => scheduleCampuses(shown, state?.busyByMember ?? {}),
+    [shown, state]
+  );
+  const campus = campusParam !== null && campuses.includes(campusParam) ? campusParam : null;
   const filteredMembers = useMemo(() => {
     const query = memberQuery.trim().toLocaleLowerCase();
     if (!query) return state?.members ?? [];
@@ -845,6 +859,14 @@ function GroupSchedule({ code }: { code: string }) {
             ))}
           </div>
 
+          {campuses.length > 0 && (
+            <CampusFilter
+              campuses={campuses}
+              value={campus}
+              onChange={setCampus}
+            />
+          )}
+
           {/* Same row as the view toggle: these all act on the week on screen,
               and "this week's free windows" means whichever week that is. */}
           <CalendarTools
@@ -868,6 +890,7 @@ function GroupSchedule({ code }: { code: string }) {
           </div>
           <span className="rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-500 dark:border-neutral-700">
             {grid === "detailed" ? "Detailed schedule" : "Availability"}
+            {campus ? ` · ${campus}` : ""}
           </span>
         </div>
 
@@ -877,6 +900,7 @@ function GroupSchedule({ code }: { code: string }) {
             busyByMember={state.busyByMember}
             dayStart={DAY_START}
             dayEnd={DAY_END}
+            campus={campus}
             weekStart={week ?? undefined}
             attendance={attendance}
           />
@@ -887,6 +911,7 @@ function GroupSchedule({ code }: { code: string }) {
             free={free}
             dayStart={DAY_START}
             dayEnd={DAY_END}
+            campus={campus}
             weekStart={week ?? undefined}
             attendance={attendance}
           />
@@ -944,6 +969,117 @@ function GroupSchedule({ code }: { code: string }) {
         next={`/g/${code}?join=1`}
       />
     </main>
+  );
+}
+
+/** Campus picker for the availability represented by both calendar views. */
+function CampusFilter({
+  campuses,
+  value,
+  onChange,
+}: {
+  campuses: string[];
+  value: string | null;
+  onChange: (campus: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function closeOutside(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+
+    document.addEventListener("pointerdown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  function choose(next: string | null) {
+    onChange(next);
+    setOpen(false);
+  }
+
+  const options = [null, ...campuses];
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls={menuId}
+        title="Filter meetup availability by campus"
+        className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+          value
+            ? "border-blue-600 bg-blue-50 font-medium text-blue-700 dark:border-blue-500 dark:bg-blue-950 dark:text-blue-300"
+            : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        }`}
+      >
+        <MapPinIcon />
+        {value ?? "All campuses"}
+        <ChevronIcon open={open} />
+      </button>
+
+      {open && (
+        <div
+          id={menuId}
+          role="menu"
+          aria-label="Campus filter"
+          className="absolute right-0 top-full z-30 mt-2 min-w-48 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          {options.map((option) => {
+            const selected = option === value;
+            return (
+              <button
+                key={option ?? "all"}
+                type="button"
+                role="menuitemradio"
+                aria-checked={selected}
+                onClick={() => choose(option)}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                <span className="w-4 text-center text-blue-600 dark:text-blue-400">
+                  {selected ? "✓" : ""}
+                </span>
+                {option ?? "All campuses"}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MapPinIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4">
+      <path d="M15.25 8.25c0 4-5.25 8-5.25 8s-5.25-4-5.25-8a5.25 5.25 0 1110.5 0z" />
+      <circle cx="10" cy="8.25" r="1.75" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}>
+      <path d="m4 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

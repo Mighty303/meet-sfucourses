@@ -5,6 +5,7 @@ import { CROSS_MS, HoverCard, useHoverCard } from "@/components/HoverCard";
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
 import type { AttendanceControl, Member } from "@/components/WeekGrid";
 import { DAY_HEADING_BOX, DayHeading } from "@/components/DayHeading";
+import { freeIndicesForCampus } from "@/lib/campus-filter";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
 import { FILL, fillAlpha, IN_CLASS_HATCH, ONLINE_HATCH } from "@/lib/heat-fill";
 import { availabilityBands, type AvailabilityBand, type BusyBlock } from "@/lib/overlap";
@@ -130,6 +131,8 @@ interface Props {
   busyByMember: Record<number, BusyBlock[]>;
   dayStart: number;
   dayEnd: number;
+  /** When set, only people free at this campus count toward the heat. */
+  campus?: string | null;
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
   weekStart?: string;
   /**
@@ -164,6 +167,7 @@ export function HeatGrid({
   busyByMember,
   dayStart,
   dayEnd,
+  campus = null,
   weekStart,
   attendance,
   columnHeight = COLUMN_HEIGHT,
@@ -246,7 +250,7 @@ export function HeatGrid({
           className={`flex flex-col items-center justify-center gap-1 text-xs ${LEGEND_HEIGHT}`}
         >
           <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            <span className="text-neutral-500">{`0/${total} free`}</span>
+            <span className="text-neutral-500">{`0/${total} free${campus ? ` at ${campus}` : ""}`}</span>
             <span className="flex overflow-hidden rounded-sm border border-neutral-300 dark:border-neutral-700">
               {Array.from({ length: swatches }, (_, i) => (
                 <span
@@ -258,7 +262,7 @@ export function HeatGrid({
                 />
               ))}
             </span>
-            <span className="text-neutral-500">{`${total}/${total} free`}</span>
+            <span className="text-neutral-500">{`${total}/${total} free${campus ? ` at ${campus}` : ""}`}</span>
             <span className="text-neutral-400 dark:text-neutral-500">
               · hover a band to see who
             </span>
@@ -346,8 +350,14 @@ export function HeatGrid({
                     .filter((b) => b.day === day)
                     .map((band) => {
                       const minutes = band.end - band.start;
-                      const free = band.freeIndices.length;
-                      const freeNames = band.freeIndices.map((i) => withSchedules[i].displayName);
+                      const freeIndices = freeIndicesForCampus(band, campus);
+                      const free = freeIndices.length;
+                      const freeNames = freeIndices.map((i) => withSchedules[i].displayName);
+                      const otherCampusNames = campus
+                        ? band.freeIndices
+                            .filter((i) => !freeIndices.includes(i))
+                            .map((i) => withSchedules[i].displayName)
+                        : [];
                       // Away can mean no classes, or online-only — same for the
                       // shading (they're off campus), but the card should say
                       // which, or a Zoom day reads as a blank timetable.
@@ -400,7 +410,7 @@ export function HeatGrid({
                       const missingNames =
                         total >= 5 && total - free <= 2
                           ? withSchedules
-                              .filter((_, i) => !band.freeIndices.includes(i))
+                              .filter((_, i) => !freeIndices.includes(i))
                               .map((m) => m.displayName)
                           : null;
                       const hatch = inClass
@@ -441,7 +451,7 @@ export function HeatGrid({
                               // the timetable is the thing you're after.
                               title: own
                                 ? own.course
-                                : `${free} of ${total} on campus and free`,
+                                : `${free} of ${total} free${campus ? ` at ${campus}` : " on campus"}`,
                               subtitle: own
                                 ? `${LABELS[day]}${own.detail ? ` · ${own.detail}` : ""}`
                                 : LABELS[day],
@@ -451,10 +461,13 @@ export function HeatGrid({
                                 // says what's happening, so the "nobody
                                 // is free" line is the same fact twice.
                                 ...(freeNames.length > 0
-                                  ? [{ label: "Free", value: freeNames.join(", ") }]
+                                  ? [{ label: campus ? `Free at ${campus}` : "Free", value: freeNames.join(", ") }]
                                   : inClass || allOnline
                                     ? []
-                                    : ["Nobody is on campus with a gap here"]),
+                                    : [campus ? `Nobody is free at ${campus} here` : "Nobody is on campus with a gap here"]),
+                                ...(otherCampusNames.length > 0
+                                  ? [{ label: "Other campus", value: otherCampusNames.join(", ") }]
+                                  : []),
                                 // Who, not which class. A course code
                                 // per person was a second column of text
                                 // on a card read for one thing: whether
@@ -487,7 +500,7 @@ export function HeatGrid({
                                 // case and saying so is a line of noise on
                                 // every card; two means they can't actually
                                 // meet, which is the one thing worth the row.
-                                ...(free > 0 && !band.sharedCampus
+                                ...(campus === null && free > 0 && !band.sharedCampus
                                   ? [`Split across ${band.campuses.join(" and ")}`]
                                   : []),
                               ],

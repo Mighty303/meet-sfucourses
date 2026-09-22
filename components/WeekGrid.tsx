@@ -4,6 +4,7 @@ import { CROSS_MS, HoverCard, useHoverCard, type HoverCardData } from "@/compone
 import { NowLine, useNowMarker, useTodayColumn } from "@/components/NowLine";
 import { COLUMN_HEIGHT, DAY_CELL, DAY_TRACK, GRID_SCROLLER, LEGEND_HEIGHT } from "@/lib/grid-layout";
 import { DAY_HEADING_BOX, DayHeading } from "@/components/DayHeading";
+import { windowMatchesCampus } from "@/lib/campus-filter";
 import type { AttendanceStatus } from "@/lib/attendance-status";
 import type { BusyBlock, FreeWindow } from "@/lib/overlap";
 import { formatTime, WEEKDAYS, type DayKey } from "@/lib/sfu";
@@ -251,6 +252,8 @@ interface Props {
   free: FreeWindow[];
   dayStart: number;
   dayEnd: number;
+  /** When set, only meetup windows at this campus are highlighted. */
+  campus?: string | null;
   /** One person's week: labels drop the group framing. */
   solo?: boolean;
   /** Monday of the week on screen, as YYYY-MM-DD — places the "now" line. */
@@ -287,6 +290,7 @@ export function WeekGrid({
   free,
   dayStart,
   dayEnd,
+  campus = null,
   solo = false,
   weekStart,
   courseColors,
@@ -344,9 +348,9 @@ export function WeekGrid({
       >
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           {[
-            { box: "bg-emerald-400/30 ring-2 ring-inset ring-emerald-500/60", label: solo ? "Between classes" : "Everyone free" },
-            ...(solo ? [] : [{ box: "bg-amber-300/25 ring-2 ring-inset ring-amber-500/50", label: "Split campus" }]),
-            { box: "bg-neutral-400/10 ring-1 ring-inset ring-neutral-400/30", label: solo ? "Off campus" : "Nobody on campus" },
+            { box: "bg-emerald-400/30 ring-2 ring-inset ring-emerald-500/60", label: solo ? "Between classes" : campus ? `Everyone free at ${campus}` : "Everyone free" },
+            ...(solo || campus ? [] : [{ box: "bg-amber-300/25 ring-2 ring-inset ring-amber-500/50", label: "Split campus" }]),
+            ...(campus ? [] : [{ box: "bg-neutral-400/10 ring-1 ring-inset ring-neutral-400/30", label: solo ? "Off campus" : "Nobody on campus" }]),
           ].map((k) => (
             <span key={k.label} className="flex items-center gap-1 text-neutral-500">
               <span className={`h-3.5 w-6 rounded-sm ${k.box}`} />
@@ -380,7 +384,7 @@ export function WeekGrid({
 
         <div ref={trackRef} className={DAY_TRACK} data-calendar-days>
           {WEEKDAYS.map((day, i) => {
-            const dayFree = free.filter((w) => w.day === day);
+            const dayFree = free.filter((w) => w.day === day && windowMatchesCampus(w, campus));
             const isToday = i === todayIndex;
             return (
               <div key={day} className={DAY_CELL} data-calendar-day>
