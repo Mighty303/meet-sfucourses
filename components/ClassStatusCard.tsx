@@ -73,7 +73,6 @@ function Person({ person }: { person: PersonStatus }) {
       )}
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0" style={{ color: person.color }}><UserIcon /></span>
           <span className="truncate" style={{ color: person.color }}>
             {person.isCurrentUser ? "You" : person.displayName}
           </span>
@@ -85,15 +84,6 @@ function Person({ person }: { person: PersonStatus }) {
         </span>
       </span>
     </span>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="10" cy="6.25" r="2.75" />
-      <path d="M4.5 16c.55-2.65 2.55-4.25 5.5-4.25s4.95 1.6 5.5 4.25" />
-    </svg>
   );
 }
 
