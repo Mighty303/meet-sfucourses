@@ -50,22 +50,20 @@ function Person({ person }: { person: PersonStatus }) {
       ) : (
         <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: person.color }} />
       )}
+      <span className="shrink-0" style={{ color: person.color }}><UserIcon /></span>
       <span className="truncate" style={{ color: person.color }}>
         {person.isCurrentUser ? "You" : person.displayName}
       </span>
-      <span className="flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
-        <CampusIcon />
-        {person.campus}
-      </span>
+      <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{person.campus}</span>
     </span>
   );
 }
 
-function CampusIcon() {
+function UserIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M10 18s6-5.1 6-10A6 6 0 0 0 4 8c0 4.9 6 10 6 10Z" />
-      <path d="M7.5 8.5h5M8 11h4M8.5 6h3v7h-3z" />
+      <circle cx="10" cy="6.25" r="2.75" />
+      <path d="M4.5 16c.55-2.65 2.55-4.25 5.5-4.25s4.95 1.6 5.5 4.25" />
     </svg>
   );
 }
