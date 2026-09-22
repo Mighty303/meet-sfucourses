@@ -212,7 +212,11 @@ export async function GET() {
               : previous
                 ? `Done ${previous.course} ${previous.section} · ${formatTime(previous.end)}`
                 : "No more classes today",
-      statusUpdatedAt: (current ?? next ?? previous)?.updatedAt ?? null,
+      statusUpdatedAt: today
+        .map((occurrence) => occurrence.updatedAt)
+        .filter((value): value is string => value !== null)
+        .sort()
+        .at(-1) ?? null,
       campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
     }];
   });

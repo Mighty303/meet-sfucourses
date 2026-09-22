@@ -63,6 +63,7 @@ export async function PUT(req: Request) {
   // row when there's something to override — a note, or a whole-day status this
   // one class is the exception to.
   const redundant =
+    body.explicit !== true &&
     body.status === "going" &&
     note === null &&
     (classNumber === null || !(await hasDayStatus(session.appUserId, date)));
