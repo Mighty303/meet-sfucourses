@@ -53,15 +53,54 @@ function Person({ person }: { person: PersonStatus }) {
       <span className="truncate" style={{ color: person.color }}>
         {person.isCurrentUser ? "You" : person.displayName}
       </span>
-      <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{person.campus}</span>
+      <span className="flex items-center gap-1 truncate text-xs text-neutral-500 dark:text-neutral-400">
+        <CampusIcon />
+        {person.campus}
+      </span>
     </span>
   );
 }
 
-function ClassLine({ occurrence, label }: { occurrence: ClassOccurrence; label: string }) {
+function CampusIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 18s6-5.1 6-10A6 6 0 0 0 4 8c0 4.9 6 10 6 10Z" />
+      <path d="M7.5 8.5h5M8 11h4M8.5 6h3v7h-3z" />
+    </svg>
+  );
+}
+
+function secondsUntil(occurrence: ClassOccurrence, now: Date): number | null {
+  const current = campusNow(now);
+  if (occurrence.date < current.date) return null;
+  if (occurrence.date === current.date) {
+    return occurrence.start * 60 - (current.minutes * 60 + current.seconds);
+  }
+  const currentDate = new Date(`${current.date}T12:00:00Z`);
+  const targetDate = new Date(`${occurrence.date}T12:00:00Z`);
+  const days = Math.round((targetDate.getTime() - currentDate.getTime()) / 86_400_000);
+  return days * 86_400 + occurrence.start * 60 - (current.minutes * 60 + current.seconds);
+}
+
+function countdownLabel(seconds: number): string {
+  if (seconds < 60) return "in less than a minute";
+  const minutes = Math.floor(seconds / 60);
+  const days = Math.floor(minutes / (24 * 60));
+  const hours = Math.floor((minutes % (24 * 60)) / 60);
+  const remainder = minutes % 60;
+  if (days > 0) return `in ${days}d ${hours}h`;
+  if (hours > 0) return `in ${hours}h ${remainder}m`;
+  return `in ${remainder}m`;
+}
+
+function ClassLine({ occurrence, label, now }: { occurrence: ClassOccurrence; label: string; now: Date }) {
+  const countdown = label === "Next class" ? secondsUntil(occurrence, now) : null;
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{label}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{label}</p>
+        {countdown !== null && countdown >= 0 && <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{countdownLabel(countdown)}</p>}
+      </div>
       <p className="text-lg font-semibold tracking-tight">
         {occurrence.course} <span className="font-normal text-neutral-500 dark:text-neutral-400">{occurrence.section}</span>
       </p>
@@ -77,6 +116,7 @@ function ClassLine({ occurrence, label }: { occurrence: ClassOccurrence; label: 
 export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
   const [status, setStatus] = useState<HomeStatus | null>(preview ?? null);
   const [failed, setFailed] = useState(false);
+  const [clock, setClock] = useState(() => new Date());
 
   useEffect(() => {
     if (preview) return;
@@ -102,6 +142,11 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [preview]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <section className="fade-up grid gap-3 sm:grid-cols-2" aria-label="Live campus and class status" aria-live="polite">
@@ -136,11 +181,11 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
         ) : status!.currentClasses.length > 0 ? (
           <div className="mt-4 flex flex-col gap-5">
-            <ClassLine occurrence={status!.currentClasses[0]} label="In class now" />
-            {status!.nextClass && <ClassLine occurrence={status!.nextClass} label="Next class" />}
+            <ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} />
+            {status!.nextClass && <ClassLine occurrence={status!.nextClass} label="Next class" now={clock} />}
           </div>
         ) : status!.nextClass ? (
-          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" /></div>
+          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" now={clock} /></div>
         ) : (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No upcoming classes.</p>
         )}

@@ -19,7 +19,7 @@ export interface ClassOccurrence extends ClassMeeting {
 const CAMPUS_TIME_ZONE = "America/Vancouver";
 
 /** Calendar date and clock time at SFU, independent of the viewer's device zone. */
-export function campusNow(now: Date): { date: string; year: number; month: number; minutes: number } {
+export function campusNow(now: Date): { date: string; year: number; month: number; minutes: number; seconds: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: CAMPUS_TIME_ZONE,
     year: "numeric",
@@ -27,6 +27,7 @@ export function campusNow(now: Date): { date: string; year: number; month: numbe
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hourCycle: "h23",
   }).formatToParts(now);
   const value = (type: string) => Number(parts.find((part) => part.type === type)?.value);
@@ -38,6 +39,7 @@ export function campusNow(now: Date): { date: string; year: number; month: numbe
     year,
     month,
     minutes: value("hour") * 60 + value("minute"),
+    seconds: value("second"),
   };
 }
 
