@@ -11,7 +11,9 @@ export interface PersonStatus {
   image: string | null;
   color: string;
   isCurrentUser: boolean;
-  campus: string;
+  status: AttendanceStatus | "away";
+  classLabel: string | null;
+  campus: string | null;
 }
 
 export interface ClassOccurrence {
@@ -43,18 +45,41 @@ function dayLabel(date: string): string {
 }
 
 function Person({ person }: { person: PersonStatus }) {
+  const statusLabel = person.status === "remote"
+    ? "Online"
+    : person.status === "skipping"
+      ? "Skipping"
+      : person.status === "away"
+        ? "Away"
+        : "Going";
+  const statusTone = person.status === "remote"
+    ? "text-blue-700 dark:text-blue-300"
+    : person.status === "skipping"
+      ? "text-neutral-600 dark:text-neutral-300"
+      : person.status === "away"
+        ? "text-neutral-500 dark:text-neutral-400"
+        : "text-emerald-700 dark:text-emerald-300";
+
   return (
-    <span className="flex min-w-0 items-center gap-2">
+    <span className="flex min-w-0 items-start gap-2">
       {person.image ? (
         <Image src={person.image} alt="" width={28} height={28} className="shrink-0 rounded-full" />
       ) : (
         <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: person.color }} />
       )}
-      <span className="shrink-0" style={{ color: person.color }}><UserIcon /></span>
-      <span className="truncate" style={{ color: person.color }}>
-        {person.isCurrentUser ? "You" : person.displayName}
+      <span className="min-w-0">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0" style={{ color: person.color }}><UserIcon /></span>
+          <span className="truncate" style={{ color: person.color }}>
+            {person.isCurrentUser ? "You" : person.displayName}
+          </span>
+          <span className={`shrink-0 text-xs font-medium ${statusTone}`}>{statusLabel}</span>
+        </span>
+        <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
+          {person.classLabel ?? "No class right now"}
+          {person.campus ? ` · ${person.campus}` : ""}
+        </span>
       </span>
-      <span className="truncate text-xs text-neutral-500 dark:text-neutral-400">{person.campus}</span>
     </span>
   );
 }
@@ -160,7 +185,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         ) : failed ? (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">Campus status is unavailable right now.</p>
         ) : status!.onCampus.length === 0 ? (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No one is scheduled on campus right now.</p>
+          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No group members found.</p>
         ) : (
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-3">
             {status!.onCampus.map((person) => <Person key={person.key} person={person} />)}

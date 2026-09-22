@@ -158,6 +158,7 @@ export async function GET() {
 
   const onCampus = personList.flatMap((person) => {
     const today = occurrencesFor(person, [date], index, attendance);
+    const current = today.find((occurrence) => occurrence.start <= minutes && minutes < occurrence.end) ?? null;
     const presence = campusPresence(
       today.map((occurrence) => ({
         start: occurrence.start,
@@ -167,9 +168,17 @@ export async function GET() {
       })),
       minutes
     );
-    return presence.campus
-      ? [{ key: person.key, displayName: person.displayName, image: person.image, color: person.color, isCurrentUser: person.isCurrentUser, campus: presence.campus }]
-      : [];
+    const status = current?.status ?? (presence.campus ? "going" : "away");
+    return [{
+      key: person.key,
+      displayName: person.displayName,
+      image: person.image,
+      color: person.color,
+      isCurrentUser: person.isCurrentUser,
+      status,
+      classLabel: current ? `${current.course} ${current.section}` : presence.campus ? "Between classes" : null,
+      campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
+    }];
   });
 
   return NextResponse.json({
