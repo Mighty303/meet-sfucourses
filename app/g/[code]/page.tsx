@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccountGate } from "@/components/AccountGate";
 import { CalendarTools } from "@/components/CalendarTools";
+import { GroupImage } from "@/components/GroupImage";
 import { HeatGrid } from "@/components/HeatGrid";
 import { InviteLink } from "@/components/InviteLink";
 import { SfuVerifiedBadge } from "@/components/SfuVerifiedBadge";
@@ -39,9 +40,9 @@ interface Member {
  */
 interface GroupOption {
   memberId: number;
-  /** Your colour in that group, so the dot matches its grid. */
+  /** Your colour in that group, used by the fallback icon and the grid. */
   color: string;
-  group: { code: string; name: string; term: string };
+  group: { code: string; name: string; term: string; image: string | null };
 }
 
 interface GroupState {
@@ -50,12 +51,12 @@ interface GroupState {
     code: string;
     name: string;
     term: string;
+    image: string | null;
     /** The group's admin — the only person who can delete it. */
     ownerUserId: number | null;
   };
   members: Member[];
   busyByMember: Record<number, BusyBlock[]>;
-  classesByMember: Record<number, { classNumber: string; course: string; section: string }[]>;
   free: FreeWindow[];
   unresolved: Record<number, string[]>;
   unscheduled: Record<number, UnscheduledSection[]>;
@@ -88,6 +89,7 @@ function GroupSchedule({ code }: { code: string }) {
 
   const [state, setState] = useState<GroupState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   // Null until the server tells us which week is actually inside the term.
   const [week, setWeek] = useState<string | null>(null);
   // Member ids ticked off in the list. Kept as ids, not indices, so it survives
@@ -103,6 +105,7 @@ function GroupSchedule({ code }: { code: string }) {
   // rather than in the URL the way `grid` does. A shared link shouldn't decide
   // whether the person opening it sees the member list.
   const [listOpen, setListOpen] = useState(true);
+  const [memberQuery, setMemberQuery] = useState("");
   // Every group you're in, for the switcher. Null until the fetch lands.
   const [myGroups, setMyGroups] = useState<GroupOption[] | null>(null);
   // The account modal, asked for by the guest bar.
@@ -301,6 +304,18 @@ function GroupSchedule({ code }: { code: string }) {
     () => scheduled.filter((m) => !hidden.has(m.id)),
     [scheduled, hidden]
   );
+  const filteredMembers = useMemo(() => {
+    const query = memberQuery.trim().toLocaleLowerCase();
+    if (!query) return state?.members ?? [];
+    return (state?.members ?? []).filter((m) =>
+      m.displayName.toLocaleLowerCase().includes(query)
+    );
+  }, [memberQuery, state]);
+
+  /** Replace the current comparison with one person's schedule. */
+  function showOnly(memberId: number) {
+    setHidden(new Set(scheduled.filter((m) => m.id !== memberId).map((m) => m.id)));
+  }
 
   /**
    * Two readings of the same week, and which one a group opens on depends on
@@ -413,11 +428,14 @@ function GroupSchedule({ code }: { code: string }) {
     <main className="mx-auto flex w-full max-w-[1600px] flex-col gap-8 p-5 sm:p-8">
       <div className="flex flex-col gap-3">
         <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{state.group.name}</h1>
-            <p className="text-sm text-neutral-500">
-              {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
-            </p>
+          <div className="flex min-w-0 items-center gap-3">
+            <GroupImage src={state.group.image} name={state.group.name} size={48} />
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">{state.group.name}</h1>
+              <p className="text-sm text-neutral-500">
+                {fromTermCode(state.group.term)} · code <span className="font-mono">{state.group.code}</span>
+              </p>
+            </div>
           </div>
           {/* Name and settings stay on this row; the invite URL is a full-width
               field below so it matches group settings and stays readable. */}
@@ -451,8 +469,12 @@ function GroupSchedule({ code }: { code: string }) {
               current={g.group.code === code}
               title={`${g.group.name} · ${fromTermCode(g.group.term)}`}
             >
-              {/* Your colour in that group — the same key its grid uses. */}
-              <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: g.color }} />
+              <GroupImage
+                src={g.group.image}
+                name={g.group.name}
+                color={g.color}
+                size={20}
+              />
               <span className="truncate">{g.group.name}</span>
             </Pill>
           ))}
@@ -542,26 +564,27 @@ function GroupSchedule({ code }: { code: string }) {
           </div>
         </div>
       ) : (
-        /* The member list beside the grid holds your classes and edit link.
-           This error stays above both, where a failed action is visible. */
+        /* Keep action errors above the member list and schedule. */
         error && <p className="-mt-4 text-sm text-amber-600">{error}</p>
       )}
 
       {!signedIn && <InviteLink code={code} isAdmin={false} />}
 
-      {/* The grid sets the desktop row height; the member list scrolls within it. */}
-      <div className={`flex flex-col gap-6 lg:grid lg:items-stretch ${listOpen ? "lg:grid-cols-[14rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)]" : "lg:grid-cols-[9rem_minmax(0,1fr)]"}`}>
+      {/* Keep members beside the schedule on desktop. */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {/* The handle stays on the list's right edge when collapsed. */}
       <aside
-        className="relative min-h-0"
+        className={`flex flex-col gap-2 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:shrink-0 ${
+          listOpen ? "lg:w-56 xl:w-64" : "lg:w-auto"
+        }`}
       >
-        <div className="flex flex-col gap-2 lg:absolute lg:inset-0 lg:min-h-0">
-        {/* Keep the collapse handle at the list's right edge. */}
+        {/* Keep the heading and handle aligned across both list states. */}
         <div className="flex items-start justify-end gap-x-3">
           {listOpen && (
             <div className="mr-auto flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="font-medium">Group Member List</h2>
               <p className="text-xs text-neutral-500">
-                Click a name to toggle them out
+                Toggle names or show one person only
               </p>
               {shown.length < scheduled.length && (
                 <button
@@ -571,7 +594,7 @@ function GroupSchedule({ code }: { code: string }) {
                   Include everyone
                 </button>
               )}
-              {/* Settings are available beside the names they manage. */}
+              {/* Put group settings beside the member names. */}
               {isAdmin && (
                 <Link
                   href={`/g/${code}/settings`}
@@ -582,18 +605,42 @@ function GroupSchedule({ code }: { code: string }) {
               )}
             </div>
           )}
-          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Members</span>}
+          {/* Label the collapsed member list. */}
+          {!listOpen && <span className="mr-auto font-medium whitespace-nowrap">Group Member List</span>}
           <CollapseHandle open={listOpen} onToggle={() => setListOpen((v) => !v)} />
         </div>
         {listOpen && (
         <>
-        {/* Keep the heading visible while member cards scroll. */}
-        <ul id="group-list" className="member-list-scroll grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:auto-rows-max lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
-          {state.members.map((m) => {
+        <div className="relative">
+          <label htmlFor="member-search" className="sr-only">Search group members</label>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-neutral-400"
+          >
+            <circle cx="8.5" cy="8.5" r="5.25" />
+            <path d="m12.5 12.5 4 4" strokeLinecap="round" />
+          </svg>
+          <input
+            id="member-search"
+            type="search"
+            value={memberQuery}
+            onChange={(event) => setMemberQuery(event.target.value)}
+            placeholder="Search members…"
+            aria-controls="group-list"
+            className="w-full rounded-lg border border-neutral-300 bg-transparent py-2 pr-3 pl-9 text-sm outline-none placeholder:text-neutral-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-neutral-700"
+          />
+        </div>
+        {/* Scroll member rows while the heading stays visible. */}
+        <ul id="group-list" className="grid gap-2 sm:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-cols-1 lg:overflow-y-auto xl:grid-cols-1">
+          {filteredMembers.map((m) => {
             const hasSchedule = scheduled.some((s) => s.id === m.id);
             const on = hasSchedule && !hidden.has(m.id);
+            const isOnly = on && shown.length === 1;
             const unresolved = state.unresolved[m.id]?.length ?? 0;
-            const classes = state.classesByMember[m.id] ?? [];
             return (
               <li
                 key={m.id}
@@ -620,8 +667,14 @@ function GroupSchedule({ code }: { code: string }) {
                         return next;
                       })
                     }
-                    aria-label={`Include ${m.displayName} in the schedule`}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-blue-600 disabled:cursor-not-allowed"
+                    className="peer sr-only"
+                  />
+                  {/* A hairline ring that fills when they're counted — the row
+                      already carries the state in its border and opacity, so
+                      the toggle only has to hint, not shout. */}
+                  <span
+                    aria-hidden
+                    className="h-3 w-3 shrink-0 rounded-full border border-neutral-400 transition-colors peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-focus-visible:ring-2 peer-focus-visible:ring-neutral-400 dark:border-neutral-600 dark:peer-checked:border-white dark:peer-checked:bg-white"
                   />
                   {m.image ? (
                     <Image src={m.image} alt="" width={18} height={18} className="shrink-0 rounded-full" />
@@ -663,30 +716,44 @@ function GroupSchedule({ code }: { code: string }) {
                     </span>
                   )}
                 </label>
-                <div className="px-3 pb-2.5 pl-9">
-                  {classes.length > 0 && (
-                    <ul className="flex flex-wrap gap-1.5" aria-label={`${m.displayName}'s classes`}>
-                      {classes.map((section) => (
-                        <li key={section.classNumber} className="rounded-md border border-neutral-200 px-1.5 py-0.5 text-xs dark:border-neutral-700">
-                          <span className="font-medium">{section.course}</span> <span className="text-neutral-500">{section.section}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <div className="flex items-center justify-between gap-2 px-3 pb-2.5 pl-9 text-xs">
+                  {/* The section count links to editing without toggling the row. */}
                   {me && m.id === me.id ? (
                     <Link
                       href={`/courses?term=${state.group.term}&next=${encodeURIComponent(`/g/${code}`)}`}
-                      className="mt-1 inline-block text-xs text-blue-600 hover:underline dark:text-blue-400"
+                      className="shrink-0 text-blue-600 hover:underline dark:text-blue-400"
                     >
-                      {hasSchedule ? "Edit your classes →" : "Add your courses →"}
+                      {hasSchedule
+                        ? `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"} →`
+                        : "add your courses →"}
                     </Link>
-                  ) : !hasSchedule ? (
-                    <span className="text-xs text-neutral-500">no schedule yet</span>
-                  ) : null}
+                  ) : (
+                    <span className="shrink-0 text-neutral-500">
+                      {!hasSchedule
+                        ? "no schedule yet"
+                        : `${m.classNumbers.length} section${m.classNumbers.length === 1 ? "" : "s"}`}
+                    </span>
+                  )}
+                  {hasSchedule && (
+                    <button
+                      type="button"
+                      onClick={() => showOnly(m.id)}
+                      disabled={isOnly}
+                      aria-label={`Show only ${m.displayName}'s schedule`}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-blue-600 transition-colors hover:bg-blue-50 disabled:cursor-default disabled:text-neutral-400 dark:text-blue-400 dark:hover:bg-blue-950 dark:disabled:text-neutral-600"
+                    >
+                      Only
+                    </button>
+                  )}
                 </div>
               </li>
             );
           })}
+          {filteredMembers.length === 0 && (
+            <li className="rounded-lg border border-dashed border-neutral-300 px-3 py-5 text-center text-sm text-neutral-500 dark:border-neutral-700">
+              No members match “{memberQuery.trim()}”.
+            </li>
+          )}
         </ul>
         {/* Why the grid below isn't answering the question yet. Three
             different problems with three different fixes, so they get three
@@ -702,7 +769,6 @@ function GroupSchedule({ code }: { code: string }) {
         )}
         </>
         )}
-        </div>
       </aside>
 
       <div className="@container flex min-w-0 flex-1 flex-col gap-6">
@@ -724,8 +790,7 @@ function GroupSchedule({ code }: { code: string }) {
           threshold is what the layout actually costs — the outer tracks are
           `1fr` each, so the empty left one is forced to mirror the right one,
           and the row needs twice the controls plus the date. Under that it
-          squeezed instead, clipping "Detailed" and wrapping "Export Calendar"
-          onto two lines. */}
+          squeezed instead, clipping the view toggle and export menu. */}
       <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:grid @min-[68rem]:grid-cols-[1fr_auto_1fr]">
         <div className="flex items-center gap-2 @min-[68rem]:justify-self-start">
           {week !== thisMonday && weekInTerm(thisMonday) && (
@@ -782,30 +847,51 @@ function GroupSchedule({ code }: { code: string }) {
 
           {/* Same row as the view toggle: these all act on the week on screen,
               and "this week's free windows" means whichever week that is. */}
-          <CalendarTools groupCode={code} memberId={me?.id ?? null} />
+          <CalendarTools
+            groupCode={code}
+            memberId={me?.id ?? null}
+            calendarRef={calendarRef}
+            groupName={state.group.name}
+            week={week ?? state.week}
+            view={grid}
+          />
         </div>
       </div>
 
-      {grid === "heat" ? (
-        <HeatGrid
-          members={shown}
-          busyByMember={state.busyByMember}
-          dayStart={DAY_START}
-          dayEnd={DAY_END}
-          weekStart={week ?? undefined}
-          attendance={attendance}
-        />
-      ) : (
-        <WeekGrid
-          members={shown}
-          busyByMember={state.busyByMember}
-          free={free}
-          dayStart={DAY_START}
-          dayEnd={DAY_END}
-          weekStart={week ?? undefined}
-          attendance={attendance}
-        />
-      )}
+      <div ref={calendarRef}>
+        <div className="calendar-png-heading hidden items-center justify-between border-b border-neutral-200 pb-4 dark:border-neutral-800">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">{state.group.name}</h2>
+            <p className="mt-0.5 text-sm text-neutral-500">
+              {shortDate(week ?? state.week)} – {shortDate(addDays(week ?? state.week, 4))}
+            </p>
+          </div>
+          <span className="rounded-full border border-neutral-300 px-3 py-1 text-sm text-neutral-500 dark:border-neutral-700">
+            {grid === "detailed" ? "Detailed schedule" : "Availability"}
+          </span>
+        </div>
+
+        {grid === "heat" ? (
+          <HeatGrid
+            members={shown}
+            busyByMember={state.busyByMember}
+            dayStart={DAY_START}
+            dayEnd={DAY_END}
+            weekStart={week ?? undefined}
+            attendance={attendance}
+          />
+        ) : (
+          <WeekGrid
+            members={shown}
+            busyByMember={state.busyByMember}
+            free={free}
+            dayStart={DAY_START}
+            dayEnd={DAY_END}
+            weekStart={week ?? undefined}
+            attendance={attendance}
+          />
+        )}
+      </div>
 
       {/* Directly under the grid, because that is where you go looking for a
           course you know someone is taking and can't find a block for. Set

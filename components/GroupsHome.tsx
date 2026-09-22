@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GroupActions } from "@/components/GroupActions";
 import { ClassStatusCard } from "@/components/ClassStatusCard";
+import { GroupImage } from "@/components/GroupImage";
 import { fromTermCode } from "@/lib/sfu";
 
 interface Membership {
@@ -12,7 +13,7 @@ interface Membership {
   displayName: string;
   color: string;
   classNumbers: string[];
-  group: { id: number; code: string; name: string; term: string };
+  group: { id: number; code: string; name: string; term: string; image: string | null };
   members: {
     id: number;
     displayName: string;
@@ -35,6 +36,7 @@ export function GroupsHome() {
   // Null until the fetch lands, which is the difference between "still
   // loading" and "you aren't in any".
   const [memberships, setMemberships] = useState<Membership[] | null>(null);
+  const [lastGroupCode, setLastGroupCode] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -100,14 +102,11 @@ export function GroupsHome() {
                   href={`/g/${m.group.code}`}
                   className="flex gap-4 rounded-xl border border-neutral-200 p-5 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
                 >
-                  {/* Tinted with your own colour in this group, so the card
-                      carries the same identity the schedule grid uses. */}
-                  <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${m.color}22`, color: m.color }}
-                  >
-                    <GroupIcon />
-                  </span>
+                  <GroupImage
+                    src={m.group.image}
+                    name={m.group.name}
+                    color={m.color}
+                  />
                   <div className="flex min-w-0 flex-1 flex-col gap-3">
                     <div className="flex items-baseline gap-2 text-base">
                       <span className="truncate font-medium">{m.group.name}</span>
@@ -156,16 +155,5 @@ export function GroupsHome() {
 
       <GroupActions startDelay={120} />
     </main>
-  );
-}
-
-function GroupIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="7.5" cy="7" r="2.75" />
-      <path d="M2.5 16c0-2.5 2.2-4.25 5-4.25S12.5 13.5 12.5 16" />
-      <path d="M13.25 5.1a2.75 2.75 0 0 1 0 5.3" />
-      <path d="M14.5 12.2c1.9.5 3 1.9 3 3.8" />
-    </svg>
   );
 }

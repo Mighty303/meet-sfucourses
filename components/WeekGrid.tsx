@@ -365,7 +365,7 @@ export function WeekGrid({
             labels line up with the grid lines instead of sitting a row high. */}
         <div className="w-12 shrink-0">
           <div className={DAY_HEADING_BOX} aria-hidden />
-          <div className={`relative ${columnHeight}`}>
+          <div className={`relative ${columnHeight}`} data-calendar-column>
             {hours.map((h) => (
               <div
                 key={h}
@@ -378,12 +378,12 @@ export function WeekGrid({
           </div>
         </div>
 
-        <div ref={trackRef} className={DAY_TRACK}>
+        <div ref={trackRef} className={DAY_TRACK} data-calendar-days>
           {WEEKDAYS.map((day, i) => {
             const dayFree = free.filter((w) => w.day === day);
             const isToday = i === todayIndex;
             return (
-              <div key={day} className={DAY_CELL}>
+              <div key={day} className={DAY_CELL} data-calendar-day>
                 <DayHeading
                   day={day}
                   isToday={isToday}
@@ -391,6 +391,7 @@ export function WeekGrid({
                   hover={hover}
                 />
                 <div
+                  data-calendar-column
                   className={`relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 ${columnHeight}`}
                 >
                   {hours.map((h) => (

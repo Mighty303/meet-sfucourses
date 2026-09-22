@@ -38,6 +38,8 @@ export interface Group {
   code: string;
   name: string;
   term: string;
+  /** A small square data URL chosen by the group admin. */
+  image: string | null;
   /** The group's admin — whoever created it. Null only until someone signs in. */
   ownerUserId: number | null;
 }
@@ -48,6 +50,7 @@ function toGroup(row: Record<string, unknown>): Group {
     code: row.code as string,
     name: row.name as string,
     term: row.term as string,
+    image: (row.image as string | null) ?? null,
     ownerUserId: (row.owner_user_id as number | null) ?? null,
   };
 }
@@ -104,8 +107,6 @@ export interface GroupState {
   group: Group;
   members: Member[];
   busyByMember: Record<number, BusyBlock[]>;
-  /** Resolved course and section labels for every member's saved classes. */
-  classesByMember: Record<number, { classNumber: string; course: string; section: string }[]>;
   free: FreeWindow[];
   /** Class numbers we couldn't resolve — usually saved under a different term. */
   unresolved: Record<number, string[]>;
@@ -141,7 +142,7 @@ export async function createGroup(
       INSERT INTO meetup.groups (code, name, term, owner_user_id)
       VALUES (${code}, ${name}, ${term}, ${ownerUserId})
       ON CONFLICT (code) DO NOTHING
-      RETURNING id, code, name, term, owner_user_id
+      RETURNING id, code, name, term, image, owner_user_id
     `;
     if (rows.length > 0) return toGroup(rows[0]);
   }
@@ -151,7 +152,7 @@ export async function createGroup(
 export async function findGroup(code: string): Promise<Group | null> {
   const sql = getDb();
   const rows = await sql`
-    SELECT id, code, name, term, owner_user_id FROM meetup.groups WHERE code = ${code}
+    SELECT id, code, name, term, image, owner_user_id FROM meetup.groups WHERE code = ${code}
   `;
   return rows[0] ? toGroup(rows[0]) : null;
 }
@@ -395,6 +396,12 @@ export async function renameGroup(groupId: number, name: string): Promise<void> 
   await sql`UPDATE meetup.groups SET name = ${name} WHERE id = ${groupId}`;
 }
 
+/** Pass null to restore the standard group icon. */
+export async function setGroupImage(groupId: number, image: string | null): Promise<void> {
+  const sql = getDb();
+  await sql`UPDATE meetup.groups SET image = ${image} WHERE id = ${groupId}`;
+}
+
 /**
  * Mint a fresh invite code for an existing group.
  *
@@ -517,17 +524,10 @@ export async function getGroupState(
   const attendance = await listAttendance(userIds, dates.Mo, dates.Su);
 
   const busyByMember: Record<number, BusyBlock[]> = {};
-  const classesByMember: GroupState["classesByMember"] = {};
   const unresolved: Record<number, string[]> = {};
   const unscheduled: Record<number, UnscheduledSection[]> = {};
 
   for (const member of members) {
-    classesByMember[member.id] = member.classNumbers.flatMap((classNumber) => {
-      const hit = index.get(classNumber);
-      return hit
-        ? [{ classNumber, course: `${hit.course.dept} ${hit.course.number}`, section: hit.section.section }]
-        : [];
-    });
     const courseBlocks = busyFromCourses(index, member.classNumbers, dates);
     const custom: BusyBlock[] = blocks
       .filter((b) => b.member_id === member.id)
@@ -578,7 +578,6 @@ export async function getGroupState(
     group,
     members,
     busyByMember,
-    classesByMember,
     free,
     unresolved,
     unscheduled,
@@ -613,7 +612,7 @@ export async function listMembershipsForUser(userId: number): Promise<Membership
   const sql = getDb();
   const rows = await sql`
     SELECT m.id AS member_id, m.display_name, m.color,
-           g.id AS group_id, g.code, g.name, g.term, g.owner_user_id,
+           g.id AS group_id, g.code, g.name, g.term, g.image, g.owner_user_id,
            COALESCE(ARRAY_AGG(ce.class_number) FILTER (WHERE ce.class_number IS NOT NULL), '{}') AS class_numbers
     FROM meetup.members m
     JOIN meetup.groups g ON g.id = m.group_id
@@ -646,6 +645,7 @@ export async function listMembershipsForUser(userId: number): Promise<Membership
       code: r.code,
       name: r.name,
       term: r.term,
+      image: r.image ?? null,
       ownerUserId: r.owner_user_id ?? null,
     },
     members: roster

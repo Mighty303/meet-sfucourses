@@ -5,7 +5,7 @@ import { Bar } from "@/components/Skeleton";
  * a dynamic route now and a click on Home would otherwise sit on the old page
  * until that read came back.
  *
- * Shaped like the signed-in half — class status and a list of groups over the two actions —
+ * Shaped like the signed-in half — three status cards and a list of groups over the two actions —
  * because anyone pressing Home in the navigation is signed in by definition.
  * The signed-out half is reached by arriving at the URL, which gets the page
  * itself rather than this.

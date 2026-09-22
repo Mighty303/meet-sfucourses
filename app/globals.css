@@ -25,32 +25,37 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-.member-list-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #a3a3a3 transparent;
+/* The off-screen export clone uses a stable desktop width and all five days. */
+.calendar-png-source {
+  position: fixed !important;
+  top: 0 !important;
+  left: -10000px !important;
+  width: 1200px !important;
+  margin: 0 !important;
+  padding: 32px !important;
+  background: var(--background) !important;
 }
 
-.member-list-scroll::-webkit-scrollbar {
-  width: 6px;
+.calendar-png-source .calendar-png-heading {
+  display: flex;
+  margin-bottom: 16px;
 }
 
-.member-list-scroll::-webkit-scrollbar-track {
-  background: transparent;
+.calendar-png-source [data-calendar-days] {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+  overflow: visible !important;
+  scroll-snap-type: none !important;
 }
 
-.member-list-scroll::-webkit-scrollbar-thumb {
-  border-radius: 9999px;
-  background: #a3a3a3;
+.calendar-png-source [data-calendar-day] {
+  width: auto !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  .member-list-scroll {
-    scrollbar-color: #525252 transparent;
-  }
-
-  .member-list-scroll::-webkit-scrollbar-thumb {
-    background: #525252;
-  }
+.calendar-png-source [data-calendar-column] {
+  height: 780px !important;
 }
 
 /*
