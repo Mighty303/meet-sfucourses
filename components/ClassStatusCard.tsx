@@ -207,6 +207,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
           classNumber: occurrence.classNumber,
           status: next,
           note: occurrence.note,
+          explicit: true,
         }),
       });
       if (!response.ok) throw new Error("Could not save class attendance");
