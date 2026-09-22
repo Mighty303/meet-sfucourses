@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GroupActions } from "@/components/GroupActions";
+import { ClassStatusCard } from "@/components/ClassStatusCard";
 import { fromTermCode } from "@/lib/sfu";
 
 interface Membership {
@@ -39,14 +40,20 @@ export function GroupsHome() {
     let live = true;
     fetch("/api/me")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { if (live && data) setMemberships(data.memberships); })
+      .then((data) => {
+        if (live && data) {
+          setMemberships(data.memberships);
+        }
+      })
       .catch(() => {});
     return () => { live = false; };
   }, []);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 p-6 pb-20 sm:pb-24">
-      <section className="fade-up mx-auto w-full max-w-lg flex flex-col gap-2">
+      <ClassStatusCard />
+
+      <section id="your-groups" className="fade-up mx-auto w-full max-w-lg flex flex-col gap-2">
         <h2 className="text-sm font-medium">Your groups</h2>
 
         {memberships === null ? (
