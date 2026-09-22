@@ -212,6 +212,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
       if (!response.ok) throw new Error("Could not save class attendance");
     }
 
+    const updatedAt = new Date().toISOString();
     setStatus((current) => {
       if (!current) return current;
       const selected = (item: ClassOccurrence) =>
@@ -220,6 +221,9 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
           : item;
       return {
         ...current,
+        onCampus: current.onCampus.map((person) =>
+          person.isCurrentUser ? { ...person, statusUpdatedAt: updatedAt } : person
+        ),
         currentClasses: current.currentClasses.map(selected),
         nextClass: current.nextClass ? selected(current.nextClass) : null,
       };
