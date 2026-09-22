@@ -924,6 +924,7 @@ function GroupSchedule({ code }: { code: string }) {
             free={free}
             dayStart={DAY_START}
             dayEnd={DAY_END}
+            campus={campus}
             weekStart={week ?? undefined}
             attendance={attendance}
           />
