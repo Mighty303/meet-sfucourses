@@ -43,12 +43,6 @@ function dayFor(date: string): (typeof DAYS)[number] {
   return DAYS[(value.getUTCDay() + 6) % 7];
 }
 
-function dateLabel(date: string, today: string): string {
-  if (date === today) return "today";
-  if (date === addDays(today, 1)) return "tomorrow";
-  return date;
-}
-
 function occurrencesFor(
   person: Person,
   dates: string[],
@@ -169,7 +163,7 @@ export async function GET() {
     const today = all.filter((occurrence) => occurrence.date === date);
     const current = today.find((occurrence) => occurrence.start <= minutes && minutes < occurrence.end) ?? null;
     const previous = [...today].reverse().find((occurrence) => occurrence.end <= minutes) ?? null;
-    const next = all.find((occurrence) => occurrence.date !== date || occurrence.start > minutes) ?? null;
+    const next = today.find((occurrence) => occurrence.start > minutes) ?? null;
     const presence = campusPresence(
       today.map((occurrence) => ({
         start: occurrence.start,
@@ -194,10 +188,10 @@ export async function GET() {
           : presence.campus
             ? "Between classes"
             : next
-              ? `Next ${next.course} ${next.section} · ${dateLabel(next.date, date)} ${formatTime(next.start)}`
+              ? `Next ${next.course} ${next.section} · ${formatTime(next.start)}`
               : previous
                 ? `Done ${previous.course} ${previous.section} · ${formatTime(previous.end)}`
-                : "No class today",
+                : "No more classes today",
       campus: current?.status === "remote" ? null : presence.campus ?? current?.campus ?? null,
     }];
   });
