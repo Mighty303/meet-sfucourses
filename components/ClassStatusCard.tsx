@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { AttendanceButtons } from "@/components/AttendanceButtons";
 import { campusNow } from "@/lib/class-status";
 import { formatTime } from "@/lib/sfu";
+import type { AttendanceStatus } from "@/lib/attendance-status";
 
 export interface PersonStatus {
   key: string;
@@ -20,11 +22,13 @@ export interface ClassOccurrence {
   course: string;
   title: string;
   section: string;
+  classNumber: string;
   campus: string;
   date: string;
   start: number;
   end: number;
   status: "going" | "skipping" | "remote";
+  note: string | null;
 }
 
 export interface HomeStatus {
@@ -116,7 +120,17 @@ function countdownLabel(seconds: number): string {
   return `in ${remainder}m`;
 }
 
-function ClassLine({ occurrence, label, now }: { occurrence: ClassOccurrence; label: string; now: Date }) {
+function ClassLine({
+  occurrence,
+  label,
+  now,
+  onStatusChange,
+}: {
+  occurrence: ClassOccurrence;
+  label: string;
+  now: Date;
+  onStatusChange: (occurrence: ClassOccurrence, status: AttendanceStatus) => void | Promise<void>;
+}) {
   const countdown = label === "Next class" ? secondsUntil(occurrence, now) : null;
   return (
     <div className="flex flex-col gap-1">
@@ -131,6 +145,10 @@ function ClassLine({ occurrence, label, now }: { occurrence: ClassOccurrence; la
       <p className="text-sm text-neutral-500 dark:text-neutral-400">
         {dayLabel(occurrence.date)} · {formatTime(occurrence.start)}–{formatTime(occurrence.end)} · {occurrence.status === "remote" ? "Online" : occurrence.campus || "Campus"}
       </p>
+      <AttendanceButtons
+        current={occurrence.status}
+        onPick={(status) => onStatusChange(occurrence, status)}
+      />
     </div>
   );
 }
@@ -171,6 +189,35 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
     return () => window.clearInterval(timer);
   }, []);
 
+  async function setAttendance(occurrence: ClassOccurrence, next: AttendanceStatus) {
+    if (!preview) {
+      const response = await fetch("/api/attendance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: occurrence.date,
+          classNumber: occurrence.classNumber,
+          status: next,
+          note: occurrence.note,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not save class attendance");
+    }
+
+    setStatus((current) => {
+      if (!current) return current;
+      const update = (item: ClassOccurrence) =>
+        item.date === occurrence.date && item.classNumber === occurrence.classNumber
+          ? { ...item, status: next }
+          : item;
+      return {
+        ...current,
+        currentClasses: current.currentClasses.map(update),
+        nextClass: current.nextClass ? update(current.nextClass) : null,
+      };
+    });
+  }
+
   const showCurrent = status === null || failed || status.currentClasses.length > 0;
 
   return (
@@ -206,7 +253,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
           ) : !status!.hasScheduledClasses ? (
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
           ) : status!.currentClasses.length > 0 ? (
-            <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} /></div>
+            <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} onStatusChange={setAttendance} /></div>
           ) : (
             <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No class right now.</p>
           )}
@@ -225,7 +272,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         ) : !status!.hasScheduledClasses ? (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
         ) : status!.nextClass ? (
-          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" now={clock} /></div>
+          <div className="mt-4"><ClassLine occurrence={status!.nextClass} label="Next class" now={clock} onStatusChange={setAttendance} /></div>
         ) : (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No upcoming classes.</p>
         )}
