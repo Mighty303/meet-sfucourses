@@ -306,7 +306,7 @@ export function HeatGrid({
               detailed grid's so the two views don't shift when you toggle. */}
           <div className="w-12 shrink-0">
             <div className={DAY_HEADING_BOX} aria-hidden />
-            <div className={`relative ${columnHeight}`}>
+            <div className={`relative ${columnHeight}`} data-calendar-column>
               {hours.map((h) => (
                 <div
                   key={h}
@@ -319,9 +319,9 @@ export function HeatGrid({
             </div>
           </div>
 
-          <div ref={trackRef} className={DAY_TRACK}>
+          <div ref={trackRef} className={DAY_TRACK} data-calendar-days>
             {WEEKDAYS.map((day, dayIndex) => (
-              <div key={day} className={DAY_CELL}>
+              <div key={day} className={DAY_CELL} data-calendar-day>
                 <DayHeading
                   day={day}
                   isToday={dayIndex === todayIndex}
@@ -329,6 +329,7 @@ export function HeatGrid({
                   hover={hover}
                 />
                 <div
+                  data-calendar-column
                   className={`relative overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 ${columnHeight}`}
                 >
                   {/* Behind the bands, so the hour lines stay readable through

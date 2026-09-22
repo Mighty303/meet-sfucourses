@@ -286,6 +286,7 @@ export function HoverCard({
   return (
     <div
       ref={cardRef}
+      data-calendar-export-ignore="true"
       // Offset from the cursor, and pulled back near the right and bottom edges
       // so it stays on screen. A card with buttons is taller, and one that runs
       // off the bottom is one whose buttons can't be pressed.
