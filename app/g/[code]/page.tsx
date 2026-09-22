@@ -732,9 +732,9 @@ function GroupSchedule({ code }: { code: string }) {
           threshold is what the layout actually costs — the outer tracks are
           `1fr` each, so the empty left one is forced to mirror the right one,
           and the row needs twice the controls plus the date. Under that it
-          squeezed instead, clipping the view toggle and export buttons. */}
-      <div className="flex flex-wrap items-center justify-center gap-2 @min-[74rem]:grid @min-[74rem]:grid-cols-[1fr_auto_1fr]">
-        <div className="flex items-center gap-2 @min-[74rem]:justify-self-start">
+          squeezed instead, clipping the view toggle and export menu. */}
+      <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:grid @min-[68rem]:grid-cols-[1fr_auto_1fr]">
+        <div className="flex items-center gap-2 @min-[68rem]:justify-self-start">
           {week !== thisMonday && weekInTerm(thisMonday) && (
             <button
               onClick={() => setWeek(thisMonday)}
@@ -767,7 +767,7 @@ function GroupSchedule({ code }: { code: string }) {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2 @min-[74rem]:flex-nowrap @min-[74rem]:justify-self-end">
+        <div className="flex flex-wrap items-center justify-center gap-2 @min-[68rem]:flex-nowrap @min-[68rem]:justify-self-end">
           {/* Two readings of the same week, and picking one here pins it —
               otherwise `grid` above decides from how many schedules are in. */}
           <div className="flex shrink-0 overflow-hidden rounded-lg border border-neutral-300 text-sm dark:border-neutral-700">
