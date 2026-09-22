@@ -8,6 +8,20 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+# Pull request previews
+
+After creating a pull request, start an isolated local preview from the pull
+request branch in a dedicated worktree and on an unused port. Open the exact
+feature-specific test URL in the macOS default browser and leave the server
+running for the user.
+
+The preview must be usable without Google OAuth. Prefer a guest-accessible route
+with representative test data. When the feature normally requires an account,
+add a deterministic development-only fixture or preview route that exercises
+the signed-in state without changing or bypassing production authorization.
+
+Include the preview URL and what data or state it demonstrates in the handoff.
+
 # Comments
 
 A `/** … */` docstring on a declaration — module, function, type, interface,

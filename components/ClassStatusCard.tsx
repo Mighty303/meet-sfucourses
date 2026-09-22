@@ -146,6 +146,8 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
     return () => window.clearInterval(timer);
   }, []);
 
+  const showCurrent = status === null || failed || status.currentClasses.length > 0;
+
   return (
     <section className="fade-up grid gap-3 sm:grid-cols-2" aria-label="Live campus and class status" aria-live="polite">
       <div className="min-h-32 rounded-xl border border-neutral-200 p-5 sm:col-span-2 dark:border-neutral-800">
@@ -166,27 +168,27 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         )}
       </div>
 
-      <div className="min-h-32 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Current class</h2>
-        {status === null && !failed ? (
-          <div className="mt-4 flex animate-pulse flex-col gap-3" aria-label="Loading class status">
-            <span className="h-5 w-40 rounded bg-neutral-200 dark:bg-neutral-800" />
-            <span className="h-4 w-56 rounded bg-neutral-200 dark:bg-neutral-800" />
-          </div>
-        ) : failed ? (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">Class status is unavailable right now.</p>
-        ) : !status!.hasScheduledClasses ? (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
-        ) : status!.currentClasses.length > 0 ? (
-          <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} /></div>
-        ) : status!.nextClass ? (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No class right now.</p>
-        ) : (
-          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No class right now.</p>
-        )}
-      </div>
+      {showCurrent && (
+        <div className="min-h-32 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Current class</h2>
+          {status === null && !failed ? (
+            <div className="mt-4 flex animate-pulse flex-col gap-3" aria-label="Loading class status">
+              <span className="h-5 w-40 rounded bg-neutral-200 dark:bg-neutral-800" />
+              <span className="h-4 w-56 rounded bg-neutral-200 dark:bg-neutral-800" />
+            </div>
+          ) : failed ? (
+            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">Class status is unavailable right now.</p>
+          ) : !status!.hasScheduledClasses ? (
+            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No scheduled classes this term.</p>
+          ) : status!.currentClasses.length > 0 ? (
+            <div className="mt-4"><ClassLine occurrence={status!.currentClasses[0]} label="In class now" now={clock} /></div>
+          ) : (
+            <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No class right now.</p>
+          )}
+        </div>
+      )}
 
-      <div className="min-h-32 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+      <div className={`min-h-32 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800 ${showCurrent ? "" : "sm:col-span-2"}`}>
         <h2 className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Next class</h2>
         {status === null && !failed ? (
           <div className="mt-4 flex animate-pulse flex-col gap-3" aria-label="Loading next class">
