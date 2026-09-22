@@ -14,8 +14,8 @@ export default function Loading() {
   return (
     <main className="mx-auto flex w-full max-w-4xl animate-pulse flex-col gap-8 p-6 pb-20 sm:pb-24">
       <div className="grid gap-3 sm:grid-cols-2" aria-hidden>
-        {[0, 1].map((i) => (
-          <div key={i} className="flex min-h-32 flex-col gap-3 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`flex min-h-32 flex-col gap-3 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800 ${i === 0 ? "sm:col-span-2" : ""}`}>
             <Bar className="h-3 w-28" />
             <Bar className="h-6 w-40" />
             <Bar className="h-4 w-56" />
