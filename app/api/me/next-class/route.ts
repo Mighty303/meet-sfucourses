@@ -29,6 +29,7 @@ interface Occurrence {
   start: number;
   end: number;
   status: AttendanceStatus;
+  selectedStatus: AttendanceStatus | null;
   note: string | null;
   updatedAt: string | null;
 }
@@ -42,6 +43,21 @@ function addDays(date: string, amount: number): string {
 function dayFor(date: string): (typeof DAYS)[number] {
   const value = new Date(`${date}T12:00:00Z`);
   return DAYS[(value.getUTCDay() + 6) % 7];
+}
+
+function selectedStatusFor(
+  rows: { userId: number; onDate: string; classNumber: string | null; status: AttendanceStatus }[],
+  userId: number,
+  onDate: string,
+  classNumber: string | null,
+): AttendanceStatus | null {
+  let day: AttendanceStatus | null = null;
+  for (const row of rows) {
+    if (row.userId !== userId || row.onDate !== onDate) continue;
+    if (classNumber !== null && row.classNumber === classNumber) return row.status;
+    if (row.classNumber === null) day = row.status;
+  }
+  return day;
 }
 
 function occurrencesFor(
@@ -74,6 +90,7 @@ function occurrencesFor(
           start,
           end,
           status: status.status,
+          selectedStatus: person.userId === null ? null : selectedStatusFor(attendance, person.userId, date, classNumber),
           note: status.note,
           updatedAt: status.updatedAt ?? null,
         });

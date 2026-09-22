@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ATTENDANCE_STATUSES, STATUS_EFFECT, type AttendanceStatus } from "@/lib/attendance-status";
 
 interface Props {
-  current: AttendanceStatus;
+  current: AttendanceStatus | null;
   onPick: (status: AttendanceStatus) => void | Promise<void>;
 }
 

@@ -29,6 +29,7 @@ export interface ClassOccurrence {
   start: number;
   end: number;
   status: "going" | "skipping" | "remote";
+  selectedStatus: AttendanceStatus | null;
   note: string | null;
   updatedAt: string | null;
 }
@@ -152,7 +153,7 @@ function ClassLine({
         {dayLabel(occurrence.date)} · {formatTime(occurrence.start)}–{formatTime(occurrence.end)} · {occurrence.status === "remote" ? "Online" : occurrence.campus || "Campus"}
       </p>
       <AttendanceButtons
-        current={occurrence.status}
+        current={occurrence.selectedStatus}
         onPick={(status) => onStatusChange(occurrence, status)}
       />
     </div>
@@ -212,14 +213,14 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
 
     setStatus((current) => {
       if (!current) return current;
-      const update = (item: ClassOccurrence) =>
+      const selected = (item: ClassOccurrence) =>
         item.date === occurrence.date && item.classNumber === occurrence.classNumber
-          ? { ...item, status: next }
+          ? { ...item, status: next, selectedStatus: next }
           : item;
       return {
         ...current,
-        currentClasses: current.currentClasses.map(update),
-        nextClass: current.nextClass ? update(current.nextClass) : null,
+        currentClasses: current.currentClasses.map(selected),
+        nextClass: current.nextClass ? selected(current.nextClass) : null,
       };
     });
   }
