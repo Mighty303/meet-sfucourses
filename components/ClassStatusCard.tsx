@@ -63,27 +63,37 @@ function Person({ person }: { person: PersonStatus }) {
       : person.status === "away"
         ? "text-neutral-500 dark:text-neutral-400"
         : "text-emerald-700 dark:text-emerald-300";
+  const statusDot = person.status === "remote"
+    ? "bg-blue-500"
+    : person.status === "skipping"
+      ? "bg-neutral-400"
+      : person.status === "away"
+        ? "bg-neutral-300 dark:bg-neutral-600"
+        : "bg-emerald-500";
 
   return (
-    <span className="flex min-w-0 items-start gap-2">
+    <div className="flex min-w-0 items-start gap-3 border-b border-neutral-100 py-2.5 first:pt-0 last:border-b-0 last:pb-0 dark:border-neutral-800">
       {person.image ? (
         <Image src={person.image} alt="" width={28} height={28} className="shrink-0 rounded-full" />
       ) : (
-        <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: person.color }} />
+        <span className="h-7 w-7 shrink-0 rounded-full" style={{ backgroundColor: `${person.color}22`, border: `2px solid ${person.color}` }} aria-hidden />
       )}
-      <span className="min-w-0">
+      <div className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate" style={{ color: person.color }}>
             {person.isCurrentUser ? "You" : person.displayName}
           </span>
-          <span className={`shrink-0 text-xs font-medium ${statusTone}`}>{statusLabel}</span>
+          <span className={`flex shrink-0 items-center gap-1.5 text-xs font-medium ${statusTone}`}>
+            <span className={`h-2 w-2 rounded-full ${statusDot}`} aria-hidden />
+            {statusLabel}
+          </span>
         </span>
         <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">
           {person.classLabel ?? "No class right now"}
           {person.campus ? ` · ${person.campus}` : ""}
         </span>
-      </span>
-    </span>
+      </div>
+    </div>
   );
 }
 
@@ -224,7 +234,7 @@ export function ClassStatusCard({ preview }: { preview?: HomeStatus } = {}) {
         ) : status!.onCampus.length === 0 ? (
           <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">No group members found.</p>
         ) : (
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-3">
+          <div className="mt-4">
             {status!.onCampus.map((person) => <Person key={person.key} person={person} />)}
           </div>
         )}
